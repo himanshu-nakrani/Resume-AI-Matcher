@@ -10,6 +10,9 @@ import {
   GenerateLinkedinPostParams,
   RewriteBulletParams,
   RewriteBulletBody,
+  UpdateAnalysisParams,
+  UpdateAnalysisBody,
+  GenerateInterviewQuestionsParams,
 } from "@workspace/api-zod";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
@@ -318,6 +321,115 @@ Write ONLY the post text. No hashtags unless they feel natural. No emojis unless
   } catch (err) {
     logger.error({ err }, "LinkedIn post generation failed");
     res.status(500).json({ error: "LinkedIn post generation failed" });
+  }
+});
+
+router.patch("/analyses/:id", async (req, res): Promise<void> => {
+  const params = UpdateAnalysisParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = UpdateAnalysisBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(analyses)
+    .where(eq(analyses.id, params.data.id));
+
+  if (!existing) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+
+  const updates: Partial<typeof existing> = {};
+  if (body.data.status !== undefined) updates.status = body.data.status as typeof existing.status;
+
+  const [updated] = await db
+    .update(analyses)
+    .set(updates)
+    .where(eq(analyses.id, params.data.id))
+    .returning();
+
+  res.json(updated);
+});
+
+router.post("/analyses/:id/interview-questions", async (req, res): Promise<void> => {
+  const params = GenerateInterviewQuestionsParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [analysis] = await db
+    .select()
+    .from(analyses)
+    .where(eq(analyses.id, params.data.id));
+
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+
+  req.log.info({ id: params.data.id }, "Generating interview questions");
+
+  const strengths = (analysis.strengths as string[]).slice(0, 5).join("; ");
+  const gaps = (analysis.gaps as string[]).slice(0, 5).join("; ");
+  const missingKeywords = (analysis.atsKeywordsMissing as string[]).slice(0, 10).join(", ");
+
+  const prompt = `You are an expert interview coach. Generate 10 highly likely interview questions for this candidate and role.
+
+Job Title: ${analysis.jobTitle}
+Company: ${analysis.companyName ?? "the company"}
+Candidate's Strengths: ${strengths}
+Identified Gaps: ${gaps}
+Missing Keywords (skills/tools the JD requires): ${missingKeywords}
+
+Generate a mix of:
+- 3 behavioral questions (STAR format expected)
+- 3 technical/skills questions targeting their gaps or missing keywords
+- 2 role-specific questions about the position
+- 1 "why this company" question
+- 1 tough question that tests their weakest area
+
+Rules:
+- Make questions specific to this role and candidate's profile, not generic
+- Each question should be concise (1-2 sentences max)
+- Do NOT include answer hints or frameworks in the questions themselves
+- Return ONLY a JSON array of strings, nothing else, no markdown, no numbering
+
+Example format: ["Question 1?", "Question 2?", ...]`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 2048,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "[]";
+    let questions: string[] = [];
+    try {
+      questions = JSON.parse(raw);
+      if (!Array.isArray(questions)) questions = [];
+    } catch {
+      questions = [];
+    }
+
+    await db
+      .update(analyses)
+      .set({ interviewQuestions: questions })
+      .where(eq(analyses.id, params.data.id));
+
+    res.json({ questions });
+  } catch (err) {
+    logger.error({ err }, "Interview questions generation failed");
+    res.status(500).json({ error: "Interview questions generation failed" });
   }
 });
 

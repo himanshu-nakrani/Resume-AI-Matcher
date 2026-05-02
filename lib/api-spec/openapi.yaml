@@ -102,6 +102,35 @@ paths:
       responses:
         "204":
           description: Deleted
+    patch:
+      operationId: updateAnalysis
+      tags: [analyses]
+      summary: Update an analysis (e.g. application status)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAnalysisBody"
+      responses:
+        "200":
+          description: Updated analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analysis"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /analyses/{id}/cover-letter:
     post:
@@ -127,6 +156,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GeneratedContent"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/{id}/interview-questions:
+    post:
+      operationId: generateInterviewQuestions
+      tags: [analyses]
+      summary: Generate likely interview questions for this role
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Interview questions generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InterviewQuestionsResponse"
         "404":
           description: Not found
           content:
@@ -264,6 +318,13 @@ components:
           type: ["string", "null"]
         linkedinPost:
           type: ["string", "null"]
+        status:
+          type: string
+          enum: [not_applied, applied, interview, offer, rejected]
+        interviewQuestions:
+          type: array
+          items:
+            type: string
         createdAt:
           type: string
       required:
@@ -282,6 +343,8 @@ components:
         - atsScore
         - coverLetter
         - linkedinPost
+        - status
+        - interviewQuestions
         - createdAt
 
     CreateAnalysisBody:
@@ -299,6 +362,23 @@ components:
         - jobTitle
         - resumeText
         - jobDescriptionText
+
+    UpdateAnalysisBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [not_applied, applied, interview, offer, rejected]
+
+    InterviewQuestionsResponse:
+      type: object
+      properties:
+        questions:
+          type: array
+          items:
+            type: string
+      required:
+        - questions
 
     GenerateCoverLetterBody:
       type: object

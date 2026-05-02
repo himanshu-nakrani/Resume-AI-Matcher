@@ -24,8 +24,10 @@ import type {
   GenerateCoverLetterBody,
   GeneratedContent,
   HealthStatus,
+  InterviewQuestionsResponse,
   RewriteBulletBody,
   RewriteBulletResponse,
+  UpdateAnalysisBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -446,6 +448,93 @@ export const useDeleteAnalysis = <
 };
 
 /**
+ * @summary Update an analysis (e.g. application status)
+ */
+export const getUpdateAnalysisUrl = (id: number) => {
+  return `/api/analyses/${id}`;
+};
+
+export const updateAnalysis = async (
+  id: number,
+  updateAnalysisBody: UpdateAnalysisBody,
+  options?: RequestInit,
+): Promise<Analysis> => {
+  return customFetch<Analysis>(getUpdateAnalysisUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateAnalysisBody),
+  });
+};
+
+export const getUpdateAnalysisMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAnalysis>>,
+    TError,
+    { id: number; data: BodyType<UpdateAnalysisBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAnalysis>>,
+  TError,
+  { id: number; data: BodyType<UpdateAnalysisBody> },
+  TContext
+> => {
+  const mutationKey = ["updateAnalysis"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAnalysis>>,
+    { id: number; data: BodyType<UpdateAnalysisBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateAnalysis(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAnalysisMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAnalysis>>
+>;
+export type UpdateAnalysisMutationBody = BodyType<UpdateAnalysisBody>;
+export type UpdateAnalysisMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update an analysis (e.g. application status)
+ */
+export const useUpdateAnalysis = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAnalysis>>,
+    TError,
+    { id: number; data: BodyType<UpdateAnalysisBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAnalysis>>,
+  TError,
+  { id: number; data: BodyType<UpdateAnalysisBody> },
+  TContext
+> => {
+  return useMutation(getUpdateAnalysisMutationOptions(options));
+};
+
+/**
  * @summary Generate a tailored cover letter
  */
 export const getGenerateCoverLetterUrl = (id: number) => {
@@ -530,6 +619,93 @@ export const useGenerateCoverLetter = <
   TContext
 > => {
   return useMutation(getGenerateCoverLetterMutationOptions(options));
+};
+
+/**
+ * @summary Generate likely interview questions for this role
+ */
+export const getGenerateInterviewQuestionsUrl = (id: number) => {
+  return `/api/analyses/${id}/interview-questions`;
+};
+
+export const generateInterviewQuestions = async (
+  id: number,
+  options?: RequestInit,
+): Promise<InterviewQuestionsResponse> => {
+  return customFetch<InterviewQuestionsResponse>(
+    getGenerateInterviewQuestionsUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getGenerateInterviewQuestionsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateInterviewQuestions>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateInterviewQuestions>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["generateInterviewQuestions"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateInterviewQuestions>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return generateInterviewQuestions(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateInterviewQuestionsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateInterviewQuestions>>
+>;
+
+export type GenerateInterviewQuestionsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate likely interview questions for this role
+ */
+export const useGenerateInterviewQuestions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateInterviewQuestions>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateInterviewQuestions>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getGenerateInterviewQuestionsMutationOptions(options));
 };
 
 /**

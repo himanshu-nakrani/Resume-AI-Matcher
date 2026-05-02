@@ -8,10 +8,14 @@
 
 export * from "./analysis";
 export * from "./analysisStats";
+export * from "./analysisStatus";
 export * from "./createAnalysisBody";
 export * from "./errorResponse";
 export * from "./generateCoverLetterBody";
 export * from "./generatedContent";
 export * from "./healthStatus";
+export * from "./interviewQuestionsResponse";
 export * from "./rewriteBulletBody";
 export * from "./rewriteBulletResponse";
+export * from "./updateAnalysisBody";
+export * from "./updateAnalysisBodyStatus";

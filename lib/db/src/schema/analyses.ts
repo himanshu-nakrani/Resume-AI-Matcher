@@ -2,6 +2,9 @@ import { pgTable, serial, text, integer, timestamp, json } from "drizzle-orm/pg-
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+export const APPLICATION_STATUSES = ["not_applied", "applied", "interview", "offer", "rejected"] as const;
+export type ApplicationStatus = typeof APPLICATION_STATUSES[number];
+
 export const analyses = pgTable("analyses", {
   id: serial("id").primaryKey(),
   jobTitle: text("job_title").notNull(),
@@ -18,6 +21,8 @@ export const analyses = pgTable("analyses", {
   atsScore: integer("ats_score").notNull(),
   coverLetter: text("cover_letter"),
   linkedinPost: text("linkedin_post"),
+  status: text("status").$type<ApplicationStatus>().notNull().default("not_applied"),
+  interviewQuestions: json("interview_questions").$type<string[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

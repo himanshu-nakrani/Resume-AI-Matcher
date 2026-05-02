@@ -34,6 +34,14 @@ export const ListAnalysesResponseItem = zod.object({
   atsScore: zod.number(),
   coverLetter: zod.string().nullable(),
   linkedinPost: zod.string().nullable(),
+  status: zod.enum([
+    "not_applied",
+    "applied",
+    "interview",
+    "offer",
+    "rejected",
+  ]),
+  interviewQuestions: zod.array(zod.string()),
   createdAt: zod.string(),
 });
 export const ListAnalysesResponse = zod.array(ListAnalysesResponseItem);
@@ -71,6 +79,14 @@ export const GetAnalysisResponse = zod.object({
   atsScore: zod.number(),
   coverLetter: zod.string().nullable(),
   linkedinPost: zod.string().nullable(),
+  status: zod.enum([
+    "not_applied",
+    "applied",
+    "interview",
+    "offer",
+    "rejected",
+  ]),
+  interviewQuestions: zod.array(zod.string()),
   createdAt: zod.string(),
 });
 
@@ -79,6 +95,46 @@ export const GetAnalysisResponse = zod.object({
  */
 export const DeleteAnalysisParams = zod.object({
   id: zod.coerce.number(),
+});
+
+/**
+ * @summary Update an analysis (e.g. application status)
+ */
+export const UpdateAnalysisParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateAnalysisBody = zod.object({
+  status: zod
+    .enum(["not_applied", "applied", "interview", "offer", "rejected"])
+    .optional(),
+});
+
+export const UpdateAnalysisResponse = zod.object({
+  id: zod.number(),
+  jobTitle: zod.string(),
+  companyName: zod.string().nullable(),
+  resumeText: zod.string(),
+  jobDescriptionText: zod.string(),
+  fitScore: zod.number(),
+  fitRationale: zod.string(),
+  strengths: zod.array(zod.string()),
+  gaps: zod.array(zod.string()),
+  improvements: zod.array(zod.string()),
+  atsKeywordsMatched: zod.array(zod.string()),
+  atsKeywordsMissing: zod.array(zod.string()),
+  atsScore: zod.number(),
+  coverLetter: zod.string().nullable(),
+  linkedinPost: zod.string().nullable(),
+  status: zod.enum([
+    "not_applied",
+    "applied",
+    "interview",
+    "offer",
+    "rejected",
+  ]),
+  interviewQuestions: zod.array(zod.string()),
+  createdAt: zod.string(),
 });
 
 /**
@@ -94,6 +150,17 @@ export const GenerateCoverLetterBody = zod.object({
 
 export const GenerateCoverLetterResponse = zod.object({
   content: zod.string(),
+});
+
+/**
+ * @summary Generate likely interview questions for this role
+ */
+export const GenerateInterviewQuestionsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GenerateInterviewQuestionsResponse = zod.object({
+  questions: zod.array(zod.string()),
 });
 
 /**

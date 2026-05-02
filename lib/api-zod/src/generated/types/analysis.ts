@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AnalysisStatus } from "./analysisStatus";
 
 export interface Analysis {
   id: number;
@@ -25,5 +26,7 @@ export interface Analysis {
   coverLetter: string | null;
   /** @nullable */
   linkedinPost: string | null;
+  status: AnalysisStatus;
+  interviewQuestions: string[];
   createdAt: string;
 }

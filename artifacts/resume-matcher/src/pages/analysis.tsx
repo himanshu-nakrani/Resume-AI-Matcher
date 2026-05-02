@@ -7,6 +7,7 @@ import {
   useGenerateLinkedinPost,
   useDeleteAnalysis,
   useRewriteBullet,
+  useGenerateInterviewQuestions,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScoreCircle } from "@/components/score-circle";
@@ -30,8 +31,19 @@ import {
   ChevronRight,
   Wand2,
   ArrowRightLeft,
+  MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+
+type CoverLetterTone = "professional" | "friendly" | "enthusiastic" | "concise";
+
+const TONE_OPTIONS: { value: CoverLetterTone; label: string; desc: string }[] = [
+  { value: "professional", label: "Professional", desc: "Formal & polished" },
+  { value: "friendly", label: "Friendly", desc: "Warm & personable" },
+  { value: "enthusiastic", label: "Enthusiastic", desc: "Energetic & passionate" },
+  { value: "concise", label: "Concise", desc: "Brief & to the point" },
+];
 
 function BulletRewriter({ analysisId }: { analysisId: number }) {
   const [bulletText, setBulletText] = useState("");
@@ -135,12 +147,114 @@ function BulletRewriter({ analysisId }: { analysisId: number }) {
   );
 }
 
+function InterviewQuestions({ analysisId, existingQuestions }: { analysisId: number; existingQuestions: string[] }) {
+  const queryClient = useQueryClient();
+  const { copy, isCopied } = useCopy();
+
+  const generate = useGenerateInterviewQuestions({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) }),
+    },
+  });
+
+  const allQuestions = generate.data?.questions ?? existingQuestions;
+
+  return (
+    <Card className="border shadow-sm">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-orange-500" /> Interview Questions
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            AI-predicted questions tailored to this role and your profile.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant={allQuestions.length > 0 ? "outline" : "default"}
+          onClick={() => generate.mutate({ id: analysisId })}
+          disabled={generate.isPending}
+          data-testid="button-generate-interview-questions"
+        >
+          {generate.isPending ? (
+            <>
+              <Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />
+              Generating...
+            </>
+          ) : allQuestions.length > 0 ? (
+            "Regenerate"
+          ) : (
+            <>
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+              Generate
+            </>
+          )}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {generate.isPending ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/40">
+                <Skeleton className="h-5 w-5 rounded-full shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-full" />
+                  <Skeleton className="h-3.5 w-3/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : allQuestions.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">
+            Click "Generate" to get likely interview questions for this role based on your resume analysis.
+          </p>
+        ) : (
+          <div className="space-y-2" data-testid="interview-questions-list">
+            {allQuestions.map((q, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-3 p-3 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors group"
+                data-testid={`interview-question-${i}`}
+              >
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 text-xs font-bold shrink-0 mt-0.5">
+                  {i + 1}
+                </span>
+                <p className="text-sm flex-1">{q}</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                  onClick={() => copy(q, "Question copied")}
+                  data-testid={`button-copy-question-${i}`}
+                >
+                  {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                </Button>
+              </div>
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground mt-1"
+              onClick={() => copy(allQuestions.join("\n\n"), "All questions copied")}
+            >
+              <Copy className="w-3 h-3 mr-1.5" />
+              Copy all questions
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function Analysis() {
   const params = useParams<{ id: string }>();
   const id = parseInt(params.id ?? "0", 10);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { copy, isCopied } = useCopy();
+  const [coverLetterTone, setCoverLetterTone] = useState<CoverLetterTone>("professional");
 
   const { data: analysis, isLoading } = useGetAnalysis(id, {
     query: { enabled: !!id, queryKey: getGetAnalysisQueryKey(id) },
@@ -193,6 +307,7 @@ export function Analysis() {
   const improvements = (analysis.improvements as string[]) ?? [];
   const atsMatched = (analysis.atsKeywordsMatched as string[]) ?? [];
   const atsMissing = (analysis.atsKeywordsMissing as string[]) ?? [];
+  const interviewQuestions = (analysis.interviewQuestions as string[]) ?? [];
 
   return (
     <div className="space-y-8" data-testid={`analysis-${id}`}>
@@ -348,33 +463,62 @@ export function Analysis() {
       {/* AI Bullet Rewriter */}
       <BulletRewriter analysisId={id} />
 
+      {/* Interview Questions */}
+      <InterviewQuestions analysisId={id} existingQuestions={interviewQuestions} />
+
       {/* Cover Letter */}
       <Card className="border shadow-sm">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary" /> Tailored Cover Letter
-          </CardTitle>
-          <div className="flex gap-2">
-            {analysis.coverLetter && (
+        <CardHeader className="pb-3">
+          <div className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" /> Tailored Cover Letter
+            </CardTitle>
+            <div className="flex gap-2">
+              {analysis.coverLetter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copy(analysis.coverLetter!, "Cover letter copied")}
+                  data-testid="button-copy-cover-letter"
+                >
+                  {isCopied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                  Copy
+                </Button>
+              )}
               <Button
-                variant="ghost"
                 size="sm"
-                onClick={() => copy(analysis.coverLetter!, "Cover letter copied")}
-                data-testid="button-copy-cover-letter"
+                variant={analysis.coverLetter ? "outline" : "default"}
+                onClick={() => generateCoverLetter.mutate({ id, data: { tone: coverLetterTone } })}
+                disabled={generateCoverLetter.isPending}
+                data-testid="button-generate-cover-letter"
               >
-                {isCopied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
-                Copy
+                {generateCoverLetter.isPending ? "Generating..." : analysis.coverLetter ? "Regenerate" : "Generate"}
               </Button>
-            )}
-            <Button
-              size="sm"
-              variant={analysis.coverLetter ? "outline" : "default"}
-              onClick={() => generateCoverLetter.mutate({ id, data: {} })}
-              disabled={generateCoverLetter.isPending}
-              data-testid="button-generate-cover-letter"
-            >
-              {generateCoverLetter.isPending ? "Generating..." : analysis.coverLetter ? "Regenerate" : "Generate"}
-            </Button>
+            </div>
+          </div>
+
+          {/* Tone Selector */}
+          <div className="mt-3">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Tone</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {TONE_OPTIONS.map((tone) => (
+                <button
+                  key={tone.value}
+                  onClick={() => setCoverLetterTone(tone.value)}
+                  className={`rounded-lg border px-3 py-2 text-left transition-all ${
+                    coverLetterTone === tone.value
+                      ? "border-primary bg-primary/5 dark:bg-primary/10"
+                      : "border-muted hover:border-muted-foreground/30 bg-transparent"
+                  }`}
+                  data-testid={`tone-${tone.value}`}
+                >
+                  <p className={`text-xs font-semibold ${coverLetterTone === tone.value ? "text-primary" : ""}`}>
+                    {tone.label}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{tone.desc}</p>
+                </button>
+              ))}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -394,7 +538,9 @@ export function Analysis() {
               data-testid="textarea-cover-letter"
             />
           ) : (
-            <p className="text-sm text-muted-foreground py-4">Click "Generate" to create a tailored cover letter for this role.</p>
+            <p className="text-sm text-muted-foreground py-4">
+              Select a tone above, then click "Generate" to create a tailored cover letter.
+            </p>
           )}
         </CardContent>
       </Card>

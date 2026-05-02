@@ -13,6 +13,17 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type AnalysisStatus =
+  (typeof AnalysisStatus)[keyof typeof AnalysisStatus];
+
+export const AnalysisStatus = {
+  not_applied: "not_applied",
+  applied: "applied",
+  interview: "interview",
+  offer: "offer",
+  rejected: "rejected",
+} as const;
+
 export interface Analysis {
   id: number;
   jobTitle: string;
@@ -32,6 +43,8 @@ export interface Analysis {
   coverLetter: string | null;
   /** @nullable */
   linkedinPost: string | null;
+  status: AnalysisStatus;
+  interviewQuestions: string[];
   createdAt: string;
 }
 
@@ -40,6 +53,25 @@ export interface CreateAnalysisBody {
   companyName?: string;
   resumeText: string;
   jobDescriptionText: string;
+}
+
+export type UpdateAnalysisBodyStatus =
+  (typeof UpdateAnalysisBodyStatus)[keyof typeof UpdateAnalysisBodyStatus];
+
+export const UpdateAnalysisBodyStatus = {
+  not_applied: "not_applied",
+  applied: "applied",
+  interview: "interview",
+  offer: "offer",
+  rejected: "rejected",
+} as const;
+
+export interface UpdateAnalysisBody {
+  status?: UpdateAnalysisBodyStatus;
+}
+
+export interface InterviewQuestionsResponse {
+  questions: string[];
 }
 
 export interface GenerateCoverLetterBody {
