@@ -8,3 +8,51 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface ErrorResponse {
+  error: string;
+}
+
+export interface Analysis {
+  id: number;
+  jobTitle: string;
+  /** @nullable */
+  companyName: string | null;
+  resumeText: string;
+  jobDescriptionText: string;
+  fitScore: number;
+  fitRationale: string;
+  strengths: string[];
+  gaps: string[];
+  improvements: string[];
+  atsKeywordsMatched: string[];
+  atsKeywordsMissing: string[];
+  atsScore: number;
+  /** @nullable */
+  coverLetter: string | null;
+  /** @nullable */
+  linkedinPost: string | null;
+  createdAt: string;
+}
+
+export interface CreateAnalysisBody {
+  jobTitle: string;
+  companyName?: string;
+  resumeText: string;
+  jobDescriptionText: string;
+}
+
+export interface GenerateCoverLetterBody {
+  tone?: string;
+}
+
+export interface GeneratedContent {
+  content: string;
+}
+
+export interface AnalysisStats {
+  totalAnalyses: number;
+  averageFitScore: number;
+  averageAtsScore: number;
+  topMissingKeywords: string[];
+}

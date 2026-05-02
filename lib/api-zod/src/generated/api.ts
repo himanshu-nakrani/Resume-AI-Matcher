@@ -14,3 +14,105 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary List all analyses
+ */
+export const ListAnalysesResponseItem = zod.object({
+  id: zod.number(),
+  jobTitle: zod.string(),
+  companyName: zod.string().nullable(),
+  resumeText: zod.string(),
+  jobDescriptionText: zod.string(),
+  fitScore: zod.number(),
+  fitRationale: zod.string(),
+  strengths: zod.array(zod.string()),
+  gaps: zod.array(zod.string()),
+  improvements: zod.array(zod.string()),
+  atsKeywordsMatched: zod.array(zod.string()),
+  atsKeywordsMissing: zod.array(zod.string()),
+  atsScore: zod.number(),
+  coverLetter: zod.string().nullable(),
+  linkedinPost: zod.string().nullable(),
+  createdAt: zod.string(),
+});
+export const ListAnalysesResponse = zod.array(ListAnalysesResponseItem);
+
+/**
+ * @summary Create a new resume analysis
+ */
+export const CreateAnalysisBody = zod.object({
+  jobTitle: zod.string(),
+  companyName: zod.string().optional(),
+  resumeText: zod.string(),
+  jobDescriptionText: zod.string(),
+});
+
+/**
+ * @summary Get an analysis by ID
+ */
+export const GetAnalysisParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetAnalysisResponse = zod.object({
+  id: zod.number(),
+  jobTitle: zod.string(),
+  companyName: zod.string().nullable(),
+  resumeText: zod.string(),
+  jobDescriptionText: zod.string(),
+  fitScore: zod.number(),
+  fitRationale: zod.string(),
+  strengths: zod.array(zod.string()),
+  gaps: zod.array(zod.string()),
+  improvements: zod.array(zod.string()),
+  atsKeywordsMatched: zod.array(zod.string()),
+  atsKeywordsMissing: zod.array(zod.string()),
+  atsScore: zod.number(),
+  coverLetter: zod.string().nullable(),
+  linkedinPost: zod.string().nullable(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Delete an analysis
+ */
+export const DeleteAnalysisParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Generate a tailored cover letter
+ */
+export const GenerateCoverLetterParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GenerateCoverLetterBody = zod.object({
+  tone: zod.string().optional(),
+});
+
+export const GenerateCoverLetterResponse = zod.object({
+  content: zod.string(),
+});
+
+/**
+ * @summary Generate a LinkedIn post about the job application
+ */
+export const GenerateLinkedinPostParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GenerateLinkedinPostResponse = zod.object({
+  content: zod.string(),
+});
+
+/**
+ * @summary Get aggregate stats across all analyses
+ */
+export const GetAnalysisStatsResponse = zod.object({
+  totalAnalyses: zod.number(),
+  averageFitScore: zod.number(),
+  averageAtsScore: zod.number(),
+  topMissingKeywords: zod.array(zod.string()),
+});

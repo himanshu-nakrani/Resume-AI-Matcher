@@ -5,18 +5,29 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  Analysis,
+  AnalysisStats,
+  CreateAnalysisBody,
+  ErrorResponse,
+  GenerateCoverLetterBody,
+  GeneratedContent,
+  HealthStatus,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -92,6 +103,584 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all analyses
+ */
+export const getListAnalysesUrl = () => {
+  return `/api/analyses`;
+};
+
+export const listAnalyses = async (
+  options?: RequestInit,
+): Promise<Analysis[]> => {
+  return customFetch<Analysis[]>(getListAnalysesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAnalysesQueryKey = () => {
+  return [`/api/analyses`] as const;
+};
+
+export const getListAnalysesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAnalyses>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAnalyses>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAnalysesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAnalyses>>> = ({
+    signal,
+  }) => listAnalyses({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAnalyses>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAnalysesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAnalyses>>
+>;
+export type ListAnalysesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all analyses
+ */
+
+export function useListAnalyses<
+  TData = Awaited<ReturnType<typeof listAnalyses>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAnalyses>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAnalysesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new resume analysis
+ */
+export const getCreateAnalysisUrl = () => {
+  return `/api/analyses`;
+};
+
+export const createAnalysis = async (
+  createAnalysisBody: CreateAnalysisBody,
+  options?: RequestInit,
+): Promise<Analysis> => {
+  return customFetch<Analysis>(getCreateAnalysisUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createAnalysisBody),
+  });
+};
+
+export const getCreateAnalysisMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAnalysis>>,
+    TError,
+    { data: BodyType<CreateAnalysisBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAnalysis>>,
+  TError,
+  { data: BodyType<CreateAnalysisBody> },
+  TContext
+> => {
+  const mutationKey = ["createAnalysis"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAnalysis>>,
+    { data: BodyType<CreateAnalysisBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createAnalysis(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAnalysisMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAnalysis>>
+>;
+export type CreateAnalysisMutationBody = BodyType<CreateAnalysisBody>;
+export type CreateAnalysisMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Create a new resume analysis
+ */
+export const useCreateAnalysis = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAnalysis>>,
+    TError,
+    { data: BodyType<CreateAnalysisBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAnalysis>>,
+  TError,
+  { data: BodyType<CreateAnalysisBody> },
+  TContext
+> => {
+  return useMutation(getCreateAnalysisMutationOptions(options));
+};
+
+/**
+ * @summary Get an analysis by ID
+ */
+export const getGetAnalysisUrl = (id: number) => {
+  return `/api/analyses/${id}`;
+};
+
+export const getAnalysis = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Analysis> => {
+  return customFetch<Analysis>(getGetAnalysisUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAnalysisQueryKey = (id: number) => {
+  return [`/api/analyses/${id}`] as const;
+};
+
+export const getGetAnalysisQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAnalysis>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAnalysis>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAnalysisQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAnalysis>>> = ({
+    signal,
+  }) => getAnalysis(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAnalysis>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAnalysisQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAnalysis>>
+>;
+export type GetAnalysisQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get an analysis by ID
+ */
+
+export function useGetAnalysis<
+  TData = Awaited<ReturnType<typeof getAnalysis>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAnalysis>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAnalysisQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete an analysis
+ */
+export const getDeleteAnalysisUrl = (id: number) => {
+  return `/api/analyses/${id}`;
+};
+
+export const deleteAnalysis = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteAnalysisUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAnalysisMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAnalysis>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAnalysis>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAnalysis"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAnalysis>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteAnalysis(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAnalysisMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAnalysis>>
+>;
+
+export type DeleteAnalysisMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete an analysis
+ */
+export const useDeleteAnalysis = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAnalysis>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAnalysis>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteAnalysisMutationOptions(options));
+};
+
+/**
+ * @summary Generate a tailored cover letter
+ */
+export const getGenerateCoverLetterUrl = (id: number) => {
+  return `/api/analyses/${id}/cover-letter`;
+};
+
+export const generateCoverLetter = async (
+  id: number,
+  generateCoverLetterBody?: GenerateCoverLetterBody,
+  options?: RequestInit,
+): Promise<GeneratedContent> => {
+  return customFetch<GeneratedContent>(getGenerateCoverLetterUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(generateCoverLetterBody),
+  });
+};
+
+export const getGenerateCoverLetterMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateCoverLetter>>,
+    TError,
+    { id: number; data: BodyType<GenerateCoverLetterBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateCoverLetter>>,
+  TError,
+  { id: number; data: BodyType<GenerateCoverLetterBody> },
+  TContext
+> => {
+  const mutationKey = ["generateCoverLetter"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateCoverLetter>>,
+    { id: number; data: BodyType<GenerateCoverLetterBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return generateCoverLetter(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateCoverLetterMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateCoverLetter>>
+>;
+export type GenerateCoverLetterMutationBody = BodyType<GenerateCoverLetterBody>;
+export type GenerateCoverLetterMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate a tailored cover letter
+ */
+export const useGenerateCoverLetter = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateCoverLetter>>,
+    TError,
+    { id: number; data: BodyType<GenerateCoverLetterBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateCoverLetter>>,
+  TError,
+  { id: number; data: BodyType<GenerateCoverLetterBody> },
+  TContext
+> => {
+  return useMutation(getGenerateCoverLetterMutationOptions(options));
+};
+
+/**
+ * @summary Generate a LinkedIn post about the job application
+ */
+export const getGenerateLinkedinPostUrl = (id: number) => {
+  return `/api/analyses/${id}/linkedin-post`;
+};
+
+export const generateLinkedinPost = async (
+  id: number,
+  options?: RequestInit,
+): Promise<GeneratedContent> => {
+  return customFetch<GeneratedContent>(getGenerateLinkedinPostUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getGenerateLinkedinPostMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateLinkedinPost>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateLinkedinPost>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["generateLinkedinPost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateLinkedinPost>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return generateLinkedinPost(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateLinkedinPostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateLinkedinPost>>
+>;
+
+export type GenerateLinkedinPostMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate a LinkedIn post about the job application
+ */
+export const useGenerateLinkedinPost = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateLinkedinPost>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateLinkedinPost>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getGenerateLinkedinPostMutationOptions(options));
+};
+
+/**
+ * @summary Get aggregate stats across all analyses
+ */
+export const getGetAnalysisStatsUrl = () => {
+  return `/api/analyses/stats`;
+};
+
+export const getAnalysisStats = async (
+  options?: RequestInit,
+): Promise<AnalysisStats> => {
+  return customFetch<AnalysisStats>(getGetAnalysisStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAnalysisStatsQueryKey = () => {
+  return [`/api/analyses/stats`] as const;
+};
+
+export const getGetAnalysisStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAnalysisStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAnalysisStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAnalysisStatsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAnalysisStats>>
+  > = ({ signal }) => getAnalysisStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAnalysisStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAnalysisStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAnalysisStats>>
+>;
+export type GetAnalysisStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get aggregate stats across all analyses
+ */
+
+export function useGetAnalysisStats<
+  TData = Awaited<ReturnType<typeof getAnalysisStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAnalysisStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAnalysisStatsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

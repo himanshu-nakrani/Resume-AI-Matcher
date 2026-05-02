@@ -6,4 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./analysis";
+export * from "./analysisStats";
+export * from "./createAnalysisBody";
+export * from "./errorResponse";
+export * from "./generateCoverLetterBody";
+export * from "./generatedContent";
 export * from "./healthStatus";

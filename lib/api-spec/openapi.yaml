@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: analyses
+    description: Resume analysis operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,152 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /analyses:
+    get:
+      operationId: listAnalyses
+      tags: [analyses]
+      summary: List all analyses
+      responses:
+        "200":
+          description: List of analyses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Analysis"
+    post:
+      operationId: createAnalysis
+      tags: [analyses]
+      summary: Create a new resume analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAnalysisBody"
+      responses:
+        "201":
+          description: Analysis created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analysis"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/{id}:
+    get:
+      operationId: getAnalysis
+      tags: [analyses]
+      summary: Get an analysis by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Analysis found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analysis"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteAnalysis
+      tags: [analyses]
+      summary: Delete an analysis
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /analyses/{id}/cover-letter:
+    post:
+      operationId: generateCoverLetter
+      tags: [analyses]
+      summary: Generate a tailored cover letter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateCoverLetterBody"
+      responses:
+        "200":
+          description: Cover letter generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedContent"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/{id}/linkedin-post:
+    post:
+      operationId: generateLinkedinPost
+      tags: [analyses]
+      summary: Generate a LinkedIn post about the job application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: LinkedIn post generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedContent"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/stats:
+    get:
+      operationId: getAnalysisStats
+      tags: [analyses]
+      summary: Get aggregate stats across all analyses
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +182,122 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Analysis:
+      type: object
+      properties:
+        id:
+          type: integer
+        jobTitle:
+          type: string
+        companyName:
+          type: ["string", "null"]
+        resumeText:
+          type: string
+        jobDescriptionText:
+          type: string
+        fitScore:
+          type: integer
+        fitRationale:
+          type: string
+        strengths:
+          type: array
+          items:
+            type: string
+        gaps:
+          type: array
+          items:
+            type: string
+        improvements:
+          type: array
+          items:
+            type: string
+        atsKeywordsMatched:
+          type: array
+          items:
+            type: string
+        atsKeywordsMissing:
+          type: array
+          items:
+            type: string
+        atsScore:
+          type: integer
+        coverLetter:
+          type: ["string", "null"]
+        linkedinPost:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - jobTitle
+        - companyName
+        - resumeText
+        - jobDescriptionText
+        - fitScore
+        - fitRationale
+        - strengths
+        - gaps
+        - improvements
+        - atsKeywordsMatched
+        - atsKeywordsMissing
+        - atsScore
+        - coverLetter
+        - linkedinPost
+        - createdAt
+
+    CreateAnalysisBody:
+      type: object
+      properties:
+        jobTitle:
+          type: string
+        companyName:
+          type: string
+        resumeText:
+          type: string
+        jobDescriptionText:
+          type: string
+      required:
+        - jobTitle
+        - resumeText
+        - jobDescriptionText
+
+    GenerateCoverLetterBody:
+      type: object
+      properties:
+        tone:
+          type: string
+
+    GeneratedContent:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    AnalysisStats:
+      type: object
+      properties:
+        totalAnalyses:
+          type: integer
+        averageFitScore:
+          type: number
+        averageAtsScore:
+          type: number
+        topMissingKeywords:
+          type: array
+          items:
+            type: string
+      required:
+        - totalAnalyses
+        - averageFitScore
+        - averageAtsScore
+        - topMissingKeywords
