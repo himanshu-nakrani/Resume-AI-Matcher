@@ -8,6 +8,8 @@ import {
   GenerateCoverLetterParams,
   GenerateCoverLetterBody,
   GenerateLinkedinPostParams,
+  RewriteBulletParams,
+  RewriteBulletBody,
 } from "@workspace/api-zod";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
@@ -316,6 +318,69 @@ Write ONLY the post text. No hashtags unless they feel natural. No emojis unless
   } catch (err) {
     logger.error({ err }, "LinkedIn post generation failed");
     res.status(500).json({ error: "LinkedIn post generation failed" });
+  }
+});
+
+router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
+  const params = RewriteBulletParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = RewriteBulletBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [analysis] = await db
+    .select()
+    .from(analyses)
+    .where(eq(analyses.id, params.data.id));
+
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+
+  req.log.info({ id: params.data.id }, "Rewriting resume bullet");
+
+  const missingKeywords = (analysis.atsKeywordsMissing as string[]).slice(0, 10).join(", ");
+  const gaps = (analysis.gaps as string[]).slice(0, 5).join("; ");
+
+  const prompt = `You are an expert resume writer. Rewrite the following resume bullet point to be stronger, more impactful, and to naturally incorporate relevant keywords from the job description.
+
+Original bullet:
+"${body.data.bulletText}"
+
+Job Title: ${analysis.jobTitle}
+Company: ${analysis.companyName ?? "the company"}
+
+Key missing ATS keywords to incorporate where relevant: ${missingKeywords || "none specified"}
+Gaps identified in the resume: ${gaps || "none specified"}
+
+Rules:
+- Start with a strong action verb
+- Include quantified results if the original has metrics, or suggest placeholders like [X%] if appropriate
+- Naturally weave in 1-3 of the missing keywords only if they genuinely fit
+- Keep it to 1-2 lines, concise and punchy
+- Do NOT make up facts not implied by the original
+- Return ONLY the rewritten bullet text, nothing else, no quotes`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 512,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const rewritten = completion.choices[0]?.message?.content?.trim() ?? "";
+
+    res.json({ original: body.data.bulletText, rewritten });
+  } catch (err) {
+    logger.error({ err }, "Bullet rewrite failed");
+    res.status(500).json({ error: "Bullet rewrite failed" });
   }
 });
 

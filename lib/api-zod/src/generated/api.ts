@@ -97,6 +97,22 @@ export const GenerateCoverLetterResponse = zod.object({
 });
 
 /**
+ * @summary Rewrite a resume bullet point using job context
+ */
+export const RewriteBulletParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RewriteBulletBody = zod.object({
+  bulletText: zod.string(),
+});
+
+export const RewriteBulletResponse = zod.object({
+  original: zod.string(),
+  rewritten: zod.string(),
+});
+
+/**
  * @summary Generate a LinkedIn post about the job application
  */
 export const GenerateLinkedinPostParams = zod.object({

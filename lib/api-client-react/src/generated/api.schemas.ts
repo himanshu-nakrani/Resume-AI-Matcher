@@ -46,6 +46,15 @@ export interface GenerateCoverLetterBody {
   tone?: string;
 }
 
+export interface RewriteBulletBody {
+  bulletText: string;
+}
+
+export interface RewriteBulletResponse {
+  original: string;
+  rewritten: string;
+}
+
 export interface GeneratedContent {
   content: string;
 }

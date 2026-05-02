@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   useGetAnalysis,
@@ -5,6 +6,7 @@ import {
   useGenerateCoverLetter,
   useGenerateLinkedinPost,
   useDeleteAnalysis,
+  useRewriteBullet,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScoreCircle } from "@/components/score-circle";
@@ -13,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { useCopy } from "@/hooks/use-copy";
 import {
   CheckCircle2,
@@ -25,8 +28,112 @@ import {
   Trash2,
   ArrowLeft,
   ChevronRight,
+  Wand2,
+  ArrowRightLeft,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+
+function BulletRewriter({ analysisId }: { analysisId: number }) {
+  const [bulletText, setBulletText] = useState("");
+  const [result, setResult] = useState<{ original: string; rewritten: string } | null>(null);
+  const { copy, isCopied } = useCopy();
+
+  const rewrite = useRewriteBullet({
+    mutation: {
+      onSuccess: (data) => setResult(data),
+    },
+  });
+
+  const handleRewrite = () => {
+    if (!bulletText.trim()) return;
+    setResult(null);
+    rewrite.mutate({ id: analysisId, data: { bulletText: bulletText.trim() } });
+  };
+
+  return (
+    <Card className="border shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Wand2 className="w-4 h-4 text-purple-500" /> AI Bullet Rewriter
+        </CardTitle>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Paste a resume bullet point and get a stronger version optimized for this role's missing keywords.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex gap-2">
+          <Input
+            placeholder="e.g. Worked on frontend features for the company website"
+            value={bulletText}
+            onChange={(e) => setBulletText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleRewrite()}
+            className="flex-1"
+            data-testid="input-bullet-text"
+          />
+          <Button
+            onClick={handleRewrite}
+            disabled={rewrite.isPending || !bulletText.trim()}
+            className="shrink-0"
+            data-testid="button-rewrite"
+          >
+            {rewrite.isPending ? (
+              <Wand2 className="w-4 h-4 animate-pulse" />
+            ) : (
+              <Wand2 className="w-4 h-4" />
+            )}
+            <span className="ml-2 hidden sm:inline">{rewrite.isPending ? "Rewriting..." : "Rewrite"}</span>
+          </Button>
+        </div>
+
+        {rewrite.isPending && (
+          <div className="space-y-2 pt-1">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-4/5" />
+          </div>
+        )}
+
+        {result && !rewrite.isPending && (
+          <div className="space-y-3 pt-1">
+            <div className="rounded-lg border bg-muted/40 p-3 space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Original</p>
+              <p className="text-sm text-muted-foreground line-through">{result.original}</p>
+            </div>
+            <div className="flex items-center justify-center">
+              <ArrowRightLeft className="w-4 h-4 text-purple-400" />
+            </div>
+            <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 p-3 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-400">Rewritten</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-purple-600 dark:text-purple-400"
+                  onClick={() => copy(result.rewritten, "Bullet copied")}
+                  data-testid="button-copy-bullet"
+                >
+                  {isCopied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+                  Copy
+                </Button>
+              </div>
+              <p className="text-sm font-medium">{result.rewritten}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground"
+              onClick={() => {
+                setBulletText("");
+                setResult(null);
+              }}
+            >
+              Try another bullet
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export function Analysis() {
   const params = useParams<{ id: string }>();
@@ -237,6 +344,9 @@ export function Analysis() {
           </div>
         </CardContent>
       </Card>
+
+      {/* AI Bullet Rewriter */}
+      <BulletRewriter analysisId={id} />
 
       {/* Cover Letter */}
       <Card className="border shadow-sm">

@@ -13,3 +13,5 @@ export * from "./errorResponse";
 export * from "./generateCoverLetterBody";
 export * from "./generatedContent";
 export * from "./healthStatus";
+export * from "./rewriteBulletBody";
+export * from "./rewriteBulletResponse";

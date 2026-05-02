@@ -24,6 +24,8 @@ import type {
   GenerateCoverLetterBody,
   GeneratedContent,
   HealthStatus,
+  RewriteBulletBody,
+  RewriteBulletResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -528,6 +530,93 @@ export const useGenerateCoverLetter = <
   TContext
 > => {
   return useMutation(getGenerateCoverLetterMutationOptions(options));
+};
+
+/**
+ * @summary Rewrite a resume bullet point using job context
+ */
+export const getRewriteBulletUrl = (id: number) => {
+  return `/api/analyses/${id}/rewrite-bullet`;
+};
+
+export const rewriteBullet = async (
+  id: number,
+  rewriteBulletBody: RewriteBulletBody,
+  options?: RequestInit,
+): Promise<RewriteBulletResponse> => {
+  return customFetch<RewriteBulletResponse>(getRewriteBulletUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(rewriteBulletBody),
+  });
+};
+
+export const getRewriteBulletMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rewriteBullet>>,
+    TError,
+    { id: number; data: BodyType<RewriteBulletBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rewriteBullet>>,
+  TError,
+  { id: number; data: BodyType<RewriteBulletBody> },
+  TContext
+> => {
+  const mutationKey = ["rewriteBullet"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rewriteBullet>>,
+    { id: number; data: BodyType<RewriteBulletBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return rewriteBullet(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RewriteBulletMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rewriteBullet>>
+>;
+export type RewriteBulletMutationBody = BodyType<RewriteBulletBody>;
+export type RewriteBulletMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Rewrite a resume bullet point using job context
+ */
+export const useRewriteBullet = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rewriteBullet>>,
+    TError,
+    { id: number; data: BodyType<RewriteBulletBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rewriteBullet>>,
+  TError,
+  { id: number; data: BodyType<RewriteBulletBody> },
+  TContext
+> => {
+  return useMutation(getRewriteBulletMutationOptions(options));
 };
 
 /**
