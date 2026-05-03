@@ -16,7 +16,7 @@ import { ScoreCircle } from "@/components/score-circle";
 import { Sparkles, Trash2, ArrowRight, Clock, Upload } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import mammoth from "mammoth";
-import pdf from "pdf-parse/dist/pdf-parse.es.js";
+import * as pdfjsLib from "pdfjs-dist";
 
 const formSchema = z.object({
   jobTitle: z.string().min(1, "Job title is required"),
@@ -59,15 +59,21 @@ export function Home() {
 
   const parseResumeFile = async (file: File) => {
     const ext = file.name.toLowerCase().split(".").pop();
-    const text = await file.text();
-    if (ext === "txt") return text;
+    if (ext === "txt") return await file.text();
     if (ext === "docx") {
       const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
       return result.value;
     }
     if (ext === "pdf") {
-      const result = await pdf(Buffer.from(await file.arrayBuffer()));
-      return result.text;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
+      let text = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map((item: any) => item.str).join(" ");
+      }
+      return text;
     }
     throw new Error("Unsupported resume format");
   };
