@@ -9,12 +9,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScoreCircle } from "@/components/score-circle";
-import { Sparkles, Trash2, ArrowRight, Clock } from "lucide-react";
+import { Sparkles, Trash2, ArrowRight, Clock, Upload } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import mammoth from "mammoth";
+import pdf from "pdf-parse/dist/pdf-parse.es.js";
 
 const formSchema = z.object({
   jobTitle: z.string().min(1, "Job title is required"),
@@ -24,10 +26,14 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+const allowedResumeTypes = [".pdf", ".docx", ".txt"].join(",");
 
 export function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const [resumeFileName, setResumeFileName] = useState("");
+  const [resumeFileError, setResumeFileError] = useState("");
+  const [isParsingResume, setIsParsingResume] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -50,6 +56,39 @@ export function Home() {
   });
 
   const { data: analyses, isLoading } = useListAnalyses();
+
+  const parseResumeFile = async (file: File) => {
+    const ext = file.name.toLowerCase().split(".").pop();
+    const text = await file.text();
+    if (ext === "txt") return text;
+    if (ext === "docx") {
+      const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+      return result.value;
+    }
+    if (ext === "pdf") {
+      const result = await pdf(Buffer.from(await file.arrayBuffer()));
+      return result.text;
+    }
+    throw new Error("Unsupported resume format");
+  };
+
+  const onResumeFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setResumeFileError("");
+    setIsParsingResume(true);
+    try {
+      const parsed = await parseResumeFile(file);
+      form.setValue("resumeText", parsed.trim(), { shouldDirty: true, shouldValidate: true });
+      setResumeFileName(file.name);
+    } catch {
+      setResumeFileError("Could not read that file. Please upload a PDF, DOCX, or TXT resume.");
+      setResumeFileName("");
+    } finally {
+      setIsParsingResume(false);
+      event.target.value = "";
+    }
+  };
 
   const onSubmit = (values: FormValues) => {
     createAnalysis.mutate({
@@ -110,12 +149,26 @@ export function Home() {
                     <FormItem>
                       <FormLabel>Resume <span className="text-destructive">*</span></FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Paste your resume text here..."
-                          className="min-h-[260px] font-mono text-sm resize-none"
-                          {...field}
-                          data-testid="textarea-resume"
-                        />
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <Button type="button" variant="secondary" disabled={isParsingResume} asChild>
+                              <label className="cursor-pointer">
+                                <Upload className="w-4 h-4 mr-2" />
+                                {isParsingResume ? "Reading file..." : "Upload resume"}
+                                <Input type="file" accept={allowedResumeTypes} className="hidden" onChange={onResumeFileChange} />
+                              </label>
+                            </Button>
+                            {resumeFileName && <Badge variant="outline">{resumeFileName}</Badge>}
+                            <span className="text-xs text-muted-foreground">PDF, DOCX, or TXT</span>
+                          </div>
+                          <Textarea
+                            placeholder="Paste your resume text here..."
+                            className="min-h-[260px] font-mono text-sm resize-none"
+                            {...field}
+                            data-testid="textarea-resume"
+                          />
+                          {resumeFileError && <p className="text-sm text-destructive">{resumeFileError}</p>}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
