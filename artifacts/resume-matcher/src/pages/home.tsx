@@ -65,15 +65,19 @@ export function Home() {
       return result.value;
     }
     if (ext === "pdf") {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-      const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
-      let text = "";
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        text += content.items.map((item: any) => item.str).join(" ");
+      try {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).href;
+        const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
+        let text = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map((item: any) => item.str).join(" ");
+        }
+        return text || "[PDF parsed but no text extracted]";
+      } catch (error) {
+        throw new Error("Failed to parse PDF: " + (error instanceof Error ? error.message : "Unknown error"));
       }
-      return text;
     }
     throw new Error("Unsupported resume format");
   };
