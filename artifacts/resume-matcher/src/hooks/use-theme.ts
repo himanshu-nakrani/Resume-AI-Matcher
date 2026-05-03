@@ -5,7 +5,10 @@ export type ThemeVariant = "warm" | "formal" | "minimal";
 export function useTheme() {
   const [theme, setTheme] = useState<ThemeVariant>(() => {
     if (typeof window !== "undefined") {
-      return (localStorage.getItem("resume-theme") as ThemeVariant) || "warm";
+      const stored = localStorage.getItem("resume-theme") as ThemeVariant | null;
+      const initial = stored || "warm";
+      document.documentElement.setAttribute("data-theme", initial);
+      return initial;
     }
     return "warm";
   });

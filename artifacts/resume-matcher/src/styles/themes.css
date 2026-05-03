@@ -1,101 +1,74 @@
 /* WARM & PLAYFUL THEME */
-[data-theme="warm"] {
-  --primary: #ff6b35;
-  --primary-foreground: #ffffff;
-  --secondary: #ffa352;
-  --secondary-foreground: #1a1a1a;
-  --accent: #f77f00;
-  --accent-foreground: #ffffff;
-  --background: #fff9f5;
-  --card: #fffbf8;
-  --border: #ffddcc;
-  --muted: #fff0e6;
-  --muted-foreground: #8b5a3c;
-  --text-primary: #1a1a1a;
-  --text-secondary: #8b5a3c;
-  --success: #06b6d4;
-  --warning: #f97316;
-  --destructive: #ef4444;
-  --radius: 16px;
-  --shadow: 0 4px 12px rgba(255, 107, 53, 0.15);
+html[data-theme="warm"] {
+  --background: 18 100% 97%;
+  --foreground: 0 0% 10%;
+  --card: 15 100% 98%;
+  --card-foreground: 0 0% 10%;
+  --card-border: 20 100% 87%;
+  --border: 20 100% 87%;
+  --input: 20 100% 87%;
+  --ring: 14 100% 58%;
+  --primary: 14 100% 58%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 23 100% 66%;
+  --secondary-foreground: 0 0% 10%;
+  --muted: 18 100% 90%;
+  --muted-foreground: 19 58% 49%;
+  --accent: 32 100% 50%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --popover: 15 100% 98%;
+  --popover-foreground: 0 0% 10%;
+  --popover-border: 20 100% 87%;
 }
 
 /* FORMAL & PROFESSIONAL THEME */
-[data-theme="formal"] {
-  --primary: #0055cc;
-  --primary-foreground: #ffffff;
-  --secondary: #0066ff;
-  --secondary-foreground: #ffffff;
-  --accent: #003a99;
-  --accent-foreground: #ffffff;
-  --background: #f5f7fa;
-  --card: #ffffff;
-  --border: #d0d8e0;
-  --muted: #e8ecf1;
-  --muted-foreground: #4a5568;
-  --text-primary: #1a202c;
-  --text-secondary: #4a5568;
-  --success: #0ea5e9;
-  --warning: #f59e0b;
-  --destructive: #ef4444;
-  --radius: 8px;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+html[data-theme="formal"] {
+  --background: 218 14% 97%;
+  --foreground: 218 11% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 218 11% 10%;
+  --card-border: 220 13% 82%;
+  --border: 220 13% 82%;
+  --input: 220 13% 82%;
+  --ring: 220 100% 40%;
+  --primary: 220 100% 40%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 217 100% 50%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 218 14% 94%;
+  --muted-foreground: 216 12% 28%;
+  --accent: 220 100% 30%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 218 11% 10%;
+  --popover-border: 220 13% 82%;
 }
 
 /* MINIMAL & QUIET THEME */
-[data-theme="minimal"] {
-  --primary: #6b7280;
-  --primary-foreground: #ffffff;
-  --secondary: #9ca3af;
-  --secondary-foreground: #ffffff;
-  --accent: #4b5563;
-  --accent-foreground: #ffffff;
-  --background: #fafafa;
-  --card: #ffffff;
-  --border: #e5e7eb;
-  --muted: #f3f4f6;
-  --muted-foreground: #6b7280;
-  --text-primary: #1f2937;
-  --text-secondary: #6b7280;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --destructive: #ef4444;
-  --radius: 12px;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-/* Apply theme colors to all relevant elements */
-:root[data-theme] {
-  color-scheme: light;
-}
-
-[data-theme] {
-  --background: var(--background);
-  --foreground: var(--text-primary);
-}
-
-[data-theme] body {
-  background-color: var(--background);
-  color: var(--text-primary);
-}
-
-[data-theme] .bg-card {
-  background-color: var(--card);
-}
-
-[data-theme] .text-muted-foreground {
-  color: var(--text-secondary);
-}
-
-[data-theme] .border {
-  border-color: var(--border);
-}
-
-[data-theme] button:not([class*="destructive"]):not([class*="ghost"]) {
-  border-radius: var(--radius);
-}
-
-[data-theme] .card {
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+html[data-theme="minimal"] {
+  --background: 0 0% 98%;
+  --foreground: 220 13% 13%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 13% 13%;
+  --card-border: 220 13% 90%;
+  --border: 220 13% 90%;
+  --input: 220 13% 90%;
+  --ring: 220 7% 42%;
+  --primary: 220 7% 42%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 216 7% 64%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 220 9% 96%;
+  --muted-foreground: 220 7% 42%;
+  --accent: 215 9% 30%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 13% 13%;
+  --popover-border: 220 13% 90%;
 }
