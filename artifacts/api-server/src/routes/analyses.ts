@@ -40,9 +40,9 @@ router.post("/analyses", async (req, res): Promise<void> => {
 
   req.log.info({ jobTitle }, "Running AI analysis");
 
-  const prompt = `You are an expert resume analyst, career coach, and ATS (Applicant Tracking System) specialist.
+  const prompt = `You are an expert resume analyst, career coach, and ATS (Applicant Tracking System) specialist with 15+ years of experience in talent acquisition and resume optimization.
 
-Analyze this resume against the provided job description and return a comprehensive JSON response.
+Analyze this resume against the provided job description with extreme care and specificity. Provide deep, actionable insights.
 
 Resume:
 ${resumeText}
@@ -56,23 +56,24 @@ Company: ${companyName ?? "Not specified"}
 Return ONLY a valid JSON object with this exact structure (no markdown, no extra text):
 {
   "fitScore": <integer 0-100>,
-  "fitRationale": "<2-3 sentence explanation of the fit score>",
-  "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
-  "gaps": ["<gap 1>", "<gap 2>", "<gap 3>"],
-  "improvements": ["<specific actionable improvement 1>", "<specific actionable improvement 2>", "<specific actionable improvement 3>", "<specific actionable improvement 4>", "<specific actionable improvement 5>"],
-  "atsKeywordsMatched": ["<keyword1>", "<keyword2>", "<keyword3>"],
-  "atsKeywordsMissing": ["<missing keyword1>", "<missing keyword2>", "<missing keyword3>"],
+  "fitRationale": "<2-3 sentence explanation of the fit score with specific reasons>",
+  "strengths": ["<strength 1: specific skill/achievement from resume that matches JD>", "<strength 2>", "<strength 3>"],
+  "gaps": ["<critical gap 1: required skill/experience missing from resume>", "<gap 2>", "<gap 3>"],
+  "improvements": ["<specific actionable improvement 1 with concrete example>", "<improvement 2>", "<improvement 3>", "<improvement 4>", "<improvement 5>"],
+  "atsKeywordsMatched": ["<keyword1>", "<keyword2>", "<keyword3>", "<keyword4>", "<keyword5>"],
+  "atsKeywordsMissing": ["<missing keyword1>", "<missing keyword2>", "<missing keyword3>", "<missing keyword4>", "<missing keyword5>"],
   "atsScore": <integer 0-100>
 }
 
-Guidelines:
-- fitScore: Overall match between resume and JD (skills, experience, qualifications)
-- strengths: What the candidate does well relative to this role
-- gaps: Critical missing skills or experience
-- improvements: Specific, actionable resume edits (e.g., "Add quantified metrics to your project descriptions")
-- atsKeywordsMatched: Key terms from the JD that appear in the resume
-- atsKeywordsMissing: Important JD keywords absent from the resume
-- atsScore: How well the resume will pass ATS filters (keyword density, formatting)`;
+Detailed Guidelines:
+- fitScore: Overall match 0-100 considering required skills presence, experience level, and qualifications match
+- fitRationale: Explain WHY this score - reference specific requirements and what the resume delivers
+- strengths: Extract 3 most relevant strengths - be specific (e.g., "5+ years Python experience matches senior role requirement" not just "Python experience")
+- gaps: List critical missing items that would concern a hiring manager - prioritize by importance to role
+- improvements: Provide 5 specific, immediately actionable edits with examples (e.g., "Add metrics: change 'Led team projects' to 'Led 3-person team that shipped 2 features, improving performance by 40%'")
+- atsKeywordsMatched: Extract 5+ exact keywords/phrases from JD that appear in resume
+- atsKeywordsMissing: Extract 5+ important keywords/phrases from JD that should be in resume but aren't
+- atsScore: Rate how ATS will parse resume - consider keyword density, section structure, format compatibility (0-100)
 
   let aiResult: {
     fitScore: number;
@@ -224,26 +225,14 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
 
   req.log.info({ id: params.data.id }, "Generating cover letter");
 
-  const prompt = `You are an expert cover letter writer. Write a compelling, tailored cover letter.
-
-Candidate's Resume:
-${analysis.resumeText}
-
-Job Description:
-${analysis.jobDescriptionText}
-
-Job Title: ${analysis.jobTitle}
-Company: ${analysis.companyName ?? "the company"}
-Tone: ${tone}
-
-Write a professional cover letter that:
-1. Opens with a strong hook that shows genuine enthusiasm
-2. Highlights the most relevant experience and skills from the resume that match the JD
-3. Addresses any gaps strategically
-4. Includes specific examples and quantified achievements where possible
-5. Closes with a confident call to action
-
-Write ONLY the cover letter text, no subject lines or extra commentary. Start directly with "Dear Hiring Manager," or similar salutation.`;
+  const prompt =
+    "You are an award-winning cover letter writer. Write a compelling, personalized cover letter.\n\n" +
+    "Candidate's Resume:\n" + analysis.resumeText + "\n\n" +
+    "Job Description:\n" + analysis.jobDescriptionText + "\n\n" +
+    "Job Title: " + analysis.jobTitle + "\n" +
+    "Company: " + (analysis.companyName ?? "the company") + "\n" +
+    "Tone: " + tone + "\n\n" +
+    "Write a " + tone + " cover letter that: (1) Opens with a specific, genuine insight about this company/role, (2) Highlights the top 3-4 most relevant achievements from the resume matching the JD requirements, using quantified results, (3) Addresses any gaps as learning opportunities not weaknesses, (4) Closes with genuine enthusiasm and confident call to action. Keep it 3-4 paragraphs, no longer than 250 words. Start with 'Dear Hiring Manager,' and write ONLY the cover letter text, no subject lines or commentary.";
 
   try {
     const completion = await openai.chat.completions.create({
@@ -285,24 +274,12 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
 
   req.log.info({ id: params.data.id }, "Generating LinkedIn post");
 
-  const prompt = `You are a LinkedIn content strategist. Write an engaging LinkedIn post for a job seeker.
-
-Resume Summary (key highlights):
-${analysis.resumeText.slice(0, 1500)}
-
-Target Role: ${analysis.jobTitle} at ${analysis.companyName ?? "a company"}
-Fit Score: ${analysis.fitScore}/100
-
-Write a LinkedIn post that:
-1. Announces or hints at their job search journey (without sounding desperate)
-2. Highlights 2-3 key strengths relevant to their target role
-3. Shows genuine enthusiasm for the industry/role
-4. Ends with a call to action (open to connections, opportunities, etc.)
-5. Uses appropriate LinkedIn formatting (line breaks, no markdown)
-6. Is 150-250 words
-7. Feels authentic, not like a template
-
-Write ONLY the post text. No hashtags unless they feel natural. No emojis unless they fit. Start directly with the post content.`;
+  const prompt =
+    "You are a LinkedIn content strategist. Write an authentic, compelling LinkedIn post for a job seeker.\n\n" +
+    "Resume Summary:\n" + analysis.resumeText.slice(0, 1500) + "\n\n" +
+    "Target Role: " + analysis.jobTitle + " at " + (analysis.companyName ?? "a company") + "\n" +
+    "Fit Score: " + analysis.fitScore + "/100\n\n" +
+    "Write 150-250 word LinkedIn post with: (1) A compelling hook that shows genuine insight about the role/industry, (2) 2-3 key achievements demonstrating enthusiasm for THIS role with numbers and results, (3) 2-3 specific strengths that make them ideal, (4) Specific call-to-action about roles they're exploring. Use line breaks for readability, 1-2 natural hashtags only, no emojis unless natural, no forced exclamation marks. Make it authentic—something they would say to a recruiter at coffee. Write ONLY the post text, no preamble.";`;
 
   try {
     const completion = await openai.chat.completions.create({
@@ -383,28 +360,16 @@ router.post("/analyses/:id/interview-questions", async (req, res): Promise<void>
   const gaps = (analysis.gaps as string[]).slice(0, 5).join("; ");
   const missingKeywords = (analysis.atsKeywordsMissing as string[]).slice(0, 10).join(", ");
 
-  const prompt = `You are an expert interview coach. Generate 10 highly likely interview questions for this candidate and role.
-
-Job Title: ${analysis.jobTitle}
-Company: ${analysis.companyName ?? "the company"}
-Candidate's Strengths: ${strengths}
-Identified Gaps: ${gaps}
-Missing Keywords (skills/tools the JD requires): ${missingKeywords}
-
-Generate a mix of:
-- 3 behavioral questions (STAR format expected)
-- 3 technical/skills questions targeting their gaps or missing keywords
-- 2 role-specific questions about the position
-- 1 "why this company" question
-- 1 tough question that tests their weakest area
-
-Rules:
-- Make questions specific to this role and candidate's profile, not generic
-- Each question should be concise (1-2 sentences max)
-- Do NOT include answer hints or frameworks in the questions themselves
-- Return ONLY a JSON array of strings, nothing else, no markdown, no numbering
-
-Example format: ["Question 1?", "Question 2?", ...]`;
+  const prompt =
+    "You are a senior interview coach. Generate 10 likely interview questions for this role and candidate.\n\n" +
+    "Job Title: " + analysis.jobTitle + "\n" +
+    "Company: " + (analysis.companyName ?? "the company") + "\n" +
+    "Strengths: " + strengths + "\n" +
+    "Gaps: " + gaps + "\n" +
+    "Missing Skills: " + missingKeywords + "\n\n" +
+    "Generate a mix: 3 behavioral (STAR format), 3 technical/domain targeting their gaps, 2 role-specific deep-dives, 1 culture fit, 1 pressure/adversity question. " +
+    "Each question targets specific needs. Keep concise (1-2 sentences max). Questions should be specific to THIS role, not generic. " +
+    "Do NOT include answer hints or frameworks. Return ONLY a JSON array of strings with no other text: [\"Question 1?\", \"Question 2?\", ...]";
 
   try {
     const completion = await openai.chat.completions.create({
@@ -456,37 +421,15 @@ router.post("/analyses/:id/learning-plan", async (req, res): Promise<void> => {
   const gaps = (analysis.gaps as string[]).join("; ");
   const missingKeywords = (analysis.atsKeywordsMissing as string[]).join(", ");
 
-  const prompt = `You are a senior career coach and L&D specialist. Generate a personalized learning plan for a candidate applying to this role.
-
-Job Title: ${analysis.jobTitle}
-Company: ${analysis.companyName ?? "the company"}
-Identified Skill Gaps: ${gaps || "none"}
-Missing ATS Keywords / Skills: ${missingKeywords || "none"}
-
-Create a focused learning plan with 4-6 items covering the most important gaps. For each skill:
-- Identify why it matters for this specific role
-- Assign a priority (high/medium/low)
-- Suggest 2 specific, real learning resources (courses on Coursera/Udemy/LinkedIn Learning, Google/AWS/Azure certifications, a practical project, or a book)
-- Be concrete — name real courses, certifications, or platforms
-
-Return ONLY valid JSON in this exact format, no markdown, no explanation:
-{
-  "items": [
-    {
-      "skill": "Skill name",
-      "why": "1-sentence reason this matters for the role",
-      "priority": "high",
-      "resources": [
-        {
-          "title": "Course/Cert/Project title",
-          "type": "course",
-          "description": "What you'll learn and why it helps",
-          "platform": "Coursera"
-        }
-      ]
-    }
-  ]
-}`;
+  const prompt =
+    "You are a senior career coach. Create a focused learning plan for this candidate.\n\n" +
+    "Job Title: " + analysis.jobTitle + "\n" +
+    "Company: " + (analysis.companyName ?? "the company") + "\n" +
+    "Skill Gaps: " + (gaps || "none") + "\n" +
+    "Missing Skills/Keywords: " + (missingKeywords || "none") + "\n\n" +
+    "Create a realistic, prioritized learning plan focusing on 4-6 most critical gaps. " +
+    "For each item include: skill name, why it matters for THIS role, priority level (high/medium/low), timeframe (e.g., 4-6 weeks), and 2 concrete real resources (with exact course/cert names, platforms like Coursera/Udemy/AWS/Google Cloud, and how it helps). " +
+    "Return ONLY valid JSON, no markdown: {\"items\": [{\"skill\": \"name\", \"why\": \"reason\", \"priority\": \"high\", \"timeframe\": \"weeks\", \"resources\": [{\"title\": \"exact name\", \"type\": \"course|certification|project|book\", \"description\": \"what and why\", \"platform\": \"platform name\"}]}]}";
 
   try {
     const completion = await openai.chat.completions.create({
