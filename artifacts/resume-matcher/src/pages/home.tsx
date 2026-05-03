@@ -16,7 +16,6 @@ import { ScoreCircle } from "@/components/score-circle";
 import { Sparkles, Trash2, ArrowRight, Clock, Upload } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import mammoth from "mammoth";
-import * as pdfjsLib from "pdfjs-dist";
 
 const formSchema = z.object({
   jobTitle: z.string().min(1, "Job title is required"),
@@ -26,7 +25,7 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-const allowedResumeTypes = [".pdf", ".docx", ".txt"].join(",");
+const allowedResumeTypes = [".docx", ".txt"].join(",");
 
 export function Home() {
   const [, setLocation] = useLocation();
@@ -59,27 +58,18 @@ export function Home() {
 
   const parseResumeFile = async (file: File) => {
     const ext = file.name.toLowerCase().split(".").pop();
-    if (ext === "txt") return await file.text();
-    if (ext === "docx") {
-      const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
-      return result.value;
+    if (ext === "txt") {
+      return await file.text();
     }
-    if (ext === "pdf") {
+    if (ext === "docx") {
       try {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).href;
-        const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
-        let text = "";
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          text += content.items.map((item: any) => item.str).join(" ");
-        }
-        return text || "[PDF parsed but no text extracted]";
+        const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+        return result.value;
       } catch (error) {
-        throw new Error("Failed to parse PDF: " + (error instanceof Error ? error.message : "Unknown error"));
+        throw new Error("Could not read DOCX file. Please ensure it's a valid Word document.");
       }
     }
-    throw new Error("Unsupported resume format");
+    throw new Error("Please upload a DOCX or TXT file. For PDFs, copy the text and paste it above.");
   };
 
   const onResumeFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,7 +159,7 @@ export function Home() {
                               </label>
                             </Button>
                             {resumeFileName && <Badge variant="outline">{resumeFileName}</Badge>}
-                            <span className="text-xs text-muted-foreground">PDF, DOCX, or TXT</span>
+                            <span className="text-xs text-muted-foreground">DOCX or TXT (PDF: paste text)</span>
                           </div>
                           <Textarea
                             placeholder="Paste your resume text here..."
