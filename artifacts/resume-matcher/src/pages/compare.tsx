@@ -19,17 +19,28 @@ import {
   ArrowLeft,
   GitCompareArrows,
   Sparkles,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-function ScoreBar({ score, label }: { score: number; label: string }) {
+function ScoreBar({ score, label, compareScore }: { score: number; label: string; compareScore?: number }) {
   const color =
     score >= 80 ? "bg-green-500" : score >= 60 ? "bg-yellow-500" : "bg-red-500";
+  const diff = compareScore !== undefined ? score - compareScore : null;
   return (
     <div className="space-y-1">
-      <div className="flex justify-between text-xs">
+      <div className="flex justify-between text-xs items-center">
         <span className="text-muted-foreground">{label}</span>
-        <span className="font-bold tabular-nums">{score}</span>
+        <div className="flex items-center gap-1.5">
+          {diff !== null && diff !== 0 && (
+            <span className={`flex items-center gap-0.5 text-xs font-semibold ${diff > 0 ? "text-green-600" : "text-red-500"}`}>
+              {diff > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              {diff > 0 ? "+" : ""}{diff}
+            </span>
+          )}
+          <span className="font-bold tabular-nums">{score}</span>
+        </div>
       </div>
       <div className="h-2 bg-muted rounded-full overflow-hidden">
         <div
@@ -41,9 +52,12 @@ function ScoreBar({ score, label }: { score: number; label: string }) {
   );
 }
 
-function AnalysisColumn({ id }: { id: number }) {
+function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | null }) {
   const { data, isLoading } = useGetAnalysis(id, {
     query: { enabled: !!id, queryKey: getGetAnalysisQueryKey(id) },
+  });
+  const { data: compareData } = useGetAnalysis(compareId ?? 0, {
+    query: { enabled: !!compareId, queryKey: getGetAnalysisQueryKey(compareId ?? 0) },
   });
 
   if (isLoading) {
@@ -63,6 +77,13 @@ function AnalysisColumn({ id }: { id: number }) {
   const atsMatched = (data.atsKeywordsMatched as string[]) ?? [];
   const atsMissing = (data.atsKeywordsMissing as string[]) ?? [];
 
+  const uniqueStrengths = compareData
+    ? strengths.filter((s) => !(compareData.strengths as string[]).includes(s))
+    : [];
+  const uniqueGaps = compareData
+    ? gaps.filter((g) => !(compareData.gaps as string[]).includes(g))
+    : [];
+
   return (
     <div className="space-y-6">
       <div>
@@ -77,8 +98,8 @@ function AnalysisColumn({ id }: { id: number }) {
 
       <Card className="border shadow-sm">
         <CardContent className="pt-5 space-y-3">
-          <ScoreBar score={data.fitScore} label="Fit Score" />
-          <ScoreBar score={data.atsScore} label="ATS Score" />
+          <ScoreBar score={data.fitScore} label="Fit Score" compareScore={compareData?.fitScore} />
+          <ScoreBar score={data.atsScore} label="ATS Score" compareScore={compareData?.atsScore} />
         </CardContent>
       </Card>
 
@@ -90,9 +111,10 @@ function AnalysisColumn({ id }: { id: number }) {
         </CardHeader>
         <CardContent className="space-y-1.5">
           {strengths.map((s, i) => (
-            <p key={i} className="text-xs flex items-start gap-1.5">
-              <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />
+            <p key={i} className={`text-xs flex items-start gap-1.5 ${uniqueStrengths.includes(s) ? "font-semibold text-green-700 dark:text-green-400" : ""}`}>
+              <CheckCircle2 className={`w-3 h-3 mt-0.5 shrink-0 ${uniqueStrengths.includes(s) ? "text-green-500" : "text-green-400"}`} />
               {s}
+              {uniqueStrengths.includes(s) && <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-1 rounded shrink-0">unique</span>}
             </p>
           ))}
         </CardContent>
@@ -106,9 +128,10 @@ function AnalysisColumn({ id }: { id: number }) {
         </CardHeader>
         <CardContent className="space-y-1.5">
           {gaps.map((g, i) => (
-            <p key={i} className="text-xs flex items-start gap-1.5">
+            <p key={i} className={`text-xs flex items-start gap-1.5 ${uniqueGaps.includes(g) ? "font-semibold text-red-600 dark:text-red-400" : ""}`}>
               <XCircle className="w-3 h-3 text-destructive mt-0.5 shrink-0" />
               {g}
+              {uniqueGaps.includes(g) && <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-1 rounded shrink-0">unique</span>}
             </p>
           ))}
         </CardContent>
@@ -162,7 +185,9 @@ export function Compare() {
   const [leftId, setLeftId] = useState<number | null>(null);
   const [rightId, setRightId] = useState<number | null>(null);
 
-  const options = analyses ?? [];
+  const options = analyses
+    ? [...analyses].sort((a, b) => b.fitScore - a.fitScore)
+    : [];
 
   return (
     <div className="space-y-8">
@@ -210,8 +235,13 @@ export function Compare() {
                 <SelectContent>
                   {options.map((a) => (
                     <SelectItem key={a.id} value={a.id.toString()} disabled={a.id === rightId}>
-                      <span className="font-medium">{a.jobTitle}</span>
-                      {a.companyName && <span className="text-muted-foreground ml-1.5">@ {a.companyName}</span>}
+                      <div className="flex items-center gap-2">
+                        <span className={`tabular-nums font-bold text-xs px-1.5 py-0.5 rounded ${a.fitScore >= 80 ? "bg-green-100 text-green-700" : a.fitScore >= 60 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                          {a.fitScore}
+                        </span>
+                        <span className="font-medium">{a.jobTitle}</span>
+                        {a.companyName && <span className="text-muted-foreground">@ {a.companyName}</span>}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -229,8 +259,13 @@ export function Compare() {
                 <SelectContent>
                   {options.map((a) => (
                     <SelectItem key={a.id} value={a.id.toString()} disabled={a.id === leftId}>
-                      <span className="font-medium">{a.jobTitle}</span>
-                      {a.companyName && <span className="text-muted-foreground ml-1.5">@ {a.companyName}</span>}
+                      <div className="flex items-center gap-2">
+                        <span className={`tabular-nums font-bold text-xs px-1.5 py-0.5 rounded ${a.fitScore >= 80 ? "bg-green-100 text-green-700" : a.fitScore >= 60 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                          {a.fitScore}
+                        </span>
+                        <span className="font-medium">{a.jobTitle}</span>
+                        {a.companyName && <span className="text-muted-foreground">@ {a.companyName}</span>}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -240,9 +275,9 @@ export function Compare() {
 
           {leftId && rightId ? (
             <div className="grid grid-cols-2 gap-6 items-start">
-              <AnalysisColumn id={leftId} />
+              <AnalysisColumn id={leftId} compareId={rightId} />
               <div className="border-l" />
-              <AnalysisColumn id={rightId} />
+              <AnalysisColumn id={rightId} compareId={leftId} />
             </div>
           ) : (
             <div className="text-center py-16 border border-dashed rounded-xl text-muted-foreground">

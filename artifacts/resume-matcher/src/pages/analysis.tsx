@@ -14,6 +14,11 @@ import {
   useUnshareAnalysis,
   useDuplicateAnalysis,
   useGenerateSalaryGuide,
+  useListAnalyses,
+  useGenerateCompanyResearch,
+  useDetectRedFlags,
+  useSimulateNegotiation,
+  useGenerateStarAnswer,
 } from "@workspace/api-client-react";
 import type { LearningPlanItem, LearningResource } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,6 +42,7 @@ import {
   Trash2,
   ArrowLeft,
   ChevronRight,
+  ChevronDown,
   Wand2,
   ArrowRightLeft,
   MessageSquare,
@@ -61,6 +67,14 @@ import {
   GitCompareArrows,
   X,
   Plus,
+  Building2,
+  AlertTriangle,
+  Bot,
+  ClipboardCheck,
+  Calendar,
+  Send,
+  Shield,
+  Star,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 
@@ -95,6 +109,65 @@ function formatSalary(n: number) {
   return "$" + n;
 }
 
+function downloadICS(data: {
+  id: number;
+  jobTitle: string;
+  companyName: string | null;
+  deadline: string | null;
+  followUpDate: string | null;
+}) {
+  const events: string[] = [];
+  const toICSDate = (s: string) => s.replace(/-/g, "");
+  const title = data.jobTitle + (data.companyName ? " @ " + data.companyName : "");
+
+  if (data.deadline) {
+    const d = toICSDate(data.deadline);
+    events.push([
+      "BEGIN:VEVENT",
+      "DTSTART;VALUE=DATE:" + d,
+      "DTEND;VALUE=DATE:" + d,
+      "SUMMARY:Application Deadline: " + title,
+      "DESCRIPTION:Job application deadline. Track it in OptiMatch.",
+      "UID:deadline-" + data.id + "-" + d + "@optimatch",
+      "END:VEVENT",
+    ].join("\r\n"));
+  }
+
+  if (data.followUpDate) {
+    const d = toICSDate(data.followUpDate);
+    events.push([
+      "BEGIN:VEVENT",
+      "DTSTART;VALUE=DATE:" + d,
+      "DTEND;VALUE=DATE:" + d,
+      "SUMMARY:Follow-up: " + title,
+      "DESCRIPTION:Follow-up on this job application. Track it in OptiMatch.",
+      "UID:followup-" + data.id + "-" + d + "@optimatch",
+      "END:VEVENT",
+    ].join("\r\n"));
+  }
+
+  if (events.length === 0) return;
+
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//OptiMatch//AI Career Intelligence//EN",
+    "CALSCALE:GREGORIAN",
+    ...events,
+    "END:VCALENDAR",
+  ].join("\r\n");
+
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "optimatch-" + data.jobTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40) + ".ics";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // --- Job Tracking Section ---
 function JobTrackingSection({ analysisId, analysis }: {
   analysisId: number;
@@ -104,11 +177,24 @@ function JobTrackingSection({ analysisId, analysis }: {
     contactEmail: string | null;
     followUpDate: string | null;
     tags: string[] | null;
+    jobTitle: string;
+    companyName: string | null;
   };
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [tagInput, setTagInput] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const { data: allAnalyses } = useListAnalyses();
+
+  const allExistingTags = Array.from(new Set(
+    (allAnalyses ?? []).flatMap((a) => (a.tags as string[]) ?? [])
+  )).filter((t) => !(analysis.tags ?? []).includes(t));
+
+  const suggestions = tagInput.trim()
+    ? allExistingTags.filter((t) => t.toLowerCase().includes(tagInput.toLowerCase()))
+    : allExistingTags.slice(0, 6);
 
   const update = useUpdateAnalysis({
     mutation: {
@@ -123,12 +209,12 @@ function JobTrackingSection({ analysisId, analysis }: {
 
   const tags = (analysis.tags as string[]) ?? [];
 
-  const addTag = () => {
-    const t = tagInput.trim();
-    if (!t || tags.includes(t)) { setTagInput(""); return; }
-    const updated = [...tags, t];
-    save("tags", updated);
+  const addTag = (t?: string) => {
+    const tag = (t ?? tagInput).trim();
+    if (!tag || tags.includes(tag)) { setTagInput(""); setShowSuggestions(false); return; }
+    save("tags", [...tags, tag]);
     setTagInput("");
+    setShowSuggestions(false);
   };
 
   const removeTag = (tag: string) => {
@@ -136,18 +222,39 @@ function JobTrackingSection({ analysisId, analysis }: {
   };
 
   const emailLink = analysis.contactEmail
-    ? `mailto:${analysis.contactEmail}?subject=Re: ${encodeURIComponent("Application inquiry")}`
+    ? "mailto:" + analysis.contactEmail + "?subject=Re: " + encodeURIComponent("Application inquiry")
     : null;
+
+  const canExportICS = !!(analysis.deadline || analysis.followUpDate);
 
   return (
     <Card className="border shadow-sm no-print">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <CalendarClock className="w-4 h-4 text-orange-500" /> Job Tracking
-        </CardTitle>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Track deadlines, contacts, and follow-ups for this application.
-        </p>
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarClock className="w-4 h-4 text-orange-500" /> Job Tracking
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Track deadlines, contacts, and follow-ups for this application.
+          </p>
+        </div>
+        {canExportICS && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-1.5 no-print"
+            onClick={() => downloadICS({
+              id: analysisId,
+              jobTitle: analysis.jobTitle,
+              companyName: analysis.companyName,
+              deadline: analysis.deadline,
+              followUpDate: analysis.followUpDate,
+            })}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            Export to Calendar
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -198,12 +305,7 @@ function JobTrackingSection({ analysisId, analysis }: {
                 className="text-sm flex-1"
               />
               {emailLink && (
-                <a
-                  href={emailLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="shrink-0"
-                >
+                <a href={emailLink} target="_blank" rel="noreferrer" className="shrink-0">
                   <Button variant="outline" size="sm" type="button">
                     <Mail className="w-3.5 h-3.5 mr-1" /> Email
                   </Button>
@@ -227,17 +329,41 @@ function JobTrackingSection({ analysisId, analysis }: {
               </span>
             ))}
           </div>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Add a tag (e.g. remote, fintech, senior)..."
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
-              className="text-sm"
-            />
-            <Button variant="outline" size="sm" onClick={addTag} disabled={!tagInput.trim()}>
-              <Plus className="w-3.5 h-3.5" />
-            </Button>
+          <div className="relative">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add a tag (e.g. remote, fintech, senior)..."
+                value={tagInput}
+                onChange={(e) => { setTagInput(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); addTag(); }
+                  if (e.key === "Escape") setShowSuggestions(false);
+                }}
+                className="text-sm flex-1"
+              />
+              <Button variant="outline" size="sm" onClick={() => addTag()} disabled={!tagInput.trim()}>
+                <Plus className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute top-full left-0 z-50 mt-1 w-full bg-card border rounded-lg shadow-lg py-1 max-h-48 overflow-y-auto">
+                {tagInput.trim() === "" && (
+                  <p className="text-xs text-muted-foreground px-3 py-1.5">Tags from your other analyses:</p>
+                )}
+                {suggestions.map((t) => (
+                  <button
+                    key={t}
+                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted/60 transition-colors flex items-center gap-2"
+                    onMouseDown={() => addTag(t)}
+                  >
+                    <Tag className="w-3 h-3 text-muted-foreground" />
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -809,6 +935,589 @@ function ShareSection({ analysisId, isPublic, shareToken }: { analysisId: number
   );
 }
 
+// --- Company Research Section ---
+function CompanyResearchSection({ analysisId, existing }: {
+  analysisId: number;
+  existing: {
+    overview: string; culture: string; interviewProcess: string;
+    recentNews: string[]; glassdoorRating: string; tips: string[];
+  } | null;
+}) {
+  const queryClient = useQueryClient();
+  const generate = useGenerateCompanyResearch({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) }),
+    },
+  });
+  const data = generate.data ?? existing;
+
+  return (
+    <Card className="border shadow-sm print-break-inside-avoid">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-blue-500" /> Company Research
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            AI-generated research brief to help you prepare for this interview.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant={data ? "outline" : "default"}
+          onClick={() => generate.mutate({ id: analysisId })}
+          disabled={generate.isPending}
+          className="no-print shrink-0"
+        >
+          {generate.isPending ? (
+            <><Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />Researching...</>
+          ) : data ? "Refresh" : (
+            <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Research Company</>
+          )}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {generate.isPending ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-4 w-full" />)}
+          </div>
+        ) : data ? (
+          <div className="space-y-5">
+            {data.overview && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5" /> Overview
+                </p>
+                <p className="text-sm">{data.overview}</p>
+              </div>
+            )}
+            {data.culture && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Culture</p>
+                <p className="text-sm">{data.culture}</p>
+              </div>
+            )}
+            {data.interviewProcess && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5" /> Typical Interview Process
+                </p>
+                <p className="text-sm">{data.interviewProcess}</p>
+              </div>
+            )}
+            {data.recentNews && data.recentNews.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Recent News / Developments</p>
+                <div className="space-y-1.5">
+                  {data.recentNews.map((item, i) => (
+                    <div key={i} className="flex items-start gap-2 text-sm">
+                      <ChevronRight className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {data.glassdoorRating && (
+              <div className="flex items-center gap-2 p-2.5 bg-muted/40 rounded-lg">
+                <Star className="w-4 h-4 text-yellow-500" />
+                <span className="text-sm"><span className="font-semibold">Glassdoor:</span> {data.glassdoorRating}</span>
+              </div>
+            )}
+            {data.tips && data.tips.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <Lightbulb className="w-3.5 h-3.5 text-yellow-500" /> Preparation Tips
+                </p>
+                <div className="space-y-2">
+                  {data.tips.map((tip, i) => (
+                    <div key={i} className="flex items-start gap-2 p-2.5 bg-muted/50 rounded-lg text-sm">
+                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                      <span>{tip}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-4">
+            Click "Research Company" to get an AI-generated brief on this company's culture, interview process, and preparation tips.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Red Flags Section ---
+const SEVERITY_CONFIG = {
+  high: { label: "High", className: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400", icon: <AlertTriangle className="w-3.5 h-3.5" /> },
+  medium: { label: "Medium", className: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400", icon: <AlertTriangle className="w-3.5 h-3.5" /> },
+  low: { label: "Low", className: "bg-muted text-muted-foreground border-muted-foreground/20", icon: <AlertTriangle className="w-3.5 h-3.5" /> },
+};
+
+function RedFlagsSection({ analysisId, existing }: {
+  analysisId: number;
+  existing: Array<{ severity: string; title: string; description: string; quote: string }> | null;
+}) {
+  const queryClient = useQueryClient();
+  const [lastResult, setLastResult] = useState<{
+    flags: Array<{ severity: string; title: string; description: string; quote: string }>;
+    summary: string;
+    overallRisk: string;
+  } | null>(null);
+
+  const detect = useDetectRedFlags({
+    mutation: {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) });
+        setLastResult(data as typeof lastResult);
+      },
+    },
+  });
+
+  const flags = lastResult?.flags ?? existing;
+  const summary = lastResult?.summary;
+  const risk = lastResult?.overallRisk;
+
+  const riskColor = risk === "high" ? "text-red-600" : risk === "medium" ? "text-yellow-600" : "text-green-600";
+
+  return (
+    <Card className="border shadow-sm print-break-inside-avoid">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="w-4 h-4 text-red-500" /> Red Flags Detector
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            AI analysis of potentially concerning patterns in this job description.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant={flags ? "outline" : "default"}
+          onClick={() => detect.mutate({ id: analysisId })}
+          disabled={detect.isPending}
+          className="no-print shrink-0"
+        >
+          {detect.isPending ? (
+            <><Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />Analyzing...</>
+          ) : flags ? "Re-analyze" : (
+            <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Detect Red Flags</>
+          )}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {detect.isPending ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+          </div>
+        ) : flags ? (
+          <div className="space-y-4">
+            {summary && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/40">
+                <Shield className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
+                <div>
+                  <p className="text-sm">{summary}</p>
+                  {risk && (
+                    <p className={`text-xs font-semibold mt-1 ${riskColor}`}>
+                      Overall risk: <span className="capitalize">{risk}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            {flags.length === 0 ? (
+              <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                No significant red flags detected. This job description looks healthy.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {flags.map((flag, i) => {
+                  const config = SEVERITY_CONFIG[flag.severity as keyof typeof SEVERITY_CONFIG] ?? SEVERITY_CONFIG.low;
+                  return (
+                    <div key={i} className="rounded-lg border p-3.5 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${config.className}`}>
+                          {config.icon} {config.label}
+                        </span>
+                        <p className="text-sm font-semibold">{flag.title}</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{flag.description}</p>
+                      {flag.quote && (
+                        <blockquote className="border-l-2 border-muted-foreground/30 pl-3 text-xs text-muted-foreground italic">
+                          "{flag.quote}"
+                        </blockquote>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-4">
+            Click "Detect Red Flags" to have AI scan this job description for unrealistic expectations, vague compensation, or other concerning patterns.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Negotiation Simulator ---
+type NegotiationMessage = { role: "user" | "assistant"; content: string; tip?: string };
+
+function NegotiationSimulator({ analysisId, jobTitle, companyName }: {
+  analysisId: number;
+  jobTitle: string;
+  companyName: string | null;
+}) {
+  const [messages, setMessages] = useState<NegotiationMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [started, setStarted] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const simulate = useSimulateNegotiation({
+    mutation: {
+      onSuccess: (data) => {
+        const d = data as { message: string; tip?: string };
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: d.message, tip: d.tip },
+        ]);
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+      },
+    },
+  });
+
+  const startConversation = () => {
+    setStarted(true);
+    setMessages([]);
+    simulate.mutate({
+      id: analysisId,
+      data: {
+        messages: [{ role: "user", content: "Hello, I'm excited about the offer. Can you tell me what the compensation package looks like?" }],
+      },
+    });
+  };
+
+  const sendMessage = () => {
+    const text = input.trim();
+    if (!text) return;
+    const newMessages: NegotiationMessage[] = [...messages, { role: "user", content: text }];
+    setMessages(newMessages);
+    setInput("");
+    simulate.mutate({
+      id: analysisId,
+      data: {
+        messages: newMessages
+          .filter((m) => m.role === "user" || m.role === "assistant")
+          .map((m) => ({ role: m.role, content: m.content })),
+      },
+    });
+  };
+
+  return (
+    <Card className="border shadow-sm no-print">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bot className="w-4 h-4 text-violet-500" /> Negotiation Simulator
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Practice salary negotiation with an AI recruiter for this role.
+          </p>
+        </div>
+        {started && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setStarted(false); setMessages([]); }}
+            className="text-muted-foreground shrink-0"
+          >
+            Reset
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent>
+        {!started ? (
+          <div className="text-center py-6 space-y-4">
+            <div className="w-12 h-12 bg-violet-100 dark:bg-violet-900/30 rounded-full flex items-center justify-center mx-auto">
+              <Bot className="w-6 h-6 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">{jobTitle}{companyName ? " at " + companyName : ""}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Start a negotiation simulation. The AI will play a recruiter making you an offer, and you'll practice negotiating.
+              </p>
+            </div>
+            <Button onClick={startConversation} disabled={simulate.isPending} className="gap-1.5">
+              {simulate.isPending ? (
+                <><Sparkles className="w-3.5 h-3.5 animate-pulse" />Starting...</>
+              ) : (
+                <><Bot className="w-3.5 h-3.5" />Start Simulation</>
+              )}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {messages.map((msg, i) => (
+                <div key={i} className={`flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground rounded-br-sm"
+                      : "bg-muted rounded-bl-sm"
+                  }`}>
+                    {msg.content}
+                  </div>
+                  {msg.tip && msg.role === "assistant" && (
+                    <div className="max-w-[85%] flex items-start gap-1.5 text-xs text-muted-foreground px-1">
+                      <Lightbulb className="w-3 h-3 mt-0.5 text-yellow-500 shrink-0" />
+                      <span className="italic">{msg.tip}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {simulate.isPending && (
+                <div className="flex items-start">
+                  <div className="bg-muted rounded-2xl rounded-bl-sm px-3.5 py-2.5">
+                    <div className="flex gap-1">
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: i * 0.15 + "s" }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+            <div className="flex gap-2 border-t pt-3">
+              <Input
+                placeholder="Type your negotiation message..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                className="text-sm flex-1"
+                disabled={simulate.isPending}
+              />
+              <Button
+                size="sm"
+                onClick={sendMessage}
+                disabled={simulate.isPending || !input.trim()}
+                className="shrink-0"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- STAR Helper ---
+function STARHelper({ analysisId, questions }: { analysisId: number; questions: string[] }) {
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const [drafts, setDrafts] = useState<Record<number, { situation: string; task: string; action: string; result: string }>>({});
+  const [results, setResults] = useState<Record<number, { answer: string; tips: string[] }>>({});
+
+  const generate = useGenerateStarAnswer({
+    mutation: {
+      onSuccess: (data, variables) => {
+        const d = data as { answer: string; tips: string[] };
+        setResults((prev) => ({ ...prev, [variables.id as unknown as number]: d }));
+      },
+    },
+  });
+
+  if (questions.length === 0) return null;
+
+  const updateDraft = (idx: number, field: string, value: string) => {
+    setDrafts((prev) => ({ ...prev, [idx]: { ...prev[idx], [field]: value } as { situation: string; task: string; action: string; result: string } }));
+  };
+
+  return (
+    <Card className="border shadow-sm print-break-inside-avoid">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Star className="w-4 h-4 text-yellow-500" /> STAR Answer Helper
+        </CardTitle>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Prepare polished STAR-method answers for your interview questions.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {questions.map((q, i) => {
+          const isOpen = expanded === i;
+          const draft = drafts[i] ?? { situation: "", task: "", action: "", result: "" };
+          const result = results[i];
+
+          return (
+            <div key={i} className="rounded-lg border overflow-hidden">
+              <button
+                className="w-full flex items-start gap-3 p-3 text-left hover:bg-muted/40 transition-colors"
+                onClick={() => setExpanded(isOpen ? null : i)}
+              >
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs font-bold shrink-0 mt-0.5">
+                  {i + 1}
+                </span>
+                <p className="text-sm flex-1">{q}</p>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 mt-0.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+              </button>
+              {isOpen && (
+                <div className="border-t p-4 space-y-4 bg-muted/20">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(["situation", "task", "action", "result"] as const).map((field) => (
+                      <div key={field} className="space-y-1">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          {field.charAt(0).toUpperCase() + field.slice(1)}
+                        </label>
+                        <Textarea
+                          placeholder={
+                            field === "situation" ? "Describe the context or background..."
+                            : field === "task" ? "What was your responsibility?"
+                            : field === "action" ? "What specific steps did you take?"
+                            : "What was the outcome? Include metrics if possible."
+                          }
+                          value={draft[field]}
+                          onChange={(e) => updateDraft(i, field, e.target.value)}
+                          className="text-xs min-h-[70px] resize-none"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      generate.mutate({
+                        id: analysisId,
+                        data: {
+                          question: q,
+                          situation: draft.situation || undefined,
+                          task: draft.task || undefined,
+                          action: draft.action || undefined,
+                          result: draft.result || undefined,
+                        },
+                      });
+                    }}
+                    disabled={generate.isPending}
+                    className="gap-1.5"
+                  >
+                    {generate.isPending ? (
+                      <><Sparkles className="w-3.5 h-3.5 animate-pulse" />Generating...</>
+                    ) : (
+                      <><Sparkles className="w-3.5 h-3.5" />{result ? "Regenerate" : "Generate STAR Answer"}</>
+                    )}
+                  </Button>
+                  {result && (
+                    <div className="space-y-3 mt-2">
+                      <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3.5 text-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-green-700 dark:text-green-400 mb-2">Polished Answer</p>
+                        <p className="text-sm leading-relaxed">{result.answer}</p>
+                      </div>
+                      {result.tips.length > 0 && (
+                        <div className="space-y-1.5">
+                          {result.tips.map((tip, j) => (
+                            <div key={j} className="flex items-start gap-2 text-xs text-muted-foreground">
+                              <Lightbulb className="w-3.5 h-3.5 text-yellow-500 mt-0.5 shrink-0" />
+                              <span>{tip}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Interview Checklist ---
+const CHECKLIST_ITEMS = [
+  "Research the company's products, mission, and recent news",
+  "Review the job description and prepare examples for each key requirement",
+  "Prepare 3–5 STAR-format behavioral stories using the STAR Helper above",
+  "Prepare 5 thoughtful questions to ask the interviewer",
+  "Review your resume — be ready to walk through every bullet point",
+  "Research the typical salary range for this role and location",
+  "Confirm logistics: time zone, video link or office address, dress code",
+  "Prepare your workspace / outfit and test your tech (camera, mic, internet)",
+  "Get a good night's sleep and eat a proper meal before the interview",
+  "Send a thank-you email within 24 hours after the interview",
+];
+
+function InterviewChecklist({ analysisId }: { analysisId: number }) {
+  const storageKey = "optimatch_checklist_" + analysisId;
+  const [checked, setChecked] = useState<Record<number, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) ?? "{}"); } catch { return {}; }
+  });
+
+  const toggle = (i: number) => {
+    const updated = { ...checked, [i]: !checked[i] };
+    setChecked(updated);
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+  };
+
+  const completedCount = Object.values(checked).filter(Boolean).length;
+  const pct = Math.round((completedCount / CHECKLIST_ITEMS.length) * 100);
+
+  return (
+    <Card className="border shadow-sm no-print">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ClipboardCheck className="w-4 h-4 text-teal-500" /> Interview Checklist
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Pre-interview prep tasks. Progress is saved in your browser.
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <span className="text-xs font-semibold text-muted-foreground bg-muted rounded-full px-2.5 py-1">
+            {completedCount}/{CHECKLIST_ITEMS.length} complete
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-1.5">
+        <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-4">
+          <div
+            className={`h-full rounded-full transition-all ${pct === 100 ? "bg-green-500" : "bg-primary"}`}
+            style={{ width: pct + "%" }}
+          />
+        </div>
+        {CHECKLIST_ITEMS.map((item, i) => (
+          <button
+            key={i}
+            onClick={() => toggle(i)}
+            className={`w-full flex items-start gap-3 p-2.5 rounded-lg text-left transition-all ${checked[i] ? "bg-green-50 dark:bg-green-900/20" : "bg-muted/40 hover:bg-muted/60"}`}
+          >
+            <div className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${checked[i] ? "bg-green-500 border-green-500" : "border-muted-foreground/40"}`}>
+              {checked[i] && <Check className="w-2.5 h-2.5 text-white" />}
+            </div>
+            <span className={`text-sm ${checked[i] ? "line-through text-muted-foreground" : ""}`}>{item}</span>
+          </button>
+        ))}
+        {pct === 100 && (
+          <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm font-semibold pt-2 px-1">
+            <CheckCircle2 className="w-4 h-4" />
+            All done — you're ready for this interview!
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // --- Main Analysis Page ---
 export function Analysis() {
   const params = useParams<{ id: string }>();
@@ -890,6 +1599,13 @@ export function Analysis() {
     low: number; mid: number; high: number; currency: string; period: string;
     context: string; factors: string[]; negotiationTips: string[];
   } | null ?? null;
+  const companyResearch = analysis.companyResearch as {
+    overview: string; culture: string; interviewProcess: string;
+    recentNews: string[]; glassdoorRating: string; tips: string[];
+  } | null ?? null;
+  const redFlags = analysis.redFlags as Array<{
+    severity: string; title: string; description: string; quote: string;
+  }> | null ?? null;
 
   return (
     <div className="space-y-8 print-full-width" data-testid={`analysis-${id}`}>
@@ -1114,11 +1830,29 @@ export function Analysis() {
           contactEmail: analysis.contactEmail ?? null,
           followUpDate: analysis.followUpDate ?? null,
           tags: (analysis.tags as string[]) ?? [],
+          jobTitle: analysis.jobTitle,
+          companyName: analysis.companyName ?? null,
         }}
       />
 
       {/* Salary Guide */}
       <SalaryGuideSection analysisId={id} existing={salaryGuide} />
+
+      {/* Company Research */}
+      <CompanyResearchSection analysisId={id} existing={companyResearch} />
+
+      {/* Red Flags */}
+      <RedFlagsSection analysisId={id} existing={redFlags} />
+
+      {/* Negotiation Simulator */}
+      <NegotiationSimulator
+        analysisId={id}
+        jobTitle={analysis.jobTitle}
+        companyName={analysis.companyName ?? null}
+      />
+
+      {/* Interview Checklist */}
+      <InterviewChecklist analysisId={id} />
 
       {/* Notes */}
       <NotesSection analysisId={id} initialNotes={analysis.notes ?? null} />
@@ -1128,6 +1862,11 @@ export function Analysis() {
 
       {/* Interview Questions */}
       <InterviewQuestions analysisId={id} existingQuestions={interviewQuestions} />
+
+      {/* STAR Helper */}
+      {interviewQuestions.length > 0 && (
+        <STARHelper analysisId={id} questions={interviewQuestions} />
+      )}
 
       {/* Learning Plan */}
       <LearningPlanSection analysisId={id} existingItems={learningPlan} />

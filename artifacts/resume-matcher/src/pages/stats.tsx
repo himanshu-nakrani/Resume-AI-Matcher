@@ -14,6 +14,12 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  ScatterChart,
+  Scatter,
+  CartesianGrid,
+  LineChart,
+  Line,
+  Legend,
 } from "recharts";
 import {
   TrendingUp,
@@ -23,21 +29,27 @@ import {
   GitBranch,
   CheckCircle2,
   GitCompareArrows,
+  DollarSign,
+  Calendar,
+  Trophy,
 } from "lucide-react";
+import { format } from "date-fns";
 
 function StatCard({
   title,
   value,
   icon: Icon,
   sub,
+  highlight,
 }: {
   title: string;
   value: string | number;
   icon: React.ElementType;
   sub?: string;
+  highlight?: boolean;
 }) {
   return (
-    <Card className="border shadow-sm" data-testid={`stat-card-${title.toLowerCase().replace(/\s+/g, "-")}`}>
+    <Card className={`border shadow-sm ${highlight ? "border-primary/40 bg-primary/5" : ""}`} data-testid={`stat-card-${title.toLowerCase().replace(/\s+/g, "-")}`}>
       <CardContent className="pt-6 pb-5">
         <div className="flex items-start justify-between">
           <div>
@@ -45,7 +57,7 @@ function StatCard({
             <p className="text-3xl font-bold mt-1 tabular-nums">{value}</p>
             {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
           </div>
-          <div className="p-2.5 rounded-xl bg-primary/10">
+          <div className={`p-2.5 rounded-xl ${highlight ? "bg-primary/20" : "bg-primary/10"}`}>
             <Icon className="w-5 h-5 text-primary" />
           </div>
         </div>
@@ -61,6 +73,19 @@ const SCORE_BUCKETS = [
   { label: "61–80", min: 61, max: 80, color: "#84cc16" },
   { label: "81–100", min: 81, max: 100, color: "#22c55e" },
 ];
+
+const STATUS_COLORS: Record<string, string> = {
+  not_applied: "#94a3b8",
+  applied: "#3b82f6",
+  interview: "#f59e0b",
+  offer: "#22c55e",
+  rejected: "#ef4444",
+};
+
+function formatSalary(n: number) {
+  if (n >= 1000) return "$" + Math.round(n / 1000) + "k";
+  return "$" + n;
+}
 
 export function Stats() {
   const [, setLocation] = useLocation();
@@ -140,6 +165,59 @@ export function Stats() {
     ? analyses.filter((a) => drillBucket.ids.includes(a.id))
     : [];
 
+  // Application timeline — scatter plot
+  const timelineData = analyses
+    ? analyses.map((a) => ({
+        date: new Date(a.createdAt).getTime(),
+        fit: a.fitScore,
+        label: a.jobTitle,
+        status: a.status,
+        id: a.id,
+      }))
+    : [];
+
+  // Salary trend data
+  const salaryData = analyses
+    ? analyses
+        .filter((a) => a.salaryGuide != null)
+        .map((a) => {
+          const sg = a.salaryGuide as { low: number; mid: number; high: number };
+          return {
+            name: a.jobTitle.length > 12 ? a.jobTitle.slice(0, 12) + "…" : a.jobTitle,
+            low: sg.low,
+            mid: sg.mid,
+            high: sg.high,
+            label: a.jobTitle,
+          };
+        })
+    : [];
+
+  // Success rate by role (top job titles with >1 application)
+  const roleSuccessData = analyses
+    ? (() => {
+        const roles: Record<string, { total: number; interview: number; offer: number }> = {};
+        for (const a of analyses) {
+          const title = a.jobTitle;
+          if (!roles[title]) roles[title] = { total: 0, interview: 0, offer: 0 };
+          roles[title].total += 1;
+          if (["interview", "offer"].includes(a.status)) roles[title].interview += 1;
+          if (a.status === "offer") roles[title].offer += 1;
+        }
+        return Object.entries(roles)
+          .filter(([, v]) => v.total >= 1 && (v.interview > 0 || v.offer > 0))
+          .sort((a, b) => b[1].interview - a[1].interview)
+          .slice(0, 6);
+      })()
+    : [];
+
+  // Benchmark message
+  const avgFit = stats?.averageFitScore ?? 0;
+  const benchmarkMsg =
+    avgFit >= 80 ? "Excellent — your resume matches these roles very well."
+    : avgFit >= 65 ? "Good — you're competitive. A few targeted improvements could help."
+    : avgFit >= 50 ? "Room to grow — focus on the skill gaps and ATS keywords."
+    : "Getting started — tailor your resume more closely to each job description.";
+
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
@@ -201,6 +279,23 @@ export function Stats() {
             />
           </div>
 
+          {/* Benchmark message */}
+          {stats.totalAnalyses >= 1 && (
+            <Card className="border shadow-sm border-primary/30 bg-primary/5">
+              <CardContent className="pt-4 pb-4 flex items-center gap-3">
+                <Trophy className="w-5 h-5 text-primary shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold">Performance Insight</p>
+                  <p className="text-sm text-muted-foreground">{benchmarkMsg}</p>
+                </div>
+                <div className="ml-auto shrink-0 text-right">
+                  <p className="text-xs text-muted-foreground">Avg fit score</p>
+                  <p className="text-2xl font-bold tabular-nums">{Math.round(stats.averageFitScore)}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {trendData.length > 1 && (
             <Card className="border shadow-sm">
               <CardHeader className="pb-2">
@@ -233,6 +328,140 @@ export function Stats() {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Application Timeline */}
+          {timelineData.length > 1 && (
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-primary" /> Application Timeline
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground mb-3">Each dot is an analysis. Color = status. Click to open.</p>
+                <ResponsiveContainer width="100%" height={200}>
+                  <ScatterChart margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis
+                      dataKey="date"
+                      type="number"
+                      domain={["dataMin", "dataMax"]}
+                      tickFormatter={(v) => format(new Date(v), "MMM d")}
+                      tick={{ fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      dataKey="fit"
+                      domain={[0, 100]}
+                      tick={{ fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={28}
+                      label={{ value: "Fit", angle: -90, position: "insideLeft", fontSize: 10, fill: "#94a3b8" }}
+                    />
+                    <Tooltip
+                      content={({ payload }) => {
+                        if (!payload?.length) return null;
+                        const d = payload[0].payload;
+                        return (
+                          <div className="bg-card border rounded-lg p-2.5 text-xs shadow-lg">
+                            <p className="font-semibold">{d.label}</p>
+                            <p className="text-muted-foreground">{format(new Date(d.date), "MMM d, yyyy")}</p>
+                            <p>Fit: <span className="font-bold">{d.fit}</span></p>
+                            <p className="capitalize">Status: {d.status.replace("_", " ")}</p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Scatter
+                      data={timelineData}
+                      cursor="pointer"
+                      onClick={(d) => setLocation(`/analysis/${d.id}`)}
+                    >
+                      {timelineData.map((entry, i) => (
+                        <Cell key={i} fill={STATUS_COLORS[entry.status] ?? "#94a3b8"} r={7} />
+                      ))}
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+                <div className="flex flex-wrap gap-3 mt-2">
+                  {Object.entries(STATUS_COLORS).map(([status, color]) => (
+                    <div key={status} className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                      <span className="text-xs text-muted-foreground capitalize">{status.replace("_", " ")}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Salary Trends */}
+          {salaryData.length > 0 && (
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-green-500" /> Salary Estimates
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Salary range estimates from generated salary guides ({salaryData.length} {salaryData.length === 1 ? "analysis" : "analyses"}).
+                </p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={salaryData} barGap={2}>
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={formatSalary} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={45} />
+                    <Tooltip
+                      formatter={(val: number, name: string) => [formatSalary(val), name === "mid" ? "Median" : name === "low" ? "Low" : "High"]}
+                      labelFormatter={(label, payload) => payload?.[0]?.payload?.label ?? label}
+                      contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                    />
+                    <Legend formatter={(v) => v === "mid" ? "Median" : v === "low" ? "Low" : "High"} wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="low" fill="#fde68a" radius={[2, 2, 0, 0]} name="low" />
+                    <Bar dataKey="mid" fill="#34d399" radius={[2, 2, 0, 0]} name="mid" />
+                    <Bar dataKey="high" fill="#6ee7b7" radius={[2, 2, 0, 0]} name="high" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Success Rate by Role */}
+          {roleSuccessData.length > 0 && (
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-yellow-500" /> Success Rate by Role
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Roles where applications progressed to interview or offer.
+                </p>
+                <div className="space-y-3">
+                  {roleSuccessData.map(([role, data]) => (
+                    <div key={role} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium truncate flex-1 mr-2">{role}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {data.interview}/{data.total} to interview
+                          {data.offer > 0 && ` · ${data.offer} offer`}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-yellow-400 transition-all"
+                          style={{ width: `${(data.interview / data.total) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}

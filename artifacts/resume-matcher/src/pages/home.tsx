@@ -13,8 +13,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScoreCircle } from "@/components/score-circle";
-import { Sparkles, Trash2, ArrowRight, Clock, Upload, Link2, X, Heart } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Sparkles, Trash2, ArrowRight, Clock, Upload, Link2, X, Heart, AlertCircle, CalendarClock } from "lucide-react";
+import { formatDistanceToNow, format, isWithinInterval, addDays, isPast } from "date-fns";
 import mammoth from "mammoth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -129,6 +129,14 @@ export function Home() {
   };
 
   const favorites = analyses?.filter((a) => a.isFavorite) ?? [];
+
+  const now = new Date();
+  const in7Days = addDays(now, 7);
+  const upcomingDeadlines = analyses?.filter((a) => {
+    if (!a.deadline) return false;
+    const d = new Date(a.deadline);
+    return isWithinInterval(d, { start: now, end: in7Days }) || isPast(d);
+  }).sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime()) ?? [];
 
   return (
     <div className="space-y-10">
@@ -282,6 +290,43 @@ export function Home() {
           </Form>
         </CardContent>
       </Card>
+
+      {/* Upcoming Deadlines */}
+      {upcomingDeadlines.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight mb-3 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-orange-500" /> Upcoming Deadlines
+            <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 text-xs ml-1">
+              {upcomingDeadlines.length}
+            </Badge>
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {upcomingDeadlines.map((a) => {
+              const deadlineDate = new Date(a.deadline!);
+              const overdue = isPast(deadlineDate);
+              return (
+                <Card
+                  key={a.id}
+                  className={`group border shadow-sm hover:shadow-md transition-shadow cursor-pointer ${overdue ? "border-destructive/40 bg-destructive/5" : "border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-900/10"}`}
+                  onClick={() => setLocation(`/analysis/${a.id}`)}
+                >
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <CalendarClock className={`w-4 h-4 shrink-0 ${overdue ? "text-destructive" : "text-orange-500"}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{a.jobTitle}</p>
+                      {a.companyName && <p className="text-xs text-muted-foreground truncate">{a.companyName}</p>}
+                      <p className={`text-xs font-medium mt-0.5 ${overdue ? "text-destructive" : "text-orange-600 dark:text-orange-400"}`}>
+                        {overdue ? "Overdue — " : "Due "}{format(deadlineDate, "MMM d, yyyy")}
+                      </p>
+                    </div>
+                    <ScoreCircle score={a.fitScore} size="sm" />
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Favorites */}
       {favorites.length > 0 && (

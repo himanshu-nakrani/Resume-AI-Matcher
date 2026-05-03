@@ -30,6 +30,22 @@ export type SalaryRange = {
   negotiationTips: string[];
 };
 
+export type CompanyResearch = {
+  overview: string;
+  culture: string;
+  interviewProcess: string;
+  recentNews: string[];
+  glassdoorRating: string;
+  tips: string[];
+};
+
+export type RedFlag = {
+  severity: "high" | "medium" | "low";
+  title: string;
+  description: string;
+  quote: string;
+};
+
 export const analyses = pgTable("analyses", {
   id: serial("id").primaryKey(),
   jobTitle: text("job_title").notNull(),
@@ -49,21 +65,18 @@ export const analyses = pgTable("analyses", {
   status: text("status").$type<ApplicationStatus>().notNull().default("not_applied"),
   interviewQuestions: json("interview_questions").$type<string[]>().notNull().default([]),
   learningPlan: json("learning_plan").$type<LearningPlanItem[]>().notNull().default([]),
-  // Phase 4: Favorites + Notes
   isFavorite: boolean("is_favorite").notNull().default(false),
   notes: text("notes"),
-  // Phase 1: Sharing
   shareToken: text("share_token"),
   isPublic: boolean("is_public").notNull().default(false),
-  // Job Tracking
   deadline: text("deadline"),
   contactName: text("contact_name"),
   contactEmail: text("contact_email"),
   followUpDate: text("follow_up_date"),
-  // Salary Guide
   salaryGuide: json("salary_guide").$type<SalaryRange>(),
-  // Tags
   tags: json("tags").$type<string[]>().notNull().default([]),
+  companyResearch: json("company_research").$type<CompanyResearch>(),
+  redFlags: json("red_flags").$type<RedFlag[]>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

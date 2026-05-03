@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AnalysisStatus } from "./analysisStatus";
+import type { CompanyResearch } from "./companyResearch";
 import type { LearningPlanItem } from "./learningPlanItem";
+import type { RedFlag } from "./redFlag";
 import type { SalaryRange } from "./salaryRange";
 
 export interface Analysis {
@@ -47,5 +49,7 @@ export interface Analysis {
   followUpDate: string | null;
   salaryGuide?: SalaryRange | null;
   tags: string[];
+  companyResearch?: CompanyResearch | null;
+  redFlags?: RedFlag[] | null;
   createdAt: string;
 }

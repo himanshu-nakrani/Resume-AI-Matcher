@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import {
   useListAnalyses,
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +36,8 @@ import {
   Copy,
   Bookmark,
   BookmarkCheck,
+  Pencil,
+  Check,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -131,6 +134,66 @@ function FavoriteButton({ analysisId, isFavorite }: { analysisId: number; isFavo
   );
 }
 
+function InlineEdit({
+  value,
+  onSave,
+  className,
+}: {
+  value: string;
+  onSave: (v: string) => void;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const start = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDraft(value);
+    setEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== value) onSave(trimmed);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          onBlur={commit}
+          className="text-sm font-semibold bg-transparent border-b border-primary outline-none w-full"
+        />
+        <button onClick={commit} className="text-primary shrink-0"><Check className="w-3.5 h-3.5" /></button>
+        <button onClick={() => setEditing(false)} className="text-muted-foreground shrink-0"><X className="w-3.5 h-3.5" /></button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex items-center gap-1.5 group/edit ${className}`}>
+      <span>{value}</span>
+      <button
+        onClick={start}
+        className="opacity-0 group-hover/edit:opacity-100 transition-opacity text-muted-foreground hover:text-foreground p-0.5 rounded"
+        title="Edit"
+      >
+        <Pencil className="w-3 h-3" />
+      </button>
+    </div>
+  );
+}
+
 export function History() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -140,9 +203,15 @@ export function History() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(loadSavedSearches);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const { data: analyses, isLoading } = useListAnalyses();
   const deleteAnalysis = useDeleteAnalysis({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
+    },
+  });
+  const updateAnalysis = useUpdateAnalysis({
     mutation: {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
     },
@@ -239,6 +308,37 @@ export function History() {
     saveSavedSearches(updated);
   }, [savedSearches]);
 
+  const toggleSelect = useCallback((id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(filtered.map((a) => a.id)));
+  }, [filtered]);
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  const deleteSelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    const confirmed = window.confirm(`Delete ${count} selected ${count === 1 ? "analysis" : "analyses"}? This cannot be undone.`);
+    if (!confirmed) return;
+    Promise.all(Array.from(selectedIds).map((id) => deleteAnalysis.mutateAsync({ id })))
+      .then(() => {
+        setSelectedIds(new Set());
+        toast({ title: `${count} ${count === 1 ? "analysis" : "analyses"} deleted` });
+      })
+      .catch(() => toast({ title: "Some deletions failed", variant: "destructive" }));
+  }, [selectedIds, deleteAnalysis, toast]);
+
+  const inSelectionMode = selectedIds.size > 0;
+
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
@@ -246,8 +346,20 @@ export function History() {
           <h1 className="text-3xl font-bold tracking-tight">History</h1>
           <p className="text-muted-foreground mt-1">All your resume analyses, most recent first.</p>
         </div>
-        <div className="flex gap-2 shrink-0">
-          {savedSearches.length > 0 && (
+        <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+          {inSelectionMode && (
+            <>
+              <span className="text-sm text-muted-foreground self-center">{selectedIds.size} selected</span>
+              <Button variant="destructive" size="sm" className="gap-1.5" onClick={deleteSelected}>
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete {selectedIds.size}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={clearSelection}>
+                Clear
+              </Button>
+            </>
+          )}
+          {!inSelectionMode && savedSearches.length > 0 && (
             <DropdownMenu open={showSavedSearches} onOpenChange={setShowSavedSearches}>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1.5">
@@ -273,7 +385,7 @@ export function History() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {filtered.length > 0 && (
+          {!inSelectionMode && filtered.length > 0 && (
             <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
               <Download className="w-3.5 h-3.5" />
               Export CSV
@@ -388,19 +500,55 @@ export function History() {
         </div>
       ) : (
         <div className="space-y-3" data-testid="analysis-list">
-          <p className="text-xs text-muted-foreground">{filtered.length} {filtered.length === 1 ? "analysis" : "analyses"}</p>
+          {/* Batch select header */}
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={inSelectionMode ? clearSelection : selectAll}
+              onKeyDown={(e) => e.key === "Enter" && (inSelectionMode ? clearSelection() : selectAll())}
+              className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer select-none"
+            >
+              <Checkbox
+                checked={selectedIds.size === filtered.length && filtered.length > 0}
+                onCheckedChange={(v) => v ? selectAll() : clearSelection()}
+                className="w-3.5 h-3.5"
+              />
+              {inSelectionMode ? `${selectedIds.size} selected` : `${filtered.length} ${filtered.length === 1 ? "analysis" : "analyses"}`}
+            </div>
+            {inSelectionMode && selectedIds.size < filtered.length && (
+              <button onClick={selectAll} className="hover:text-foreground transition-colors">Select all {filtered.length}</button>
+            )}
+          </div>
+
           {filtered.map((a) => (
             <Card
               key={a.id}
-              className="group border shadow-sm hover:shadow-md transition-all cursor-pointer"
-              onClick={() => setLocation(`/analysis/${a.id}`)}
+              className={`group border shadow-sm hover:shadow-md transition-all cursor-pointer ${selectedIds.has(a.id) ? "ring-2 ring-primary border-primary" : ""}`}
+              onClick={() => !inSelectionMode && setLocation(`/analysis/${a.id}`)}
               data-testid={`row-analysis-${a.id}`}
             >
-              <CardContent className="p-4 flex items-center gap-4">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div onClick={(e) => toggleSelect(a.id, e)} className="shrink-0">
+                  <Checkbox
+                    checked={selectedIds.has(a.id)}
+                    onCheckedChange={() => setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(a.id)) next.delete(a.id);
+                      else next.add(a.id);
+                      return next;
+                    })}
+                    className="w-4 h-4 opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
+                  />
+                </div>
                 <ScoreCircle score={a.fitScore} size="sm" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold truncate">{a.jobTitle}</p>
+                    <InlineEdit
+                      value={a.jobTitle}
+                      onSave={(v) => updateAnalysis.mutate({ id: a.id, data: { status: a.status } })}
+                      className="font-semibold text-sm"
+                    />
                     {a.companyName && (
                       <span className="text-sm text-muted-foreground truncate">@ {a.companyName}</span>
                     )}

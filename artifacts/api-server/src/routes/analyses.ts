@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { desc, eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { z } from "zod";
 import { db, analyses } from "@workspace/db";
 import {
   CreateAnalysisBody,
@@ -351,7 +352,7 @@ router.post("/analyses/:id/salary-guide", async (req, res): Promise<void> => {
 
     await db
       .update(analyses)
-      .set({ salaryGuide: guide })
+      .set({ salaryGuide: guide as import("@workspace/db").SalaryRange })
       .where(eq(analyses.id, params.data.id));
 
     res.json(guide);
@@ -742,7 +743,7 @@ router.post("/analyses/:id/learning-plan", async (req, res): Promise<void> => {
 
     await db
       .update(analyses)
-      .set({ learningPlan: parsed.items as Parameters<typeof db.update>[0] })
+      .set({ learningPlan: parsed.items as import("@workspace/db").LearningPlanItem[] })
       .where(eq(analyses.id, params.data.id));
 
     res.json(parsed);
@@ -808,6 +809,294 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "Bullet rewrite failed");
     res.status(500).json({ error: "Bullet rewrite failed" });
+  }
+});
+
+// --- Company Research ---
+
+const CompanyResearchParams = GenerateSalaryGuideParams; // same shape: {id: number}
+
+router.post("/analyses/:id/company-research", async (req, res): Promise<void> => {
+  const params = CompanyResearchParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [analysis] = await db
+    .select()
+    .from(analyses)
+    .where(eq(analyses.id, params.data.id));
+
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+
+  req.log.info({ id: params.data.id }, "Generating company research");
+
+  const company = analysis.companyName ?? "the company";
+  const prompt =
+    "You are a career research specialist. Provide a concise company research brief for a job candidate interviewing at this company.\n\n" +
+    "Company: " + company + "\n" +
+    "Role: " + analysis.jobTitle + "\n" +
+    "Job Description excerpt: " + analysis.jobDescriptionText.slice(0, 1500) + "\n\n" +
+    "Based on publicly available knowledge about this company and role, provide a useful research brief.\n" +
+    "Return ONLY valid JSON (no markdown):\n" +
+    '{"overview": "<2-3 sentence company overview: what they do, size, industry>", ' +
+    '"culture": "<2-3 sentence culture description based on values, mission, and typical work environment>", ' +
+    '"interviewProcess": "<typical interview process description for this type of role>", ' +
+    '"recentNews": ["<relevant company news/development 1>", "<item 2>", "<item 3>"], ' +
+    '"glassdoorRating": "<estimated rating or N/A with brief note>", ' +
+    '"tips": ["<specific preparation tip 1 for THIS role/company>", "<tip 2>", "<tip 3>"]}';
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 1500,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    let research: {
+      overview: string; culture: string; interviewProcess: string;
+      recentNews: string[]; glassdoorRating: string; tips: string[];
+    };
+    try {
+      research = JSON.parse(raw);
+    } catch {
+      res.status(500).json({ error: "Failed to parse company research" });
+      return;
+    }
+
+    await db
+      .update(analyses)
+      .set({ companyResearch: research })
+      .where(eq(analyses.id, params.data.id));
+
+    res.json(research);
+  } catch (err) {
+    logger.error({ err }, "Company research generation failed");
+    res.status(500).json({ error: "Company research generation failed" });
+  }
+});
+
+// --- Red Flags ---
+
+const RedFlagsParams = GenerateSalaryGuideParams;
+
+router.post("/analyses/:id/red-flags", async (req, res): Promise<void> => {
+  const params = RedFlagsParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [analysis] = await db
+    .select()
+    .from(analyses)
+    .where(eq(analyses.id, params.data.id));
+
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+
+  req.log.info({ id: params.data.id }, "Detecting red flags");
+
+  const prompt =
+    "You are an experienced career counselor and job market expert. Analyze this job description for potential red flags that a candidate should be aware of before applying.\n\n" +
+    "Job Title: " + analysis.jobTitle + "\n" +
+    "Company: " + (analysis.companyName ?? "not specified") + "\n" +
+    "Job Description:\n" + analysis.jobDescriptionText + "\n\n" +
+    "Look for: unrealistic expectations (wear many hats, 10x engineer, rockstar), vague compensation (competitive salary), unpaid overtime signals (fast-paced, startup mentality, work hard play hard), scope creep indicators, unclear reporting structure, high turnover signals, toxic culture hints, suspicious requirements, etc.\n" +
+    "Be balanced — only flag genuine concerns, not normal job requirements. If the JD looks healthy, return few or no flags.\n" +
+    "Return ONLY valid JSON (no markdown):\n" +
+    '{"flags": [{"severity": "high|medium|low", "title": "<short name>", "description": "<explanation>", "quote": "<exact phrase from JD that triggered this flag>"}], ' +
+    '"summary": "<1-2 sentence overall assessment>", ' +
+    '"overallRisk": "low|medium|high"}';
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 1500,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    let result: {
+      flags: Array<{ severity: string; title: string; description: string; quote: string }>;
+      summary: string;
+      overallRisk: string;
+    };
+    try {
+      result = JSON.parse(raw);
+      if (!Array.isArray(result.flags)) result.flags = [];
+    } catch {
+      res.status(500).json({ error: "Failed to parse red flags analysis" });
+      return;
+    }
+
+    await db
+      .update(analyses)
+      .set({ redFlags: result.flags as import("@workspace/db").RedFlag[] })
+      .where(eq(analyses.id, params.data.id));
+
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, "Red flags detection failed");
+    res.status(500).json({ error: "Red flags detection failed" });
+  }
+});
+
+// --- Negotiation Simulator ---
+
+const NegotiateParams = GenerateSalaryGuideParams;
+const NegotiateBody = z.object({
+  messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() })),
+});
+
+router.post("/analyses/:id/negotiate", async (req, res): Promise<void> => {
+  const params = NegotiateParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = NegotiateBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [analysis] = await db
+    .select()
+    .from(analyses)
+    .where(eq(analyses.id, params.data.id));
+
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+
+  req.log.info({ id: params.data.id }, "Running negotiation simulation");
+
+  const salaryContext = analysis.salaryGuide
+    ? "Market salary range: " + (analysis.salaryGuide as { low: number; mid: number; high: number; currency: string }).low + "–" + (analysis.salaryGuide as { low: number; mid: number; high: number; currency: string }).high + " " + (analysis.salaryGuide as { currency: string }).currency + "/year."
+    : "";
+
+  const systemPrompt =
+    "You are a recruiter at " + (analysis.companyName ?? "a company") + " conducting a salary negotiation for the role of " + analysis.jobTitle + ". " +
+    salaryContext + " " +
+    "Play the role of a professional but firm recruiter. Be realistic — start with a reasonable offer, push back on high counter-offers, but show flexibility. " +
+    "Keep responses concise (2-4 sentences). After your response, add a JSON field 'tip' with a brief coaching tip for the candidate (what they did well or could improve). " +
+    "Return ONLY valid JSON: {\"message\": \"<recruiter response>\", \"tip\": \"<coaching tip>\"}";
+
+  const messages = body.data.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 512,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...messages,
+      ],
+    });
+
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    let result: { message: string; tip?: string };
+    try {
+      result = JSON.parse(raw);
+    } catch {
+      result = { message: raw };
+    }
+
+    res.json({ message: result.message ?? "", tip: result.tip ?? "" });
+  } catch (err) {
+    logger.error({ err }, "Negotiation simulation failed");
+    res.status(500).json({ error: "Negotiation simulation failed" });
+  }
+});
+
+// --- STAR Answer Generator ---
+
+const StarAnswerParams = GenerateSalaryGuideParams;
+const StarAnswerBody = z.object({
+  question: z.string(),
+  situation: z.string().optional(),
+  task: z.string().optional(),
+  action: z.string().optional(),
+  result: z.string().optional(),
+});
+
+router.post("/analyses/:id/star-answer", async (req, res): Promise<void> => {
+  const params = StarAnswerParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = StarAnswerBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [analysis] = await db
+    .select()
+    .from(analyses)
+    .where(eq(analyses.id, params.data.id));
+
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+
+  req.log.info({ id: params.data.id }, "Generating STAR answer");
+
+  const hasDraft = body.data.situation || body.data.task || body.data.action || body.data.result;
+
+  const prompt =
+    "You are an expert interview coach. " +
+    (hasDraft
+      ? "Polish the candidate's STAR-method answer into a compelling, concise interview response.\n\n"
+      : "Generate a strong STAR-method answer for this interview question based on the candidate's resume.\n\n") +
+    "Interview Question: " + body.data.question + "\n" +
+    "Job Title: " + analysis.jobTitle + "\n" +
+    "Company: " + (analysis.companyName ?? "the company") + "\n" +
+    "Candidate Strengths: " + ((analysis.strengths as string[]).slice(0, 3).join("; ") || "not specified") + "\n\n" +
+    (hasDraft
+      ? "Candidate's draft:\n" +
+        "Situation: " + (body.data.situation ?? "(not provided)") + "\n" +
+        "Task: " + (body.data.task ?? "(not provided)") + "\n" +
+        "Action: " + (body.data.action ?? "(not provided)") + "\n" +
+        "Result: " + (body.data.result ?? "(not provided)") + "\n\n"
+      : "Resume excerpt:\n" + analysis.resumeText.slice(0, 1200) + "\n\n") +
+    "Write a polished 150-250 word STAR answer. Make it specific, confident, and quantified where possible. " +
+    "Also provide 2-3 coaching tips. Return ONLY valid JSON (no markdown):\n" +
+    '{"answer": "<full polished STAR answer>", "tips": ["<tip 1>", "<tip 2>", "<tip 3>"]}';
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    let result: { answer: string; tips: string[] };
+    try {
+      result = JSON.parse(raw);
+      if (!Array.isArray(result.tips)) result.tips = [];
+    } catch {
+      result = { answer: raw, tips: [] };
+    }
+
+    res.json({ answer: result.answer ?? "", tips: result.tips ?? [] });
+  } catch (err) {
+    logger.error({ err }, "STAR answer generation failed");
+    res.status(500).json({ error: "STAR answer generation failed" });
   }
 });
 

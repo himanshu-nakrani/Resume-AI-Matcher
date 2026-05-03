@@ -10,6 +10,7 @@ import { History } from "@/pages/history";
 import { Stats } from "@/pages/stats";
 import { SharedAnalysis } from "@/pages/shared";
 import { Compare } from "@/pages/compare";
+import { Skills } from "@/pages/skills";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ function Router() {
             <Route path="/history" component={History} />
             <Route path="/stats" component={Stats} />
             <Route path="/compare" component={Compare} />
+            <Route path="/skills" component={Skills} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

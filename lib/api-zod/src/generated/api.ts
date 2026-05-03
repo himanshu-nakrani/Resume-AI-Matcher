@@ -84,6 +84,26 @@ export const ListAnalysesResponseItem = zod.object({
     })
     .nullish(),
   tags: zod.array(zod.string()),
+  companyResearch: zod
+    .object({
+      overview: zod.string(),
+      culture: zod.string(),
+      interviewProcess: zod.string(),
+      recentNews: zod.array(zod.string()),
+      glassdoorRating: zod.string(),
+      tips: zod.array(zod.string()),
+    })
+    .nullish(),
+  redFlags: zod
+    .array(
+      zod.object({
+        severity: zod.enum(["high", "medium", "low"]),
+        title: zod.string(),
+        description: zod.string(),
+        quote: zod.string(),
+      }),
+    )
+    .nullish(),
   createdAt: zod.string(),
 });
 export const ListAnalysesResponse = zod.array(ListAnalysesResponseItem);
@@ -171,6 +191,26 @@ export const GetAnalysisResponse = zod.object({
     })
     .nullish(),
   tags: zod.array(zod.string()),
+  companyResearch: zod
+    .object({
+      overview: zod.string(),
+      culture: zod.string(),
+      interviewProcess: zod.string(),
+      recentNews: zod.array(zod.string()),
+      glassdoorRating: zod.string(),
+      tips: zod.array(zod.string()),
+    })
+    .nullish(),
+  redFlags: zod
+    .array(
+      zod.object({
+        severity: zod.enum(["high", "medium", "low"]),
+        title: zod.string(),
+        description: zod.string(),
+        quote: zod.string(),
+      }),
+    )
+    .nullish(),
   createdAt: zod.string(),
 });
 
@@ -267,6 +307,26 @@ export const UpdateAnalysisResponse = zod.object({
     })
     .nullish(),
   tags: zod.array(zod.string()),
+  companyResearch: zod
+    .object({
+      overview: zod.string(),
+      culture: zod.string(),
+      interviewProcess: zod.string(),
+      recentNews: zod.array(zod.string()),
+      glassdoorRating: zod.string(),
+      tips: zod.array(zod.string()),
+    })
+    .nullish(),
+  redFlags: zod
+    .array(
+      zod.object({
+        severity: zod.enum(["high", "medium", "low"]),
+        title: zod.string(),
+        description: zod.string(),
+        quote: zod.string(),
+      }),
+    )
+    .nullish(),
   createdAt: zod.string(),
 });
 
@@ -293,6 +353,83 @@ export const GenerateSalaryGuideResponse = zod.object({
   context: zod.string(),
   factors: zod.array(zod.string()),
   negotiationTips: zod.array(zod.string()),
+});
+
+/**
+ * @summary Generate AI-powered company research brief
+ */
+export const GenerateCompanyResearchParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GenerateCompanyResearchResponse = zod.object({
+  overview: zod.string(),
+  culture: zod.string(),
+  interviewProcess: zod.string(),
+  recentNews: zod.array(zod.string()),
+  glassdoorRating: zod.string(),
+  tips: zod.array(zod.string()),
+});
+
+/**
+ * @summary Detect potential red flags in the job description
+ */
+export const DetectRedFlagsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DetectRedFlagsResponse = zod.object({
+  flags: zod.array(
+    zod.object({
+      severity: zod.enum(["high", "medium", "low"]),
+      title: zod.string(),
+      description: zod.string(),
+      quote: zod.string(),
+    }),
+  ),
+  summary: zod.string(),
+  overallRisk: zod.enum(["low", "medium", "high"]),
+});
+
+/**
+ * @summary Run a salary negotiation simulation turn (AI plays recruiter)
+ */
+export const SimulateNegotiationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SimulateNegotiationBody = zod.object({
+  messages: zod.array(
+    zod.object({
+      role: zod.enum(["user", "assistant"]),
+      content: zod.string(),
+    }),
+  ),
+});
+
+export const SimulateNegotiationResponse = zod.object({
+  message: zod.string(),
+  tip: zod.string().optional(),
+});
+
+/**
+ * @summary Generate a polished STAR-method answer for an interview question
+ */
+export const GenerateStarAnswerParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GenerateStarAnswerBody = zod.object({
+  question: zod.string(),
+  situation: zod.string().optional(),
+  task: zod.string().optional(),
+  action: zod.string().optional(),
+  result: zod.string().optional(),
+});
+
+export const GenerateStarAnswerResponse = zod.object({
+  answer: zod.string(),
+  tips: zod.array(zod.string()),
 });
 
 /**
@@ -464,6 +601,26 @@ export const UnshareAnalysisResponse = zod.object({
     })
     .nullish(),
   tags: zod.array(zod.string()),
+  companyResearch: zod
+    .object({
+      overview: zod.string(),
+      culture: zod.string(),
+      interviewProcess: zod.string(),
+      recentNews: zod.array(zod.string()),
+      glassdoorRating: zod.string(),
+      tips: zod.array(zod.string()),
+    })
+    .nullish(),
+  redFlags: zod
+    .array(
+      zod.object({
+        severity: zod.enum(["high", "medium", "low"]),
+        title: zod.string(),
+        description: zod.string(),
+        quote: zod.string(),
+      }),
+    )
+    .nullish(),
   createdAt: zod.string(),
 });
 
@@ -540,6 +697,26 @@ export const GetSharedAnalysisResponse = zod.object({
     })
     .nullish(),
   tags: zod.array(zod.string()),
+  companyResearch: zod
+    .object({
+      overview: zod.string(),
+      culture: zod.string(),
+      interviewProcess: zod.string(),
+      recentNews: zod.array(zod.string()),
+      glassdoorRating: zod.string(),
+      tips: zod.array(zod.string()),
+    })
+    .nullish(),
+  redFlags: zod
+    .array(
+      zod.object({
+        severity: zod.enum(["high", "medium", "low"]),
+        title: zod.string(),
+        description: zod.string(),
+        quote: zod.string(),
+      }),
+    )
+    .nullish(),
   createdAt: zod.string(),
 });
 

@@ -79,6 +79,31 @@ export interface SalaryRange {
   negotiationTips: string[];
 }
 
+export interface CompanyResearch {
+  overview: string;
+  culture: string;
+  interviewProcess: string;
+  recentNews: string[];
+  glassdoorRating: string;
+  tips: string[];
+}
+
+export type RedFlagSeverity =
+  (typeof RedFlagSeverity)[keyof typeof RedFlagSeverity];
+
+export const RedFlagSeverity = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export interface RedFlag {
+  severity: RedFlagSeverity;
+  title: string;
+  description: string;
+  quote: string;
+}
+
 export interface Analysis {
   id: number;
   jobTitle: string;
@@ -117,6 +142,8 @@ export interface Analysis {
   followUpDate: string | null;
   salaryGuide?: SalaryRange | null;
   tags: string[];
+  companyResearch?: CompanyResearch | null;
+  redFlags?: RedFlag[] | null;
   createdAt: string;
 }
 
@@ -167,6 +194,65 @@ export interface SalaryGuideResponse {
   context: string;
   factors: string[];
   negotiationTips: string[];
+}
+
+export interface CompanyResearchResponse {
+  overview: string;
+  culture: string;
+  interviewProcess: string;
+  recentNews: string[];
+  glassdoorRating: string;
+  tips: string[];
+}
+
+export type RedFlagsResponseOverallRisk =
+  (typeof RedFlagsResponseOverallRisk)[keyof typeof RedFlagsResponseOverallRisk];
+
+export const RedFlagsResponseOverallRisk = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export interface RedFlagsResponse {
+  flags: RedFlag[];
+  summary: string;
+  overallRisk: RedFlagsResponseOverallRisk;
+}
+
+export type ChatMessageRole =
+  (typeof ChatMessageRole)[keyof typeof ChatMessageRole];
+
+export const ChatMessageRole = {
+  user: "user",
+  assistant: "assistant",
+} as const;
+
+export interface ChatMessage {
+  role: ChatMessageRole;
+  content: string;
+}
+
+export interface NegotiateBody {
+  messages: ChatMessage[];
+}
+
+export interface NegotiateResponse {
+  message: string;
+  tip?: string;
+}
+
+export interface StarAnswerBody {
+  question: string;
+  situation?: string;
+  task?: string;
+  action?: string;
+  result?: string;
+}
+
+export interface StarAnswerResponse {
+  answer: string;
+  tips: string[];
 }
 
 export interface ShareResponse {

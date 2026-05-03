@@ -19,6 +19,7 @@ import type {
 import type {
   Analysis,
   AnalysisStats,
+  CompanyResearchResponse,
   CreateAnalysisBody,
   ErrorResponse,
   FetchJobBody,
@@ -28,10 +29,15 @@ import type {
   HealthStatus,
   InterviewQuestionsResponse,
   LearningPlanResponse,
+  NegotiateBody,
+  NegotiateResponse,
+  RedFlagsResponse,
   RewriteBulletBody,
   RewriteBulletResponse,
   SalaryGuideResponse,
   ShareResponse,
+  StarAnswerBody,
+  StarAnswerResponse,
   UpdateAnalysisBody,
 } from "./api.schemas";
 
@@ -705,6 +711,351 @@ export const useGenerateSalaryGuide = <
   TContext
 > => {
   return useMutation(getGenerateSalaryGuideMutationOptions(options));
+};
+
+/**
+ * @summary Generate AI-powered company research brief
+ */
+export const getGenerateCompanyResearchUrl = (id: number) => {
+  return `/api/analyses/${id}/company-research`;
+};
+
+export const generateCompanyResearch = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CompanyResearchResponse> => {
+  return customFetch<CompanyResearchResponse>(
+    getGenerateCompanyResearchUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getGenerateCompanyResearchMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateCompanyResearch>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateCompanyResearch>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["generateCompanyResearch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateCompanyResearch>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return generateCompanyResearch(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateCompanyResearchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateCompanyResearch>>
+>;
+
+export type GenerateCompanyResearchMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate AI-powered company research brief
+ */
+export const useGenerateCompanyResearch = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateCompanyResearch>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateCompanyResearch>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getGenerateCompanyResearchMutationOptions(options));
+};
+
+/**
+ * @summary Detect potential red flags in the job description
+ */
+export const getDetectRedFlagsUrl = (id: number) => {
+  return `/api/analyses/${id}/red-flags`;
+};
+
+export const detectRedFlags = async (
+  id: number,
+  options?: RequestInit,
+): Promise<RedFlagsResponse> => {
+  return customFetch<RedFlagsResponse>(getDetectRedFlagsUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getDetectRedFlagsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof detectRedFlags>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof detectRedFlags>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["detectRedFlags"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof detectRedFlags>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return detectRedFlags(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DetectRedFlagsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof detectRedFlags>>
+>;
+
+export type DetectRedFlagsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Detect potential red flags in the job description
+ */
+export const useDetectRedFlags = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof detectRedFlags>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof detectRedFlags>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDetectRedFlagsMutationOptions(options));
+};
+
+/**
+ * @summary Run a salary negotiation simulation turn (AI plays recruiter)
+ */
+export const getSimulateNegotiationUrl = (id: number) => {
+  return `/api/analyses/${id}/negotiate`;
+};
+
+export const simulateNegotiation = async (
+  id: number,
+  negotiateBody: NegotiateBody,
+  options?: RequestInit,
+): Promise<NegotiateResponse> => {
+  return customFetch<NegotiateResponse>(getSimulateNegotiationUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(negotiateBody),
+  });
+};
+
+export const getSimulateNegotiationMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof simulateNegotiation>>,
+    TError,
+    { id: number; data: BodyType<NegotiateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof simulateNegotiation>>,
+  TError,
+  { id: number; data: BodyType<NegotiateBody> },
+  TContext
+> => {
+  const mutationKey = ["simulateNegotiation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof simulateNegotiation>>,
+    { id: number; data: BodyType<NegotiateBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return simulateNegotiation(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SimulateNegotiationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof simulateNegotiation>>
+>;
+export type SimulateNegotiationMutationBody = BodyType<NegotiateBody>;
+export type SimulateNegotiationMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Run a salary negotiation simulation turn (AI plays recruiter)
+ */
+export const useSimulateNegotiation = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof simulateNegotiation>>,
+    TError,
+    { id: number; data: BodyType<NegotiateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof simulateNegotiation>>,
+  TError,
+  { id: number; data: BodyType<NegotiateBody> },
+  TContext
+> => {
+  return useMutation(getSimulateNegotiationMutationOptions(options));
+};
+
+/**
+ * @summary Generate a polished STAR-method answer for an interview question
+ */
+export const getGenerateStarAnswerUrl = (id: number) => {
+  return `/api/analyses/${id}/star-answer`;
+};
+
+export const generateStarAnswer = async (
+  id: number,
+  starAnswerBody: StarAnswerBody,
+  options?: RequestInit,
+): Promise<StarAnswerResponse> => {
+  return customFetch<StarAnswerResponse>(getGenerateStarAnswerUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(starAnswerBody),
+  });
+};
+
+export const getGenerateStarAnswerMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateStarAnswer>>,
+    TError,
+    { id: number; data: BodyType<StarAnswerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateStarAnswer>>,
+  TError,
+  { id: number; data: BodyType<StarAnswerBody> },
+  TContext
+> => {
+  const mutationKey = ["generateStarAnswer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateStarAnswer>>,
+    { id: number; data: BodyType<StarAnswerBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return generateStarAnswer(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateStarAnswerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateStarAnswer>>
+>;
+export type GenerateStarAnswerMutationBody = BodyType<StarAnswerBody>;
+export type GenerateStarAnswerMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate a polished STAR-method answer for an interview question
+ */
+export const useGenerateStarAnswer = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateStarAnswer>>,
+    TError,
+    { id: number; data: BodyType<StarAnswerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateStarAnswer>>,
+  TError,
+  { id: number; data: BodyType<StarAnswerBody> },
+  TContext
+> => {
+  return useMutation(getGenerateStarAnswerMutationOptions(options));
 };
 
 /**

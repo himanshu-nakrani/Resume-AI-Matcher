@@ -1,5 +1,6 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, History, BarChart2, PlusCircle, Moon, Sun, GitCompareArrows, Keyboard } from "lucide-react";
+import { LayoutDashboard, History, BarChart2, PlusCircle, Moon, Sun, GitCompareArrows, Keyboard, GraduationCap, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 import { useTheme, type ThemeVariant } from "@/hooks/use-theme";
@@ -10,6 +11,7 @@ const navItems = [
   { href: "/history", label: "History", icon: History },
   { href: "/stats", label: "Stats", icon: BarChart2 },
   { href: "/compare", label: "Compare", icon: GitCompareArrows },
+  { href: "/skills", label: "Skills", icon: GraduationCap },
 ];
 
 const themes: { value: ThemeVariant; label: string; emoji: string }[] = [
@@ -18,19 +20,115 @@ const themes: { value: ThemeVariant; label: string; emoji: string }[] = [
   { value: "minimal", label: "Minimal", emoji: "⚪" },
 ];
 
+const SHORTCUTS = [
+  { keys: ["⌘", "K"], description: "Open command palette" },
+  { keys: ["⌘", "?"], description: "Show keyboard shortcuts" },
+  { keys: ["G", "H"], description: "Go to History" },
+  { keys: ["G", "S"], description: "Go to Stats" },
+  { keys: ["G", "C"], description: "Go to Compare" },
+  { keys: ["G", "L"], description: "Go to Skills" },
+  { keys: ["Esc"], description: "Close dialogs" },
+];
+
 function isActive(location: string, href: string) {
   if (href === "/") return location === "/" || location.startsWith("/analysis/");
   return location === href || location.startsWith(href + "/");
 }
 
+function ShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 bg-card border rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <Keyboard className="w-4 h-4 text-primary" />
+            <h2 className="text-base font-semibold">Keyboard Shortcuts</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="space-y-2.5">
+          {SHORTCUTS.map((shortcut, i) => (
+            <div key={i} className="flex items-center justify-between gap-4">
+              <span className="text-sm text-muted-foreground">{shortcut.description}</span>
+              <div className="flex items-center gap-1 shrink-0">
+                {shortcut.keys.map((key, j) => (
+                  <kbd
+                    key={j}
+                    className="px-2 py-0.5 text-xs font-mono bg-muted border rounded shadow-sm"
+                  >
+                    {key}
+                  </kbd>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-5 text-center">Press Esc or click outside to close</p>
+      </div>
+    </div>
+  );
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { isDark, toggle } = useDarkMode();
   const { theme, setTheme } = useTheme();
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  useEffect(() => {
+    let gBuffer = "";
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if (isInput) return;
+
+      if ((e.metaKey || e.ctrlKey) && e.key === "?") {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
+        return;
+      }
+
+      if (e.key === "g" || e.key === "G") {
+        gBuffer = "g";
+        setTimeout(() => { gBuffer = ""; }, 1000);
+        return;
+      }
+
+      if (gBuffer === "g") {
+        gBuffer = "";
+        switch (e.key.toLowerCase()) {
+          case "h": setLocation("/history"); break;
+          case "s": setLocation("/stats"); break;
+          case "c": setLocation("/compare"); break;
+          case "l": setLocation("/skills"); break;
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [setLocation]);
 
   return (
     <div className="flex min-h-screen w-full bg-muted/30">
       <CommandPalette />
+      <ShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
       {/* Desktop sidebar */}
       <aside className="w-64 border-r bg-card flex-col hidden md:flex">
@@ -86,8 +184,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {isDark ? "Light mode" : "Dark mode"}
           </Button>
           <div className="flex items-center gap-2 px-2 pt-1">
-            <Keyboard className="w-3.5 h-3.5 text-muted-foreground/60" />
-            <span className="text-[10px] text-muted-foreground/60 font-medium">⌘K to search</span>
+            <button
+              onClick={() => setShowShortcuts(true)}
+              className="flex items-center gap-2 text-[10px] text-muted-foreground/60 font-medium hover:text-muted-foreground transition-colors"
+            >
+              <Keyboard className="w-3.5 h-3.5" />
+              <span>⌘K to search · ⌘? shortcuts</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -117,12 +220,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
             return (
               <Link key={item.href} href={item.href} className="flex-1">
                 <div
-                  className={`flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors ${
+                  className={`flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
                     active ? "text-primary" : "text-muted-foreground"
                   }`}
                 >
                   <item.icon className={`w-5 h-5 ${active ? "stroke-[2.5]" : ""}`} />
-                  <span className={`text-[10px] font-medium ${active ? "font-semibold" : ""}`}>
+                  <span className={`text-[9px] font-medium ${active ? "font-semibold" : ""}`}>
                     {item.label}
                   </span>
                 </div>
