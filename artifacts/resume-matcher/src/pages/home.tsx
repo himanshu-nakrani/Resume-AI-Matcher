@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useCreateAnalysis, useListAnalyses, useDeleteAnalysis, getListAnalysesQueryKey } from "@workspace/api-client-react";
+import { useCreateAnalysis, useListAnalyses, useDeleteAnalysis, getListAnalysesQueryKey, useFetchJobDescription } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -13,9 +13,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScoreCircle } from "@/components/score-circle";
-import { Sparkles, Trash2, ArrowRight, Clock, Upload } from "lucide-react";
+import { Sparkles, Trash2, ArrowRight, Clock, Upload, Link2, X, Heart } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import mammoth from "mammoth";
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   jobTitle: z.string().min(1, "Job title is required"),
@@ -30,9 +31,12 @@ const allowedResumeTypes = [".docx", ".txt"].join(",");
 export function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [resumeFileName, setResumeFileName] = useState("");
   const [resumeFileError, setResumeFileError] = useState("");
   const [isParsingResume, setIsParsingResume] = useState(false);
+  const [jobUrlInput, setJobUrlInput] = useState("");
+  const [showUrlInput, setShowUrlInput] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -48,6 +52,26 @@ export function Home() {
     },
   });
 
+  const fetchJob = useFetchJobDescription({
+    mutation: {
+      onSuccess: (data) => {
+        form.setValue("jobDescriptionText", data.jobDescription, { shouldDirty: true, shouldValidate: true });
+        if (data.jobTitle && !form.getValues("jobTitle")) {
+          form.setValue("jobTitle", data.jobTitle);
+        }
+        if (data.companyName && !form.getValues("companyName")) {
+          form.setValue("companyName", data.companyName ?? "");
+        }
+        setShowUrlInput(false);
+        setJobUrlInput("");
+        toast({ title: "Job description imported", description: "Fields filled from the URL." });
+      },
+      onError: () => {
+        toast({ title: "Could not import", description: "Try copying the job description manually.", variant: "destructive" });
+      },
+    },
+  });
+
   const deleteAnalysis = useDeleteAnalysis({
     mutation: {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
@@ -58,14 +82,12 @@ export function Home() {
 
   const parseResumeFile = async (file: File) => {
     const ext = file.name.toLowerCase().split(".").pop();
-    if (ext === "txt") {
-      return await file.text();
-    }
+    if (ext === "txt") return await file.text();
     if (ext === "docx") {
       try {
         const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
         return result.value;
-      } catch (error) {
+      } catch {
         throw new Error("Could not read DOCX file. Please ensure it's a valid Word document.");
       }
     }
@@ -82,12 +104,17 @@ export function Home() {
       form.setValue("resumeText", parsed.trim(), { shouldDirty: true, shouldValidate: true });
       setResumeFileName(file.name);
     } catch {
-      setResumeFileError("Could not read that file. Please upload a PDF, DOCX, or TXT resume.");
+      setResumeFileError("Could not read that file. Please upload a DOCX or TXT resume.");
       setResumeFileName("");
     } finally {
       setIsParsingResume(false);
       event.target.value = "";
     }
+  };
+
+  const handleImportUrl = () => {
+    if (!jobUrlInput.trim()) return;
+    fetchJob.mutate({ data: { url: jobUrlInput.trim() } });
   };
 
   const onSubmit = (values: FormValues) => {
@@ -100,6 +127,8 @@ export function Home() {
       },
     });
   };
+
+  const favorites = analyses?.filter((a) => a.isFavorite) ?? [];
 
   return (
     <div className="space-y-10">
@@ -181,12 +210,54 @@ export function Home() {
                     <FormItem>
                       <FormLabel>Job Description <span className="text-destructive">*</span></FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Paste the job description here..."
-                          className="min-h-[260px] font-mono text-sm resize-none"
-                          {...field}
-                          data-testid="textarea-jd"
-                        />
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setShowUrlInput(!showUrlInput)}
+                            >
+                              <Link2 className="w-3.5 h-3.5 mr-1.5" />
+                              Import from URL
+                            </Button>
+                            <span className="text-xs text-muted-foreground">or paste below</span>
+                          </div>
+                          {showUrlInput && (
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="https://jobs.company.com/role/12345"
+                                value={jobUrlInput}
+                                onChange={(e) => setJobUrlInput(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && handleImportUrl()}
+                                className="flex-1 text-sm"
+                              />
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleImportUrl}
+                                disabled={fetchJob.isPending || !jobUrlInput.trim()}
+                              >
+                                {fetchJob.isPending ? "Importing..." : "Import"}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="shrink-0"
+                                onClick={() => { setShowUrlInput(false); setJobUrlInput(""); }}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
+                          <Textarea
+                            placeholder="Paste the job description here..."
+                            className="min-h-[260px] font-mono text-sm resize-none"
+                            {...field}
+                            data-testid="textarea-jd"
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -202,21 +273,42 @@ export function Home() {
                 data-testid="button-analyze"
               >
                 {createAnalysis.isPending ? (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2 animate-pulse" />
-                    Analyzing with AI...
-                  </>
+                  <><Sparkles className="w-4 h-4 mr-2 animate-pulse" />Analyzing with AI...</>
                 ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Analyze Fit
-                  </>
+                  <><Sparkles className="w-4 h-4 mr-2" />Analyze Fit</>
                 )}
               </Button>
             </form>
           </Form>
         </CardContent>
       </Card>
+
+      {/* Favorites */}
+      {favorites.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight mb-3 flex items-center gap-2">
+            <Heart className="w-4 h-4 text-pink-500 fill-pink-500" /> Favorites
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {favorites.slice(0, 4).map((a) => (
+              <Card
+                key={a.id}
+                className="group border shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => setLocation(`/analysis/${a.id}`)}
+              >
+                <CardContent className="p-4 flex items-center gap-4">
+                  <ScoreCircle score={a.fitScore} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{a.jobTitle}</p>
+                    {a.companyName && <p className="text-sm text-muted-foreground truncate">{a.companyName}</p>}
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent Analyses */}
       <div>
@@ -245,7 +337,10 @@ export function Home() {
                 <CardContent className="p-4 flex items-center gap-4">
                   <ScoreCircle score={a.fitScore} size="sm" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{a.jobTitle}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-semibold truncate">{a.jobTitle}</p>
+                      {a.isFavorite && <Heart className="w-3 h-3 text-pink-500 fill-pink-500 shrink-0" />}
+                    </div>
                     {a.companyName && <p className="text-sm text-muted-foreground truncate">{a.companyName}</p>}
                     <div className="flex items-center gap-2 mt-1">
                       <Clock className="w-3 h-3 text-muted-foreground" />

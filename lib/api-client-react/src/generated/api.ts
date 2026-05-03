@@ -21,6 +21,8 @@ import type {
   AnalysisStats,
   CreateAnalysisBody,
   ErrorResponse,
+  FetchJobBody,
+  FetchJobResponse,
   GenerateCoverLetterBody,
   GeneratedContent,
   HealthStatus,
@@ -28,6 +30,7 @@ import type {
   LearningPlanResponse,
   RewriteBulletBody,
   RewriteBulletResponse,
+  ShareResponse,
   UpdateAnalysisBody,
 } from "./api.schemas";
 
@@ -449,7 +452,7 @@ export const useDeleteAnalysis = <
 };
 
 /**
- * @summary Update an analysis (e.g. application status)
+ * @summary Update an analysis (status, notes, favorite)
  */
 export const getUpdateAnalysisUrl = (id: number) => {
   return `/api/analyses/${id}`;
@@ -513,7 +516,7 @@ export type UpdateAnalysisMutationBody = BodyType<UpdateAnalysisBody>;
 export type UpdateAnalysisMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Update an analysis (e.g. application status)
+ * @summary Update an analysis (status, notes, favorite)
  */
 export const useUpdateAnalysis = <
   TError = ErrorType<ErrorResponse>,
@@ -962,6 +965,348 @@ export const useGenerateLinkedinPost = <
   TContext
 > => {
   return useMutation(getGenerateLinkedinPostMutationOptions(options));
+};
+
+/**
+ * @summary Generate a public share link for this analysis
+ */
+export const getShareAnalysisUrl = (id: number) => {
+  return `/api/analyses/${id}/share`;
+};
+
+export const shareAnalysis = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ShareResponse> => {
+  return customFetch<ShareResponse>(getShareAnalysisUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getShareAnalysisMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof shareAnalysis>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof shareAnalysis>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["shareAnalysis"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof shareAnalysis>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return shareAnalysis(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ShareAnalysisMutationResult = NonNullable<
+  Awaited<ReturnType<typeof shareAnalysis>>
+>;
+
+export type ShareAnalysisMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate a public share link for this analysis
+ */
+export const useShareAnalysis = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof shareAnalysis>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof shareAnalysis>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getShareAnalysisMutationOptions(options));
+};
+
+/**
+ * @summary Remove public sharing from this analysis
+ */
+export const getUnshareAnalysisUrl = (id: number) => {
+  return `/api/analyses/${id}/share`;
+};
+
+export const unshareAnalysis = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Analysis> => {
+  return customFetch<Analysis>(getUnshareAnalysisUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getUnshareAnalysisMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unshareAnalysis>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unshareAnalysis>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["unshareAnalysis"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unshareAnalysis>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return unshareAnalysis(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnshareAnalysisMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unshareAnalysis>>
+>;
+
+export type UnshareAnalysisMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Remove public sharing from this analysis
+ */
+export const useUnshareAnalysis = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unshareAnalysis>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unshareAnalysis>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getUnshareAnalysisMutationOptions(options));
+};
+
+/**
+ * @summary Get a publicly shared analysis by token
+ */
+export const getGetSharedAnalysisUrl = (token: string) => {
+  return `/api/share/${token}`;
+};
+
+export const getSharedAnalysis = async (
+  token: string,
+  options?: RequestInit,
+): Promise<Analysis> => {
+  return customFetch<Analysis>(getGetSharedAnalysisUrl(token), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSharedAnalysisQueryKey = (token: string) => {
+  return [`/api/share/${token}`] as const;
+};
+
+export const getGetSharedAnalysisQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSharedAnalysis>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSharedAnalysis>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSharedAnalysisQueryKey(token);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSharedAnalysis>>
+  > = ({ signal }) => getSharedAnalysis(token, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!token,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSharedAnalysis>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSharedAnalysisQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSharedAnalysis>>
+>;
+export type GetSharedAnalysisQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get a publicly shared analysis by token
+ */
+
+export function useGetSharedAnalysis<
+  TData = Awaited<ReturnType<typeof getSharedAnalysis>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSharedAnalysis>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSharedAnalysisQueryOptions(token, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Fetch and extract job description text from a URL
+ */
+export const getFetchJobDescriptionUrl = () => {
+  return `/api/fetch-job`;
+};
+
+export const fetchJobDescription = async (
+  fetchJobBody: FetchJobBody,
+  options?: RequestInit,
+): Promise<FetchJobResponse> => {
+  return customFetch<FetchJobResponse>(getFetchJobDescriptionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(fetchJobBody),
+  });
+};
+
+export const getFetchJobDescriptionMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof fetchJobDescription>>,
+    TError,
+    { data: BodyType<FetchJobBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof fetchJobDescription>>,
+  TError,
+  { data: BodyType<FetchJobBody> },
+  TContext
+> => {
+  const mutationKey = ["fetchJobDescription"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof fetchJobDescription>>,
+    { data: BodyType<FetchJobBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return fetchJobDescription(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type FetchJobDescriptionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof fetchJobDescription>>
+>;
+export type FetchJobDescriptionMutationBody = BodyType<FetchJobBody>;
+export type FetchJobDescriptionMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Fetch and extract job description text from a URL
+ */
+export const useFetchJobDescription = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof fetchJobDescription>>,
+    TError,
+    { data: BodyType<FetchJobBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof fetchJobDescription>>,
+  TError,
+  { data: BodyType<FetchJobBody> },
+  TContext
+> => {
+  return useMutation(getFetchJobDescriptionMutationOptions(options));
 };
 
 /**

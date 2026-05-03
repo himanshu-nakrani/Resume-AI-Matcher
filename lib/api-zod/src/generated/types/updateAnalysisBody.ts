@@ -9,4 +9,6 @@ import type { UpdateAnalysisBodyStatus } from "./updateAnalysisBodyStatus";
 
 export interface UpdateAnalysisBody {
   status?: UpdateAnalysisBodyStatus;
+  notes?: string;
+  isFavorite?: boolean;
 }

@@ -30,5 +30,11 @@ export interface Analysis {
   status: AnalysisStatus;
   interviewQuestions: string[];
   learningPlan: LearningPlanItem[];
+  isFavorite: boolean;
+  /** @nullable */
+  notes: string | null;
+  /** @nullable */
+  shareToken: string | null;
+  isPublic: boolean;
   createdAt: string;
 }

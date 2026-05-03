@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   useGetAnalysis,
@@ -9,6 +9,9 @@ import {
   useRewriteBullet,
   useGenerateInterviewQuestions,
   useGenerateLearningPlan,
+  useUpdateAnalysis,
+  useShareAnalysis,
+  useUnshareAnalysis,
 } from "@workspace/api-client-react";
 import type { LearningPlanItem, LearningResource } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useCopy } from "@/hooks/use-copy";
+import { useToast } from "@/hooks/use-toast";
 import {
   CheckCircle2,
   XCircle,
@@ -41,6 +45,11 @@ import {
   Hammer,
   BookMarked,
   Printer,
+  Heart,
+  Share2,
+  Link2,
+  EyeOff,
+  StickyNote,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -79,79 +88,70 @@ function BulletRewriter({ analysisId }: { analysisId: number }) {
     mutation: { onSuccess: (data) => setResult(data) },
   });
 
-  const handleRewrite = () => {
-    if (!bulletText.trim()) return;
-    setResult(null);
-    rewrite.mutate({ id: analysisId, data: { bulletText: bulletText.trim() } });
-  };
-
   return (
-    <Card className="border shadow-sm no-print">
+    <Card className="border shadow-sm print-break-inside-avoid">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Wand2 className="w-4 h-4 text-purple-500" /> AI Bullet Rewriter
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Paste a resume bullet point and get a stronger version optimized for this role's missing keywords.
+          Paste any resume bullet to make it stronger and more ATS-friendly.
         </p>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <div className="flex gap-2">
           <Input
-            placeholder="e.g. Worked on frontend features for the company website"
+            placeholder="e.g. Managed a team and improved performance..."
             value={bulletText}
             onChange={(e) => setBulletText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleRewrite()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && bulletText.trim()) {
+                rewrite.mutate({ id: analysisId, data: { bulletText } });
+              }
+            }}
+            data-testid="input-bullet"
             className="flex-1"
-            data-testid="input-bullet-text"
           />
           <Button
-            onClick={handleRewrite}
+            size="sm"
+            onClick={() => rewrite.mutate({ id: analysisId, data: { bulletText } })}
             disabled={rewrite.isPending || !bulletText.trim()}
-            className="shrink-0"
-            data-testid="button-rewrite"
+            data-testid="button-rewrite-bullet"
+            className="no-print"
           >
-            <Wand2 className={`w-4 h-4 ${rewrite.isPending ? "animate-pulse" : ""}`} />
-            <span className="ml-2 hidden sm:inline">{rewrite.isPending ? "Rewriting..." : "Rewrite"}</span>
+            {rewrite.isPending ? (
+              <><Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />Rewriting...</>
+            ) : (
+              <><ArrowRightLeft className="w-3.5 h-3.5 mr-1.5" />Rewrite</>
+            )}
           </Button>
         </div>
 
-        {rewrite.isPending && (
-          <div className="space-y-2 pt-1">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-4/5" />
-          </div>
-        )}
-
-        {result && !rewrite.isPending && (
-          <div className="space-y-3 pt-1">
-            <div className="rounded-lg border bg-muted/40 p-3 space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Original</p>
-              <p className="text-sm text-muted-foreground line-through">{result.original}</p>
+        {result && (
+          <div className="space-y-3 pt-2">
+            <div className="rounded-lg bg-muted/40 p-3 text-sm">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Original</p>
+              <p className="line-through text-muted-foreground">{result.original}</p>
             </div>
-            <div className="flex items-center justify-center">
-              <ArrowRightLeft className="w-4 h-4 text-purple-400" />
-            </div>
-            <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 p-3 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-400">Rewritten</p>
+            <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-sm">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-green-700 dark:text-green-400">Rewritten</p>
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs text-purple-600 dark:text-purple-400"
+                  size="icon"
+                  className="h-6 w-6 text-green-700 dark:text-green-400 no-print"
                   onClick={() => copy(result.rewritten, "Bullet copied")}
                 >
-                  {isCopied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
-                  Copy
+                  {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 </Button>
               </div>
-              <p className="text-sm font-medium">{result.rewritten}</p>
+              <p className="font-medium text-green-800 dark:text-green-300">{result.rewritten}</p>
             </div>
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs text-muted-foreground"
-              onClick={() => { setBulletText(""); setResult(null); }}
+              className="text-xs text-muted-foreground no-print"
+              onClick={() => { setBulletText(result.original); setResult(null); }}
             >
               Try another bullet
             </Button>
@@ -175,19 +175,19 @@ function InterviewQuestions({ analysisId, existingQuestions }: { analysisId: num
   const allQuestions = generate.data?.questions ?? existingQuestions;
 
   return (
-    <Card className="border shadow-sm">
+    <Card className="border shadow-sm print-break-inside-avoid">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-base flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-orange-500" /> Interview Questions
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-0.5">
-            AI-predicted questions tailored to this role and your profile.
+            Likely questions based on this role and your resume gaps.
           </p>
         </div>
         <Button
           size="sm"
-          variant={allQuestions.length > 0 ? "outline" : "default"}
+          variant={existingQuestions.length > 0 ? "outline" : "default"}
           onClick={() => generate.mutate({ id: analysisId })}
           disabled={generate.isPending}
           data-testid="button-generate-interview-questions"
@@ -195,7 +195,7 @@ function InterviewQuestions({ analysisId, existingQuestions }: { analysisId: num
         >
           {generate.isPending ? (
             <><Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />Generating...</>
-          ) : allQuestions.length > 0 ? "Regenerate" : (
+          ) : existingQuestions.length > 0 ? "Regenerate" : (
             <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Generate</>
           )}
         </Button>
@@ -350,6 +350,139 @@ function LearningPlanSection({ analysisId, existingItems }: { analysisId: number
   );
 }
 
+function NotesSection({ analysisId, initialNotes }: { analysisId: number; initialNotes: string | null }) {
+  const queryClient = useQueryClient();
+  const [notes, setNotes] = useState(initialNotes ?? "");
+  const [isDirty, setIsDirty] = useState(false);
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { toast } = useToast();
+
+  const update = useUpdateAnalysis({
+    mutation: {
+      onSuccess: () => {
+        setIsDirty(false);
+        queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) });
+      },
+      onError: () => toast({ title: "Could not save notes", variant: "destructive" }),
+    },
+  });
+
+  const handleChange = (value: string) => {
+    setNotes(value);
+    setIsDirty(true);
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = setTimeout(() => {
+      update.mutate({ id: analysisId, data: { notes: value } });
+    }, 1000);
+  };
+
+  useEffect(() => {
+    return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current); };
+  }, []);
+
+  return (
+    <Card className="border shadow-sm no-print">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <CardTitle className="text-base flex items-center gap-2">
+          <StickyNote className="w-4 h-4 text-yellow-500" /> Notes
+        </CardTitle>
+        <span className={`text-xs transition-opacity ${isDirty || update.isPending ? "opacity-100 text-muted-foreground" : "opacity-0"}`}>
+          {update.isPending ? "Saving..." : "Unsaved changes"}
+        </span>
+      </CardHeader>
+      <CardContent>
+        <Textarea
+          placeholder="Add private notes about this role, follow-ups, contacts, deadlines..."
+          value={notes}
+          onChange={(e) => handleChange(e.target.value)}
+          className="min-h-[120px] text-sm resize-none bg-muted/30"
+          data-testid="textarea-notes"
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function ShareSection({ analysisId, isPublic, shareToken }: { analysisId: number; isPublic: boolean; shareToken: string | null }) {
+  const queryClient = useQueryClient();
+  const { copy, isCopied } = useCopy();
+  const { toast } = useToast();
+
+  const share = useShareAnalysis({
+    mutation: {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) });
+        copy(data.shareUrl, "Share link copied!");
+        toast({ title: "Share link copied!", description: "Anyone with the link can view this analysis." });
+      },
+    },
+  });
+
+  const unshare = useUnshareAnalysis({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) });
+        toast({ title: "Link disabled", description: "This analysis is no longer public." });
+      },
+    },
+  });
+
+  const buildShareUrl = () => {
+    if (!shareToken) return "";
+    const base = window.location.origin + (import.meta.env.BASE_URL?.replace(/\/$/, "") || "");
+    return base + "/share/" + shareToken;
+  };
+
+  if (isPublic && shareToken) {
+    const url = buildShareUrl();
+    return (
+      <div className="flex items-center gap-2 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 no-print">
+        <Link2 className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-purple-700 dark:text-purple-400">Shared publicly</p>
+          <p className="text-xs text-muted-foreground truncate">{url}</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 border-purple-300 dark:border-purple-700"
+          onClick={() => copy(url, "Link copied!")}
+        >
+          {isCopied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+          Copy
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="shrink-0 text-muted-foreground"
+          onClick={() => unshare.mutate({ id: analysisId })}
+          disabled={unshare.isPending}
+        >
+          <EyeOff className="w-3.5 h-3.5 mr-1" />
+          Disable
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="no-print"
+      onClick={() => share.mutate({ id: analysisId })}
+      disabled={share.isPending}
+      data-testid="button-share"
+    >
+      {share.isPending ? (
+        <><Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />Creating link...</>
+      ) : (
+        <><Share2 className="w-3.5 h-3.5 mr-1.5" />Share</>
+      )}
+    </Button>
+  );
+}
+
 export function Analysis() {
   const params = useParams<{ id: string }>();
   const id = parseInt(params.id ?? "0", 10);
@@ -376,6 +509,12 @@ export function Analysis() {
 
   const deleteAnalysis = useDeleteAnalysis({
     mutation: { onSuccess: () => setLocation("/") },
+  });
+
+  const updateAnalysis = useUpdateAnalysis({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) }),
+    },
   });
 
   if (isLoading) {
@@ -430,7 +569,25 @@ export function Analysis() {
             {formatDistanceToNow(new Date(analysis.createdAt), { addSuffix: true })}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          {/* Favorite toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`no-print gap-1.5 ${analysis.isFavorite ? "text-pink-500" : "text-muted-foreground"}`}
+            onClick={() => updateAnalysis.mutate({ id, data: { isFavorite: !analysis.isFavorite } })}
+            data-testid="button-favorite"
+          >
+            <Heart className={`w-4 h-4 ${analysis.isFavorite ? "fill-pink-500" : ""}`} />
+            {analysis.isFavorite ? "Favorited" : "Favorite"}
+          </Button>
+
+          <ShareSection
+            analysisId={id}
+            isPublic={analysis.isPublic ?? false}
+            shareToken={analysis.shareToken ?? null}
+          />
+
           <Button
             variant="outline"
             size="sm"
@@ -572,6 +729,9 @@ export function Analysis() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Notes */}
+      <NotesSection analysisId={id} initialNotes={analysis.notes ?? null} />
 
       {/* AI Bullet Rewriter */}
       <BulletRewriter analysisId={id} />

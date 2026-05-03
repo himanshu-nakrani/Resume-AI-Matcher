@@ -81,6 +81,12 @@ export interface Analysis {
   status: AnalysisStatus;
   interviewQuestions: string[];
   learningPlan: LearningPlanItem[];
+  isFavorite: boolean;
+  /** @nullable */
+  notes: string | null;
+  /** @nullable */
+  shareToken: string | null;
+  isPublic: boolean;
   createdAt: string;
 }
 
@@ -104,6 +110,23 @@ export const UpdateAnalysisBodyStatus = {
 
 export interface UpdateAnalysisBody {
   status?: UpdateAnalysisBodyStatus;
+  notes?: string;
+  isFavorite?: boolean;
+}
+
+export interface ShareResponse {
+  shareToken: string;
+  shareUrl: string;
+}
+
+export interface FetchJobBody {
+  url: string;
+}
+
+export interface FetchJobResponse {
+  jobDescription: string;
+  jobTitle?: string;
+  companyName?: string;
 }
 
 export interface InterviewQuestionsResponse {

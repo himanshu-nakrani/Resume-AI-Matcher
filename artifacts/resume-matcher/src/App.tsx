@@ -8,20 +8,28 @@ import { Home } from "@/pages/home";
 import { Analysis } from "@/pages/analysis";
 import { History } from "@/pages/history";
 import { Stats } from "@/pages/stats";
+import { SharedAnalysis } from "@/pages/shared";
 
 const queryClient = new QueryClient();
 
+const base = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
+
 function Router() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/analysis/:id" component={Analysis} />
-        <Route path="/history" component={History} />
-        <Route path="/stats" component={Stats} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      <Route path="/share/:token" component={SharedAnalysis} />
+      <Route>
+        <Layout>
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route path="/analysis/:id" component={Analysis} />
+            <Route path="/history" component={History} />
+            <Route path="/stats" component={Stats} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 
@@ -29,7 +37,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL?.replace(/\/$/, "") || ""}>
+        <WouterRouter base={base}>
           <Router />
         </WouterRouter>
         <Toaster />

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, json, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -38,6 +38,12 @@ export const analyses = pgTable("analyses", {
   status: text("status").$type<ApplicationStatus>().notNull().default("not_applied"),
   interviewQuestions: json("interview_questions").$type<string[]>().notNull().default([]),
   learningPlan: json("learning_plan").$type<LearningPlanItem[]>().notNull().default([]),
+  // Phase 4: Favorites + Notes
+  isFavorite: boolean("is_favorite").notNull().default(false),
+  notes: text("notes"),
+  // Phase 1: Sharing
+  shareToken: text("share_token"),
+  isPublic: boolean("is_public").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

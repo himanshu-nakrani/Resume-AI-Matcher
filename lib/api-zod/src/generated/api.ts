@@ -63,6 +63,10 @@ export const ListAnalysesResponseItem = zod.object({
       ),
     }),
   ),
+  isFavorite: zod.boolean(),
+  notes: zod.string().nullable(),
+  shareToken: zod.string().nullable(),
+  isPublic: zod.boolean(),
   createdAt: zod.string(),
 });
 export const ListAnalysesResponse = zod.array(ListAnalysesResponseItem);
@@ -129,6 +133,10 @@ export const GetAnalysisResponse = zod.object({
       ),
     }),
   ),
+  isFavorite: zod.boolean(),
+  notes: zod.string().nullable(),
+  shareToken: zod.string().nullable(),
+  isPublic: zod.boolean(),
   createdAt: zod.string(),
 });
 
@@ -140,7 +148,7 @@ export const DeleteAnalysisParams = zod.object({
 });
 
 /**
- * @summary Update an analysis (e.g. application status)
+ * @summary Update an analysis (status, notes, favorite)
  */
 export const UpdateAnalysisParams = zod.object({
   id: zod.coerce.number(),
@@ -150,6 +158,8 @@ export const UpdateAnalysisBody = zod.object({
   status: zod
     .enum(["not_applied", "applied", "interview", "offer", "rejected"])
     .optional(),
+  notes: zod.string().optional(),
+  isFavorite: zod.boolean().optional(),
 });
 
 export const UpdateAnalysisResponse = zod.object({
@@ -197,6 +207,10 @@ export const UpdateAnalysisResponse = zod.object({
       ),
     }),
   ),
+  isFavorite: zod.boolean(),
+  notes: zod.string().nullable(),
+  shareToken: zod.string().nullable(),
+  isPublic: zod.boolean(),
   createdAt: zod.string(),
 });
 
@@ -282,6 +296,149 @@ export const GenerateLinkedinPostParams = zod.object({
 
 export const GenerateLinkedinPostResponse = zod.object({
   content: zod.string(),
+});
+
+/**
+ * @summary Generate a public share link for this analysis
+ */
+export const ShareAnalysisParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ShareAnalysisResponse = zod.object({
+  shareToken: zod.string(),
+  shareUrl: zod.string(),
+});
+
+/**
+ * @summary Remove public sharing from this analysis
+ */
+export const UnshareAnalysisParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UnshareAnalysisResponse = zod.object({
+  id: zod.number(),
+  jobTitle: zod.string(),
+  companyName: zod.string().nullable(),
+  resumeText: zod.string(),
+  jobDescriptionText: zod.string(),
+  fitScore: zod.number(),
+  fitRationale: zod.string(),
+  strengths: zod.array(zod.string()),
+  gaps: zod.array(zod.string()),
+  improvements: zod.array(zod.string()),
+  atsKeywordsMatched: zod.array(zod.string()),
+  atsKeywordsMissing: zod.array(zod.string()),
+  atsScore: zod.number(),
+  coverLetter: zod.string().nullable(),
+  linkedinPost: zod.string().nullable(),
+  status: zod.enum([
+    "not_applied",
+    "applied",
+    "interview",
+    "offer",
+    "rejected",
+  ]),
+  interviewQuestions: zod.array(zod.string()),
+  learningPlan: zod.array(
+    zod.object({
+      skill: zod.string(),
+      why: zod.string(),
+      priority: zod.enum(["high", "medium", "low"]),
+      resources: zod.array(
+        zod.object({
+          title: zod.string(),
+          type: zod.enum([
+            "course",
+            "certification",
+            "project",
+            "book",
+            "article",
+          ]),
+          description: zod.string(),
+          platform: zod.string().nullish(),
+        }),
+      ),
+    }),
+  ),
+  isFavorite: zod.boolean(),
+  notes: zod.string().nullable(),
+  shareToken: zod.string().nullable(),
+  isPublic: zod.boolean(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Get a publicly shared analysis by token
+ */
+export const GetSharedAnalysisParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const GetSharedAnalysisResponse = zod.object({
+  id: zod.number(),
+  jobTitle: zod.string(),
+  companyName: zod.string().nullable(),
+  resumeText: zod.string(),
+  jobDescriptionText: zod.string(),
+  fitScore: zod.number(),
+  fitRationale: zod.string(),
+  strengths: zod.array(zod.string()),
+  gaps: zod.array(zod.string()),
+  improvements: zod.array(zod.string()),
+  atsKeywordsMatched: zod.array(zod.string()),
+  atsKeywordsMissing: zod.array(zod.string()),
+  atsScore: zod.number(),
+  coverLetter: zod.string().nullable(),
+  linkedinPost: zod.string().nullable(),
+  status: zod.enum([
+    "not_applied",
+    "applied",
+    "interview",
+    "offer",
+    "rejected",
+  ]),
+  interviewQuestions: zod.array(zod.string()),
+  learningPlan: zod.array(
+    zod.object({
+      skill: zod.string(),
+      why: zod.string(),
+      priority: zod.enum(["high", "medium", "low"]),
+      resources: zod.array(
+        zod.object({
+          title: zod.string(),
+          type: zod.enum([
+            "course",
+            "certification",
+            "project",
+            "book",
+            "article",
+          ]),
+          description: zod.string(),
+          platform: zod.string().nullish(),
+        }),
+      ),
+    }),
+  ),
+  isFavorite: zod.boolean(),
+  notes: zod.string().nullable(),
+  shareToken: zod.string().nullable(),
+  isPublic: zod.boolean(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Fetch and extract job description text from a URL
+ */
+export const FetchJobDescriptionBody = zod.object({
+  url: zod.string(),
+});
+
+export const FetchJobDescriptionResponse = zod.object({
+  jobDescription: zod.string(),
+  jobTitle: zod.string().optional(),
+  companyName: zod.string().optional(),
 });
 
 /**

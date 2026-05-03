@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import {
   useListAnalyses,
@@ -11,13 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sparkles, Trash2, ArrowRight, ChevronDown } from "lucide-react";
+import { Sparkles, Trash2, ArrowRight, ChevronDown, Search, Heart, Filter, X } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 
 type Status = "not_applied" | "applied" | "interview" | "offer" | "rejected";
@@ -72,9 +74,34 @@ function StatusPicker({ analysisId, currentStatus }: { analysisId: number; curre
   );
 }
 
+function FavoriteButton({ analysisId, isFavorite }: { analysisId: number; isFavorite: boolean }) {
+  const queryClient = useQueryClient();
+  const update = useUpdateAnalysis({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
+    },
+  });
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        update.mutate({ id: analysisId, data: { isFavorite: !isFavorite } });
+      }}
+      className={`p-1 rounded transition-colors ${isFavorite ? "text-pink-500" : "text-muted-foreground hover:text-pink-400"}`}
+      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+    >
+      <Heart className={`w-3.5 h-3.5 ${isFavorite ? "fill-pink-500" : ""}`} />
+    </button>
+  );
+}
+
 export function History() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   const { data: analyses, isLoading } = useListAnalyses();
   const deleteAnalysis = useDeleteAnalysis({
@@ -83,12 +110,28 @@ export function History() {
     },
   });
 
+  const filtered = useMemo(() => {
+    if (!analyses) return [];
+    return analyses.filter((a) => {
+      const q = search.toLowerCase();
+      const matchesSearch =
+        !q ||
+        a.jobTitle.toLowerCase().includes(q) ||
+        (a.companyName ?? "").toLowerCase().includes(q);
+      const matchesStatus = statusFilter === "all" || a.status === statusFilter;
+      const matchesFavorite = !favoritesOnly || a.isFavorite;
+      return matchesSearch && matchesStatus && matchesFavorite;
+    });
+  }, [analyses, search, statusFilter, favoritesOnly]);
+
   const statusCounts = analyses
     ? ALL_STATUSES.reduce((acc, s) => {
         acc[s] = analyses.filter((a) => a.status === s).length;
         return acc;
       }, {} as Record<Status, number>)
     : null;
+
+  const hasFilters = search || statusFilter !== "all" || favoritesOnly;
 
   return (
     <div className="space-y-8">
@@ -99,13 +142,70 @@ export function History() {
 
       {/* Pipeline summary */}
       {statusCounts && analyses && analyses.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {ALL_STATUSES.filter((s) => s !== "not_applied").map((s) => (
-            <div key={s} className={`rounded-lg border px-3 py-2 text-center ${STATUS_CONFIG[s].className}`}>
+            <button
+              key={s}
+              onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
+              className={`rounded-lg border px-3 py-2 text-center transition-all ${STATUS_CONFIG[s].className} ${statusFilter === s ? "ring-2 ring-offset-1 ring-current" : "hover:opacity-80"}`}
+            >
               <p className="text-2xl font-bold tabular-nums">{statusCounts[s]}</p>
               <p className="text-xs font-medium mt-0.5">{STATUS_CONFIG[s].label}</p>
-            </div>
+            </button>
           ))}
+        </div>
+      )}
+
+      {/* Search + Filter bar */}
+      {analyses && analyses.length > 0 && (
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search by title or company..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 text-sm"
+            />
+          </div>
+          <Button
+            variant={favoritesOnly ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFavoritesOnly(!favoritesOnly)}
+            className="gap-1.5"
+          >
+            <Heart className={`w-3.5 h-3.5 ${favoritesOnly ? "fill-current" : ""}`} />
+            Favorites
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Filter className="w-3.5 h-3.5" />
+                {statusFilter === "all" ? "All statuses" : STATUS_CONFIG[statusFilter].label}
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setStatusFilter("all")}>All statuses</DropdownMenuItem>
+              {ALL_STATUSES.map((s) => (
+                <DropdownMenuItem key={s} onSelect={() => setStatusFilter(s)}>
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border ${STATUS_CONFIG[s].className}`}>
+                    {STATUS_CONFIG[s].label}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {hasFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSearch(""); setStatusFilter("all"); setFavoritesOnly(false); }}
+              className="text-muted-foreground gap-1"
+            >
+              <X className="w-3.5 h-3.5" /> Clear
+            </Button>
+          )}
         </div>
       )}
 
@@ -124,9 +224,19 @@ export function History() {
             Start New Analysis
           </Button>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground border border-dashed rounded-xl">
+          <Search className="w-6 h-6 mx-auto mb-2 opacity-30" />
+          <p className="font-medium">No matches</p>
+          <p className="text-sm mt-1">Try adjusting your search or filters.</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => { setSearch(""); setStatusFilter("all"); setFavoritesOnly(false); }}>
+            Clear filters
+          </Button>
+        </div>
       ) : (
         <div className="space-y-3" data-testid="analysis-list">
-          {analyses.map((a) => (
+          <p className="text-xs text-muted-foreground">{filtered.length} {filtered.length === 1 ? "analysis" : "analyses"}</p>
+          {filtered.map((a) => (
             <Card
               key={a.id}
               className="group border shadow-sm hover:shadow-md transition-all cursor-pointer"
@@ -151,9 +261,14 @@ export function History() {
                         Cover Letter
                       </Badge>
                     )}
-                    {a.linkedinPost && (
+                    {a.isPublic && (
                       <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                        LinkedIn
+                        Shared
+                      </Badge>
+                    )}
+                    {a.notes && (
+                      <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                        Note
                       </Badge>
                     )}
                   </div>
@@ -164,20 +279,23 @@ export function History() {
                   <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}</p>
                 </div>
 
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteAnalysis.mutate({ id: a.id });
-                    }}
-                    data-testid={`button-delete-${a.id}`}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                <div className="flex items-center gap-1 shrink-0">
+                  <FavoriteButton analysisId={a.id} isFavorite={a.isFavorite} />
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteAnalysis.mutate({ id: a.id });
+                      }}
+                      data-testid={`button-delete-${a.id}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
