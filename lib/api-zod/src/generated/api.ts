@@ -742,3 +742,57 @@ export const GetAnalysisStatsResponse = zod.object({
   averageAtsScore: zod.number(),
   topMissingKeywords: zod.array(zod.string()),
 });
+
+/**
+ * @summary List all notifications
+ */
+export const ListNotificationsResponseItem = zod.object({
+  id: zod.number(),
+  type: zod.enum(["deadline", "follow_up", "info"]),
+  title: zod.string(),
+  body: zod.string(),
+  analysisId: zod.number().nullable(),
+  read: zod.boolean(),
+  createdAt: zod.string(),
+});
+export const ListNotificationsResponse = zod.array(
+  ListNotificationsResponseItem,
+);
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const MarkNotificationReadResponse = zod.object({
+  id: zod.number(),
+  type: zod.enum(["deadline", "follow_up", "info"]),
+  title: zod.string(),
+  body: zod.string(),
+  analysisId: zod.number().nullable(),
+  read: zod.boolean(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Score a timed STAR interview answer with AI feedback
+ */
+export const GetPracticeFeedbackParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetPracticeFeedbackBody = zod.object({
+  question: zod.string(),
+  answer: zod.string(),
+  timeUsed: zod.number(),
+});
+
+export const GetPracticeFeedbackResponse = zod.object({
+  score: zod.number(),
+  feedback: zod.string(),
+  strengths: zod.array(zod.string()),
+  improvements: zod.array(zod.string()),
+  modelAnswer: zod.string(),
+});

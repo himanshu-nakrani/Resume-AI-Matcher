@@ -301,3 +301,41 @@ export interface AnalysisStats {
   averageAtsScore: number;
   topMissingKeywords: string[];
 }
+
+export type NotificationType =
+  (typeof NotificationType)[keyof typeof NotificationType];
+
+export const NotificationType = {
+  deadline: "deadline",
+  follow_up: "follow_up",
+  info: "info",
+} as const;
+
+export interface Notification {
+  id: number;
+  type: NotificationType;
+  title: string;
+  body: string;
+  /** @nullable */
+  analysisId: number | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface MarkNotificationReadParams {
+  id: number;
+}
+
+export interface PracticeFeedbackBody {
+  question: string;
+  answer: string;
+  timeUsed: number;
+}
+
+export interface PracticeFeedbackResponse {
+  score: number;
+  feedback: string;
+  strengths: string[];
+  improvements: string[];
+  modelAnswer: string;
+}

@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { desc, eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { z } from "zod";
-import { db, analyses } from "@workspace/db";
+import { db, analyses, notifications } from "@workspace/db";
 import {
   CreateAnalysisBody,
   GetAnalysisParams,
@@ -22,6 +22,7 @@ import {
   FetchJobDescriptionBody,
   DuplicateAnalysisParams,
   GenerateSalaryGuideParams,
+  GetPracticeFeedbackBody,
 } from "@workspace/api-zod";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
@@ -34,6 +35,54 @@ router.get("/analyses", async (req, res): Promise<void> => {
     .select()
     .from(analyses)
     .orderBy(desc(analyses.createdAt));
+
+  // Auto-create notifications for deadlines ≤3 days and overdue follow-ups
+  const now = new Date();
+  const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+  const toInsert: (typeof notifications.$inferInsert)[] = [];
+
+  for (const a of rows) {
+    if (a.deadline) {
+      const dl = new Date(a.deadline);
+      if (dl >= now && dl <= threeDaysFromNow) {
+        const exists = await db.query.notifications.findFirst({
+          where: (n, { eq, and }) => and(eq(n.analysisId, a.id), eq(n.type, "deadline")),
+        });
+        if (!exists) {
+          const daysLeft = Math.ceil((dl.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          toInsert.push({
+            type: "deadline",
+            title: "Application deadline soon",
+            body: (a.jobTitle) + " at " + (a.companyName ?? "the company") + " — " + (daysLeft === 0 ? "due today" : daysLeft === 1 ? "due tomorrow" : "due in " + daysLeft + " days"),
+            analysisId: a.id,
+            read: false,
+          });
+        }
+      }
+    }
+    if (a.followUpDate) {
+      const fu = new Date(a.followUpDate);
+      if (fu <= now) {
+        const exists = await db.query.notifications.findFirst({
+          where: (n, { eq, and }) => and(eq(n.analysisId, a.id), eq(n.type, "follow_up")),
+        });
+        if (!exists) {
+          toInsert.push({
+            type: "follow_up",
+            title: "Follow-up reminder",
+            body: "Time to follow up on " + (a.jobTitle) + (a.companyName ? " at " + a.companyName : "") + ".",
+            analysisId: a.id,
+            read: false,
+          });
+        }
+      }
+    }
+  }
+
+  if (toInsert.length > 0) {
+    await db.insert(notifications).values(toInsert);
+  }
+
   res.json(rows);
 });
 
@@ -1097,6 +1146,98 @@ router.post("/analyses/:id/star-answer", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "STAR answer generation failed");
     res.status(500).json({ error: "STAR answer generation failed" });
+  }
+});
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+router.get("/notifications", async (req, res) => {
+  const items = await db
+    .select()
+    .from(notifications)
+    .orderBy(desc(notifications.createdAt));
+  res.json(items.map((n) => ({
+    id: n.id,
+    type: n.type,
+    title: n.title,
+    body: n.body,
+    analysisId: n.analysisId,
+    read: n.read,
+    createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : String(n.createdAt),
+  })));
+});
+
+router.patch("/notifications", async (_req, res) => {
+  await db.update(notifications).set({ read: true });
+  res.status(204).end();
+});
+
+router.patch("/notifications/:id/read", async (req, res) => {
+  const id = Number(req.params.id);
+  const [updated] = await db
+    .update(notifications)
+    .set({ read: true })
+    .where(eq(notifications.id, id))
+    .returning();
+  if (!updated) return res.status(404).json({ error: "Notification not found" });
+  res.json({
+    id: updated.id,
+    type: updated.type,
+    title: updated.title,
+    body: updated.body,
+    analysisId: updated.analysisId,
+    read: updated.read,
+    createdAt: updated.createdAt instanceof Date ? updated.createdAt.toISOString() : String(updated.createdAt),
+  });
+});
+
+// ─── Practice Feedback ────────────────────────────────────────────────────────
+
+router.post("/analyses/:id/practice-feedback", async (req, res) => {
+  const id = Number(req.params.id);
+  const analysis = await db.query.analyses.findFirst({ where: eq(analyses.id, id) });
+  if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+
+  const body = GetPracticeFeedbackBody.safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "Invalid body" });
+
+  const prompt =
+    "You are an expert interview coach evaluating a candidate's STAR-method answer.\n\n" +
+    "Job Title: " + analysis.jobTitle + "\n" +
+    "Company: " + (analysis.companyName ?? "the company") + "\n" +
+    "Question: " + body.data.question + "\n" +
+    "Time Used: " + body.data.timeUsed + " seconds\n\n" +
+    "Candidate's Answer:\n" + body.data.answer + "\n\n" +
+    "Evaluate the answer strictly on the STAR framework (Situation, Task, Action, Result). " +
+    "Score 0-100 (25 pts per STAR component). Also provide 2-3 specific strengths, 2-3 improvement tips, and a model answer. " +
+    "Return ONLY valid JSON (no markdown):\n" +
+    '{"score": <0-100>, "feedback": "<1-2 sentence overall summary>", "strengths": ["..."], "improvements": ["..."], "modelAnswer": "<100-200 word STAR answer>"}';
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    let result: { score: number; feedback: string; strengths: string[]; improvements: string[]; modelAnswer: string };
+    try {
+      result = JSON.parse(raw);
+    } catch {
+      result = { score: 50, feedback: raw, strengths: [], improvements: [], modelAnswer: "" };
+    }
+
+    res.json({
+      score: Math.max(0, Math.min(100, Number(result.score) || 50)),
+      feedback: result.feedback ?? "",
+      strengths: Array.isArray(result.strengths) ? result.strengths : [],
+      improvements: Array.isArray(result.improvements) ? result.improvements : [],
+      modelAnswer: result.modelAnswer ?? "",
+    });
+  } catch (err) {
+    logger.error({ err }, "Practice feedback generation failed");
+    res.status(500).json({ error: "Practice feedback generation failed" });
   }
 });
 

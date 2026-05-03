@@ -20,6 +20,8 @@ import {
   useSimulateNegotiation,
   useGenerateStarAnswer,
 } from "@workspace/api-client-react";
+import { InterviewPractice } from "@/components/interview-practice";
+import { NegotiationCalculator } from "@/components/negotiation-calculator";
 import type { LearningPlanItem, LearningResource } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScoreCircle } from "@/components/score-circle";
@@ -1870,6 +1872,20 @@ export function Analysis() {
 
       {/* Learning Plan */}
       <LearningPlanSection analysisId={id} existingItems={learningPlan} />
+
+      {/* Interview Practice Mode */}
+      {interviewQuestions.length > 0 && (
+        <InterviewPractice analysisId={id} questions={interviewQuestions} />
+      )}
+
+      {/* Negotiation Calculator */}
+      <NegotiationCalculator
+        currentSalary={
+          analysis.salaryGuide
+            ? (analysis.salaryGuide as { low: number; mid: number; high: number }).mid
+            : undefined
+        }
+      />
 
       {/* Cover Letter */}
       <Card className="border shadow-sm">

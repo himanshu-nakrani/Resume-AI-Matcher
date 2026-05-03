@@ -23,7 +23,9 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/db run push-force` — force push without prompts
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
+- After codegen: rebuild lib with `cd lib/api-zod && pnpm exec tsc -p tsconfig.json --noEmitOnError false`
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 
@@ -54,6 +56,17 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 18. **AI Salary Guide** — AI-estimated salary range (low/mid/high) with market context, salary-raising factors, negotiation tips, visual bar
 19. **Comparison View** — `/compare` route, pick any 2 analyses for side-by-side score/keyword/strength/gap comparison
 20. **Keyboard Command Palette** — `⌘K` / `Ctrl+K` global search across all analyses, quick-jump to any analysis
+21. **Company Research** — AI company overview, culture notes, red flags, interview tips
+22. **Red Flags Detector** — AI scans job description for warning signs
+23. **Negotiation Simulator** — multi-turn AI salary negotiation chat with offer/counter offers
+24. **STAR Answer Helper** — generate or polish STAR-method interview answers per question
+25. **Skills Tracker** — `/skills` page tracks most common matched/missing keywords across all analyses
+26. **In-App Notifications (Phase 8)** — bell icon in sidebar/mobile header; auto-creates deadline (≤3 days) and follow-up notifications on every GET /analyses; mark-one/mark-all read; real-time badge count
+27. **Interview Practice Mode (Phase 9)** — timed STAR answer practice (2-min timer) with local STAR component scoring; session history in localStorage; shown on analysis page when interview questions exist
+28. **Negotiation Calculator (Phase 10)** — offer/target/floor salary calculator with gap analysis, midpoint, 5 script templates with auto-fill; collapsible on analysis page
+29. **Funnel Analytics (Phase 12)** — pipeline widget on home page (applied → interview → offer conversion rates); full pipeline breakdown on Stats page
+30. **Error Boundary (Tech Debt)** — wraps all routes in `Layout` + outer App; shows friendly error UI with "Try again" button
+31. **DB Indexes (Tech Debt)** — indexes on `analyses.created_at`, `analyses.status`, `analyses.fit_score`, `notifications.read`, `notifications.created_at`
 
 ### Key AI notes
 - Model: `gpt-5.4` with `max_completion_tokens`
@@ -62,7 +75,8 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 
 ### DB schema
 - Table: `analyses` in `lib/db/src/schema/analyses.ts`
-- Key fields: `fitScore`, `atsScore`, `strengths[]`, `gaps[]`, `improvements[]`, `atsKeywordsMatched[]`, `atsKeywordsMissing[]`, `coverLetter`, `linkedinPost`, `interviewQuestions[]`, `learningPlan[]`, `status`, `isFavorite`, `notes`, `shareToken`, `isPublic`, `deadline`, `contactName`, `contactEmail`, `followUpDate`, `tags[]`, `salaryGuide` (jsonb)
+- Table: `notifications` in `lib/db/src/schema/notifications.ts` — fields: id, type (deadline/follow_up/info), title, body, analysisId (FK→analyses cascade), read, createdAt
+- Key analyses fields: `fitScore`, `atsScore`, `strengths[]`, `gaps[]`, `improvements[]`, `atsKeywordsMatched[]`, `atsKeywordsMissing[]`, `coverLetter`, `linkedinPost`, `interviewQuestions[]`, `learningPlan[]`, `status`, `isFavorite`, `notes`, `shareToken`, `isPublic`, `deadline`, `contactName`, `contactEmail`, `followUpDate`, `tags[]`, `salaryGuide` (jsonb)
 
 ### API contract
 - OpenAPI spec: `lib/api-spec/openapi.yaml`
@@ -70,6 +84,8 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - React hooks: `lib/api-client-react/src/generated/api.ts` + `api.schemas.ts`
 
 ### Important patterns
-- `lib/api-zod/src/index.ts` must only export `export * from "./generated/api"` — the `types/` subdirectory has duplicate names, re-exporting it causes TS2308 errors
+- `lib/api-zod/src/index.ts` must only export `export * from "./generated/api"` — the `types/` subdirectory has duplicate names, re-exporting it causes TS2308 errors. After every codegen run, check and fix this.
 - Shared analysis page (`/share/:token`) renders outside the main Layout (no sidebar)
 - Notes auto-save after 1s debounce using `useUpdateAnalysis`
+- Auto-notifications: GET /analyses side-effect creates deadline/follow_up notifications; idempotent (checks for existing)
+- Interview Practice scoring is client-side (STAR keyword detection); AI-powered scoring available via POST /analyses/:id/practice-feedback

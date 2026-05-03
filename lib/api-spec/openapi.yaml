@@ -542,6 +542,84 @@ paths:
               schema:
                 $ref: "#/components/schemas/AnalysisStats"
 
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [analyses]
+      summary: List all notifications
+      responses:
+        "200":
+          description: Notifications list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+    patch:
+      operationId: markAllNotificationsRead
+      tags: [analyses]
+      summary: Mark all notifications as read
+      responses:
+        "204":
+          description: All marked read
+
+  /notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [analyses]
+      summary: Mark a single notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/{id}/practice-feedback:
+    post:
+      operationId: getPracticeFeedback
+      tags: [analyses]
+      summary: Score a timed STAR interview answer with AI feedback
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PracticeFeedbackBody"
+      responses:
+        "200":
+          description: Practice feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeFeedbackResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1073,3 +1151,76 @@ components:
         - averageFitScore
         - averageAtsScore
         - topMissingKeywords
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [deadline, follow_up, info]
+        title:
+          type: string
+        body:
+          type: string
+        analysisId:
+          type: ["integer", "null"]
+        read:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - type
+        - title
+        - body
+        - analysisId
+        - read
+        - createdAt
+
+    MarkNotificationReadParams:
+      type: object
+      properties:
+        id:
+          type: integer
+      required:
+        - id
+
+    PracticeFeedbackBody:
+      type: object
+      properties:
+        question:
+          type: string
+        answer:
+          type: string
+        timeUsed:
+          type: integer
+      required:
+        - question
+        - answer
+        - timeUsed
+
+    PracticeFeedbackResponse:
+      type: object
+      properties:
+        score:
+          type: integer
+        feedback:
+          type: string
+        strengths:
+          type: array
+          items:
+            type: string
+        improvements:
+          type: array
+          items:
+            type: string
+        modelAnswer:
+          type: string
+      required:
+        - score
+        - feedback
+        - strengths
+        - improvements
+        - modelAnswer

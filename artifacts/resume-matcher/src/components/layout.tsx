@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 import { useTheme, type ThemeVariant } from "@/hooks/use-theme";
 import { CommandPalette } from "@/components/command-palette";
+import { NotificationsPanel } from "@/components/notifications-panel";
 
 const navItems = [
   { href: "/", label: "New Analysis", icon: PlusCircle },
@@ -155,7 +156,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="p-4 border-t space-y-2">
+        <div className="px-4 pt-3 border-t flex items-center justify-between">
+          <span className="text-xs font-semibold text-muted-foreground">Notifications</span>
+          <NotificationsPanel />
+        </div>
+        <div className="p-4 space-y-2">
           <div className="text-xs font-semibold text-muted-foreground px-2 mb-2">Theme</div>
           <div className="flex gap-2">
             {themes.map((t) => (
@@ -202,9 +207,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <LayoutDashboard className="w-4 h-4" />
             <span>OptiMatch</span>
           </div>
-          <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle dark mode">
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </Button>
+          <div className="flex items-center gap-1">
+            <NotificationsPanel />
+            <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle dark mode">
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
+          </div>
         </header>
 
         <div className="flex-1 p-4 md:p-8 overflow-auto pb-20 md:pb-8">

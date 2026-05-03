@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useCreateAnalysis, useListAnalyses, useDeleteAnalysis, getListAnalysesQueryKey, useFetchJobDescription } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { FunnelWidget } from "@/components/funnel-widget";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -353,6 +354,11 @@ export function Home() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Funnel Pipeline Widget */}
+      {analyses && analyses.length >= 2 && (
+        <FunnelWidget analyses={analyses} />
       )}
 
       {/* Recent Analyses */}
