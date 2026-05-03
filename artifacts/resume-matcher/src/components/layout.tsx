@@ -1,12 +1,19 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, History, BarChart2, PlusCircle, Moon, Sun } from "lucide-react";
+import { LayoutDashboard, History, BarChart2, PlusCircle, Moon, Sun, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDarkMode } from "@/hooks/use-dark-mode";
+import { useTheme, type ThemeVariant } from "@/hooks/use-theme";
 
 const navItems = [
   { href: "/", label: "New Analysis", icon: PlusCircle },
   { href: "/history", label: "History", icon: History },
   { href: "/stats", label: "Stats", icon: BarChart2 },
+];
+
+const themes: { value: ThemeVariant; label: string; emoji: string }[] = [
+  { value: "warm", label: "Warm", emoji: "🔥" },
+  { value: "formal", label: "Formal", emoji: "💼" },
+  { value: "minimal", label: "Minimal", emoji: "⚪" },
 ];
 
 function isActive(location: string, href: string) {
@@ -17,6 +24,7 @@ function isActive(location: string, href: string) {
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { isDark, toggle } = useDarkMode();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="flex min-h-screen w-full bg-muted/30">
@@ -45,11 +53,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="p-4 border-t">
+        <div className="p-4 border-t space-y-2">
+          <div className="text-xs font-semibold text-muted-foreground px-2 mb-2">Theme</div>
+          <div className="flex gap-2">
+            {themes.map((t) => (
+              <button
+                key={t.value}
+                onClick={() => setTheme(t.value)}
+                className={`flex-1 px-2 py-2 rounded text-xs font-medium transition-all ${
+                  theme === t.value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-secondary"
+                }`}
+                title={t.label}
+              >
+                {t.emoji}
+              </button>
+            ))}
+          </div>
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start text-muted-foreground font-medium"
+            className="w-full justify-start text-muted-foreground font-medium mt-2"
             onClick={toggle}
             aria-label="Toggle dark mode"
           >
