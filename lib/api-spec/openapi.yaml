@@ -670,6 +670,62 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /analyses/{id}/predict-offer:
+    post:
+      operationId: predictOffer
+      tags: [analyses]
+      summary: Predict offer likelihood using AI analysis
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Offer prediction generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictOfferResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/{id}/mock-interview:
+    post:
+      operationId: conductMockInterview
+      tags: [analyses]
+      summary: Conduct one turn of an AI mock interview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MockInterviewBody"
+      responses:
+        "200":
+          description: Mock interview turn response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MockInterviewResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /analyses/{id}/practice-feedback:
     post:
       operationId: getPracticeFeedback
@@ -808,6 +864,12 @@ components:
           type: array
           items:
             type: string
+        versionLabel:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        salaryExpectation:
+          type: ["string", "null"]
         createdAt:
           type: string
       required:
@@ -882,6 +944,12 @@ components:
           type: array
           items:
             type: string
+        versionLabel:
+          type: string
+        location:
+          type: string
+        salaryExpectation:
+          type: string
 
     SalaryRange:
       type: object
@@ -1422,3 +1490,58 @@ components:
         - strengths
         - improvements
         - modelAnswer
+
+    PredictOfferResponse:
+      type: object
+      properties:
+        probability:
+          type: integer
+        rating:
+          type: string
+          enum: [strong, good, fair, weak]
+        strengthFactors:
+          type: array
+          items:
+            type: string
+        riskFactors:
+          type: array
+          items:
+            type: string
+        actionItems:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+      required:
+        - probability
+        - rating
+        - strengthFactors
+        - riskFactors
+        - actionItems
+        - summary
+
+    MockInterviewBody:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+      required:
+        - messages
+
+    MockInterviewResponse:
+      type: object
+      properties:
+        question:
+          type: string
+        feedback:
+          type: ["string", "null"]
+        isComplete:
+          type: boolean
+        overallNotes:
+          type: ["string", "null"]
+      required:
+        - question
+        - isComplete

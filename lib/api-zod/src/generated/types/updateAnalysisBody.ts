@@ -17,4 +17,7 @@ export interface UpdateAnalysisBody {
   followUpDate?: string;
   tags?: string[];
   portfolioLinks?: string[];
+  versionLabel?: string;
+  location?: string;
+  salaryExpectation?: string;
 }

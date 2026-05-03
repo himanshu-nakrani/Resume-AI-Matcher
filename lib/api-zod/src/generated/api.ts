@@ -105,6 +105,9 @@ export const ListAnalysesResponseItem = zod.object({
     )
     .nullish(),
   portfolioLinks: zod.array(zod.string()).optional(),
+  versionLabel: zod.string().nullish(),
+  location: zod.string().nullish(),
+  salaryExpectation: zod.string().nullish(),
   createdAt: zod.string(),
 });
 export const ListAnalysesResponse = zod.array(ListAnalysesResponseItem);
@@ -213,6 +216,9 @@ export const GetAnalysisResponse = zod.object({
     )
     .nullish(),
   portfolioLinks: zod.array(zod.string()).optional(),
+  versionLabel: zod.string().nullish(),
+  location: zod.string().nullish(),
+  salaryExpectation: zod.string().nullish(),
   createdAt: zod.string(),
 });
 
@@ -242,6 +248,9 @@ export const UpdateAnalysisBody = zod.object({
   followUpDate: zod.string().optional(),
   tags: zod.array(zod.string()).optional(),
   portfolioLinks: zod.array(zod.string()).optional(),
+  versionLabel: zod.string().optional(),
+  location: zod.string().optional(),
+  salaryExpectation: zod.string().optional(),
 });
 
 export const UpdateAnalysisResponse = zod.object({
@@ -331,6 +340,9 @@ export const UpdateAnalysisResponse = zod.object({
     )
     .nullish(),
   portfolioLinks: zod.array(zod.string()).optional(),
+  versionLabel: zod.string().nullish(),
+  location: zod.string().nullish(),
+  salaryExpectation: zod.string().nullish(),
   createdAt: zod.string(),
 });
 
@@ -626,6 +638,9 @@ export const UnshareAnalysisResponse = zod.object({
     )
     .nullish(),
   portfolioLinks: zod.array(zod.string()).optional(),
+  versionLabel: zod.string().nullish(),
+  location: zod.string().nullish(),
+  salaryExpectation: zod.string().nullish(),
   createdAt: zod.string(),
 });
 
@@ -723,6 +738,9 @@ export const GetSharedAnalysisResponse = zod.object({
     )
     .nullish(),
   portfolioLinks: zod.array(zod.string()).optional(),
+  versionLabel: zod.string().nullish(),
+  location: zod.string().nullish(),
+  salaryExpectation: zod.string().nullish(),
   createdAt: zod.string(),
 });
 
@@ -847,6 +865,45 @@ export const GenerateFollowUpEmailResponse = zod.object({
   subject: zod.string(),
   body: zod.string(),
   tips: zod.array(zod.string()),
+});
+
+/**
+ * @summary Predict offer likelihood using AI analysis
+ */
+export const PredictOfferParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PredictOfferResponse = zod.object({
+  probability: zod.number(),
+  rating: zod.enum(["strong", "good", "fair", "weak"]),
+  strengthFactors: zod.array(zod.string()),
+  riskFactors: zod.array(zod.string()),
+  actionItems: zod.array(zod.string()),
+  summary: zod.string(),
+});
+
+/**
+ * @summary Conduct one turn of an AI mock interview
+ */
+export const ConductMockInterviewParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ConductMockInterviewBody = zod.object({
+  messages: zod.array(
+    zod.object({
+      role: zod.enum(["user", "assistant"]),
+      content: zod.string(),
+    }),
+  ),
+});
+
+export const ConductMockInterviewResponse = zod.object({
+  question: zod.string(),
+  feedback: zod.string().nullish(),
+  isComplete: zod.boolean(),
+  overallNotes: zod.string().nullish(),
 });
 
 /**

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { History, BarChart2, PlusCircle, Moon, Sun, GitCompareArrows, Keyboard, GraduationCap, X, Sparkles, LayoutGrid, Fingerprint } from "lucide-react";
+import { History, BarChart2, PlusCircle, Moon, Sun, GitCompareArrows, Keyboard, GraduationCap, X, Sparkles, LayoutGrid, Fingerprint, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 import { useTheme, type ThemeVariant } from "@/hooks/use-theme";
@@ -10,6 +10,7 @@ import { NotificationsPanel } from "@/components/notifications-panel";
 const navItems = [
   { href: "/", label: "New Analysis", icon: PlusCircle },
   { href: "/board", label: "Job Board", icon: LayoutGrid },
+  { href: "/versions", label: "Versions", icon: GitBranch },
   { href: "/history", label: "History", icon: History },
   { href: "/brand", label: "Brand", icon: Fingerprint },
   { href: "/stats", label: "Stats", icon: BarChart2 },

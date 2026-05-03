@@ -145,6 +145,12 @@ export interface Analysis {
   companyResearch?: CompanyResearch | null;
   redFlags?: RedFlag[] | null;
   portfolioLinks?: string[];
+  /** @nullable */
+  versionLabel?: string | null;
+  /** @nullable */
+  location?: string | null;
+  /** @nullable */
+  salaryExpectation?: string | null;
   createdAt: string;
 }
 
@@ -176,6 +182,9 @@ export interface UpdateAnalysisBody {
   followUpDate?: string;
   tags?: string[];
   portfolioLinks?: string[];
+  versionLabel?: string;
+  location?: string;
+  salaryExpectation?: string;
 }
 
 export type SalaryGuideResponsePeriod =
@@ -405,4 +414,36 @@ export interface PracticeFeedbackResponse {
   strengths: string[];
   improvements: string[];
   modelAnswer: string;
+}
+
+export type PredictOfferResponseRating =
+  (typeof PredictOfferResponseRating)[keyof typeof PredictOfferResponseRating];
+
+export const PredictOfferResponseRating = {
+  strong: "strong",
+  good: "good",
+  fair: "fair",
+  weak: "weak",
+} as const;
+
+export interface PredictOfferResponse {
+  probability: number;
+  rating: PredictOfferResponseRating;
+  strengthFactors: string[];
+  riskFactors: string[];
+  actionItems: string[];
+  summary: string;
+}
+
+export interface MockInterviewBody {
+  messages: ChatMessage[];
+}
+
+export interface MockInterviewResponse {
+  question: string;
+  /** @nullable */
+  feedback?: string | null;
+  isComplete: boolean;
+  /** @nullable */
+  overallNotes?: string | null;
 }

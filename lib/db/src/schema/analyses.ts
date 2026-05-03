@@ -78,6 +78,9 @@ export const analyses = pgTable("analyses", {
   companyResearch: json("company_research").$type<CompanyResearch>(),
   redFlags: json("red_flags").$type<RedFlag[]>(),
   portfolioLinks: json("portfolio_links").$type<string[]>().notNull().default([]),
+  versionLabel: text("version_label"),
+  location: text("location"),
+  salaryExpectation: text("salary_expectation"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

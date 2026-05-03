@@ -52,5 +52,11 @@ export interface Analysis {
   companyResearch?: CompanyResearch | null;
   redFlags?: RedFlag[] | null;
   portfolioLinks?: string[];
+  /** @nullable */
+  versionLabel?: string | null;
+  /** @nullable */
+  location?: string | null;
+  /** @nullable */
+  salaryExpectation?: string | null;
   createdAt: string;
 }

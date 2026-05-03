@@ -14,6 +14,7 @@ import { Brand } from "@/pages/brand";
 import { SharedAnalysis } from "@/pages/shared";
 import { Compare } from "@/pages/compare";
 import { Skills } from "@/pages/skills";
+import { Versions } from "@/pages/versions";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +43,7 @@ function Router() {
               <Route path="/brand" component={Brand} />
               <Route path="/compare" component={Compare} />
               <Route path="/skills" component={Skills} />
+              <Route path="/versions" component={Versions} />
               <Route component={NotFound} />
             </Switch>
           </ErrorBoundary>

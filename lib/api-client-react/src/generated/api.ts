@@ -33,11 +33,14 @@ import type {
   InterviewQuestionsResponse,
   LearningPlanResponse,
   MarketInsightsResponse,
+  MockInterviewBody,
+  MockInterviewResponse,
   NegotiateBody,
   NegotiateResponse,
   Notification,
   PracticeFeedbackBody,
   PracticeFeedbackResponse,
+  PredictOfferResponse,
   RedFlagsResponse,
   RewriteBulletBody,
   RewriteBulletResponse,
@@ -2404,6 +2407,177 @@ export const useGenerateFollowUpEmail = <
   TContext
 > => {
   return useMutation(getGenerateFollowUpEmailMutationOptions(options));
+};
+
+/**
+ * @summary Predict offer likelihood using AI analysis
+ */
+export const getPredictOfferUrl = (id: number) => {
+  return `/api/analyses/${id}/predict-offer`;
+};
+
+export const predictOffer = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PredictOfferResponse> => {
+  return customFetch<PredictOfferResponse>(getPredictOfferUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getPredictOfferMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof predictOffer>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof predictOffer>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["predictOffer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof predictOffer>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return predictOffer(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PredictOfferMutationResult = NonNullable<
+  Awaited<ReturnType<typeof predictOffer>>
+>;
+
+export type PredictOfferMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Predict offer likelihood using AI analysis
+ */
+export const usePredictOffer = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof predictOffer>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof predictOffer>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getPredictOfferMutationOptions(options));
+};
+
+/**
+ * @summary Conduct one turn of an AI mock interview
+ */
+export const getConductMockInterviewUrl = (id: number) => {
+  return `/api/analyses/${id}/mock-interview`;
+};
+
+export const conductMockInterview = async (
+  id: number,
+  mockInterviewBody: MockInterviewBody,
+  options?: RequestInit,
+): Promise<MockInterviewResponse> => {
+  return customFetch<MockInterviewResponse>(getConductMockInterviewUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(mockInterviewBody),
+  });
+};
+
+export const getConductMockInterviewMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof conductMockInterview>>,
+    TError,
+    { id: number; data: BodyType<MockInterviewBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof conductMockInterview>>,
+  TError,
+  { id: number; data: BodyType<MockInterviewBody> },
+  TContext
+> => {
+  const mutationKey = ["conductMockInterview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof conductMockInterview>>,
+    { id: number; data: BodyType<MockInterviewBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return conductMockInterview(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConductMockInterviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof conductMockInterview>>
+>;
+export type ConductMockInterviewMutationBody = BodyType<MockInterviewBody>;
+export type ConductMockInterviewMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Conduct one turn of an AI mock interview
+ */
+export const useConductMockInterview = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof conductMockInterview>>,
+    TError,
+    { id: number; data: BodyType<MockInterviewBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof conductMockInterview>>,
+  TError,
+  { id: number; data: BodyType<MockInterviewBody> },
+  TContext
+> => {
+  return useMutation(getConductMockInterviewMutationOptions(options));
 };
 
 /**

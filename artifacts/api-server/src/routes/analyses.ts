@@ -23,6 +23,9 @@ import {
   DuplicateAnalysisParams,
   GenerateSalaryGuideParams,
   GetPracticeFeedbackBody,
+  PredictOfferParams,
+  ConductMockInterviewParams,
+  ConductMockInterviewBody,
 } from "@workspace/api-zod";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
@@ -1311,6 +1314,108 @@ router.post("/analyses/:id/follow-up-email", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Follow-up email generation failed");
     res.status(500).json({ error: "Follow-up email generation failed" });
+  }
+});
+
+// ─── Predict Offer ────────────────────────────────────────────────────────────
+
+router.post("/analyses/:id/predict-offer", async (req, res) => {
+  const id = Number(req.params.id);
+  const analysis = await db.query.analyses.findFirst({ where: eq(analyses.id, id) });
+  if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+
+  const prompt =
+    "You are a senior recruiter and data scientist predicting the likelihood of a job offer based on a resume vs job description match.\n\n" +
+    "Job Title: " + analysis.jobTitle + "\n" +
+    "Company: " + (analysis.companyName ?? "the company") + "\n" +
+    "Fit Score: " + analysis.fitScore + "/100\n" +
+    "ATS Score: " + analysis.atsScore + "/100\n" +
+    "Key Strengths: " + (analysis.strengths ?? []).slice(0, 4).join(", ") + "\n" +
+    "Key Gaps: " + (analysis.gaps ?? []).slice(0, 4).join(", ") + "\n" +
+    "Missing Keywords: " + (analysis.atsKeywordsMissing ?? []).slice(0, 5).join(", ") + "\n\n" +
+    "Based on these signals, predict the probability of receiving an offer (0-100). " +
+    "Be realistic — most candidates are 20-60%, exceptional is 70-85%, near-perfect is 85+%. " +
+    "Return ONLY valid JSON (no markdown):\n" +
+    '{"probability": <0-100>, "rating": "<strong|good|fair|weak>", "strengthFactors": ["<2-3 factors helping the odds>"], "riskFactors": ["<2-3 factors hurting the odds>"], "actionItems": ["<2-3 specific actions to improve odds>"], "summary": "<1 concise sentence prediction with reasoning>"}';
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 600,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    let result: { probability: number; rating: string; strengthFactors: string[]; riskFactors: string[]; actionItems: string[]; summary: string };
+    try { result = JSON.parse(raw); } catch {
+      result = { probability: 50, rating: "fair", strengthFactors: [], riskFactors: [], actionItems: [], summary: raw };
+    }
+    res.json({
+      probability: Math.max(0, Math.min(100, Number(result.probability) || 50)),
+      rating: ["strong", "good", "fair", "weak"].includes(result.rating) ? result.rating : "fair",
+      strengthFactors: Array.isArray(result.strengthFactors) ? result.strengthFactors.slice(0, 3) : [],
+      riskFactors: Array.isArray(result.riskFactors) ? result.riskFactors.slice(0, 3) : [],
+      actionItems: Array.isArray(result.actionItems) ? result.actionItems.slice(0, 3) : [],
+      summary: result.summary ?? "",
+    });
+  } catch (err) {
+    logger.error({ err }, "Offer prediction failed");
+    res.status(500).json({ error: "Offer prediction failed" });
+  }
+});
+
+// ─── Mock Interview ────────────────────────────────────────────────────────────
+
+router.post("/analyses/:id/mock-interview", async (req, res) => {
+  const id = Number(req.params.id);
+  const analysis = await db.query.analyses.findFirst({ where: eq(analyses.id, id) });
+  if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+
+  const messages: { role: string; content: string }[] = Array.isArray(req.body?.messages) ? req.body.messages : [];
+  const isStart = messages.length === 0;
+  const turnCount = messages.filter((m) => m.role === "assistant").length;
+  const maxTurns = 5;
+  const isComplete = turnCount >= maxTurns;
+
+  const systemPrompt =
+    "You are a professional interviewer conducting a mock job interview for the role of " + analysis.jobTitle + " at " + (analysis.companyName ?? "the company") + ".\n" +
+    "The candidate's key strengths are: " + (analysis.strengths ?? []).slice(0, 3).join(", ") + ".\n" +
+    "Their gaps are: " + (analysis.gaps ?? []).slice(0, 3).join(", ") + ".\n\n" +
+    "Rules:\n" +
+    "- Ask one focused interview question at a time.\n" +
+    "- If this is not the first question, provide 1-2 sentence feedback on the previous answer before asking the next question.\n" +
+    "- Mix behavioural (STAR), technical, and situational questions relevant to the role.\n" +
+    "- After " + maxTurns + " questions total, end with encouraging overall notes.\n\n" +
+    (isComplete
+      ? "The interview is now complete. Provide brief overall feedback (2-3 sentences) on interview performance based on the conversation."
+      : isStart
+        ? "Start the interview with a warm welcome and your first question."
+        : "Provide brief feedback on the previous answer, then ask your next question.");
+
+  const apiMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
+    { role: "system", content: systemPrompt },
+    ...messages.map((m) => ({
+      role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+      content: m.content,
+    })),
+  ];
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 400,
+      messages: apiMessages,
+    });
+    const responseText = completion.choices[0]?.message?.content?.trim() ?? "Let's continue the interview.";
+
+    res.json({
+      question: responseText,
+      feedback: null,
+      isComplete,
+      overallNotes: isComplete ? responseText : null,
+    });
+  } catch (err) {
+    logger.error({ err }, "Mock interview failed");
+    res.status(500).json({ error: "Mock interview failed" });
   }
 });
 

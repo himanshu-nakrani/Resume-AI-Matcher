@@ -28,6 +28,8 @@ import { NegotiationCalculator } from "@/components/negotiation-calculator";
 import { FollowUpEmail } from "@/components/follow-up-email";
 import { MarketInsightsSection } from "@/components/market-insights";
 import { CareerPathSection } from "@/components/career-path";
+import { PredictiveAnalytics } from "@/components/predictive-analytics";
+import { MockInterview } from "@/components/mock-interview";
 import type { LearningPlanItem, LearningResource } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScoreCircle } from "@/components/score-circle";
@@ -189,6 +191,9 @@ function JobTrackingSection({ analysisId, analysis }: {
     portfolioLinks: string[] | null;
     jobTitle: string;
     companyName: string | null;
+    versionLabel: string | null;
+    location: string | null;
+    salaryExpectation: string | null;
   };
 }) {
   const queryClient = useQueryClient();
@@ -441,8 +446,48 @@ function JobTrackingSection({ analysisId, analysis }: {
           </div>
         </div>
 
+        {/* Version Label, Location, Salary Expectation */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5" /> Version Label
+            </label>
+            <Input
+              type="text"
+              placeholder="e.g. v1, tailored, senior..."
+              defaultValue={analysis.versionLabel ?? ""}
+              onBlur={(e) => save("versionLabel", e.target.value)}
+              className="text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5" /> Job Location
+            </label>
+            <Input
+              type="text"
+              placeholder="e.g. Remote, New York, Hybrid..."
+              defaultValue={analysis.location ?? ""}
+              onBlur={(e) => save("location", e.target.value)}
+              className="text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <DollarSign className="w-3.5 h-3.5" /> Salary Expectation
+            </label>
+            <Input
+              type="text"
+              placeholder="e.g. $120k–$150k..."
+              defaultValue={analysis.salaryExpectation ?? ""}
+              onBlur={(e) => save("salaryExpectation", e.target.value)}
+              className="text-sm"
+            />
+          </div>
+        </div>
+
         {(analysis.deadline || analysis.followUpDate) && (
-          <div className="flex flex-wrap gap-3 pt-1">
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             {analysis.deadline && (
               <div className="flex items-center gap-1.5 text-xs text-orange-600 dark:text-orange-400 font-medium">
                 <CalendarClock className="w-3.5 h-3.5" />
@@ -454,6 +499,20 @@ function JobTrackingSection({ analysisId, analysis }: {
                 <CalendarClock className="w-3.5 h-3.5" />
                 Follow-up: {format(new Date(analysis.followUpDate), "MMM d, yyyy")}
               </div>
+            )}
+            {/* Phase 21 — Email Reminder */}
+            {analysis.contactEmail && (analysis.deadline || analysis.followUpDate) && (
+              <a
+                href={"mailto:" + analysis.contactEmail + "?subject=" + encodeURIComponent("Following up: " + analysis.jobTitle + (analysis.companyName ? " at " + analysis.companyName : "")) + "&body=" + encodeURIComponent("Hi,\n\nI wanted to follow up regarding my application for the " + analysis.jobTitle + " position" + (analysis.companyName ? " at " + analysis.companyName : "") + ".\n\nPlease let me know if you need anything further from my side.\n\nBest regards,\n[Your Name]")}
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 ml-auto"
+              >
+                <Button variant="outline" size="sm" type="button" className="gap-1.5">
+                  <Send className="w-3.5 h-3.5" />
+                  Email Reminder
+                </Button>
+              </a>
             )}
           </div>
         )}
@@ -1930,6 +1989,9 @@ export function Analysis() {
           portfolioLinks: (analysis.portfolioLinks as string[]) ?? [],
           jobTitle: analysis.jobTitle,
           companyName: analysis.companyName ?? null,
+          versionLabel: (analysis as any).versionLabel ?? null,
+          location: (analysis as any).location ?? null,
+          salaryExpectation: (analysis as any).salaryExpectation ?? null,
         }}
       />
 
@@ -1978,10 +2040,20 @@ export function Analysis() {
       {/* Career Path Planner */}
       <CareerPathSection analysisId={id} existing={careerPath} />
 
+      {/* Predictive Analytics — Phase 19 */}
+      <PredictiveAnalytics analysisId={id} fitScore={analysis.fitScore} />
+
       {/* Interview Practice Mode */}
       {interviewQuestions.length > 0 && (
         <InterviewPractice analysisId={id} questions={interviewQuestions} />
       )}
+
+      {/* AI Mock Interview — Phase 24 */}
+      <MockInterview
+        analysisId={id}
+        jobTitle={analysis.jobTitle}
+        companyName={analysis.companyName ?? null}
+      />
 
       {/* Negotiation Calculator */}
       <NegotiationCalculator
