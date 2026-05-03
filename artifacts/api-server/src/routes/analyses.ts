@@ -13,6 +13,7 @@ import {
   UpdateAnalysisParams,
   UpdateAnalysisBody,
   GenerateInterviewQuestionsParams,
+  GenerateLearningPlanParams,
 } from "@workspace/api-zod";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
@@ -430,6 +431,88 @@ Example format: ["Question 1?", "Question 2?", ...]`;
   } catch (err) {
     logger.error({ err }, "Interview questions generation failed");
     res.status(500).json({ error: "Interview questions generation failed" });
+  }
+});
+
+router.post("/analyses/:id/learning-plan", async (req, res): Promise<void> => {
+  const params = GenerateLearningPlanParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [analysis] = await db
+    .select()
+    .from(analyses)
+    .where(eq(analyses.id, params.data.id));
+
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+
+  req.log.info({ id: params.data.id }, "Generating learning plan");
+
+  const gaps = (analysis.gaps as string[]).join("; ");
+  const missingKeywords = (analysis.atsKeywordsMissing as string[]).join(", ");
+
+  const prompt = `You are a senior career coach and L&D specialist. Generate a personalized learning plan for a candidate applying to this role.
+
+Job Title: ${analysis.jobTitle}
+Company: ${analysis.companyName ?? "the company"}
+Identified Skill Gaps: ${gaps || "none"}
+Missing ATS Keywords / Skills: ${missingKeywords || "none"}
+
+Create a focused learning plan with 4-6 items covering the most important gaps. For each skill:
+- Identify why it matters for this specific role
+- Assign a priority (high/medium/low)
+- Suggest 2 specific, real learning resources (courses on Coursera/Udemy/LinkedIn Learning, Google/AWS/Azure certifications, a practical project, or a book)
+- Be concrete — name real courses, certifications, or platforms
+
+Return ONLY valid JSON in this exact format, no markdown, no explanation:
+{
+  "items": [
+    {
+      "skill": "Skill name",
+      "why": "1-sentence reason this matters for the role",
+      "priority": "high",
+      "resources": [
+        {
+          "title": "Course/Cert/Project title",
+          "type": "course",
+          "description": "What you'll learn and why it helps",
+          "platform": "Coursera"
+        }
+      ]
+    }
+  ]
+}`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 3000,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    let parsed: { items: unknown[] } = { items: [] };
+    try {
+      parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed.items)) parsed.items = [];
+    } catch {
+      parsed = { items: [] };
+    }
+
+    await db
+      .update(analyses)
+      .set({ learningPlan: parsed.items as Parameters<typeof db.update>[0] })
+      .where(eq(analyses.id, params.data.id));
+
+    res.json(parsed);
+  } catch (err) {
+    logger.error({ err }, "Learning plan generation failed");
+    res.status(500).json({ error: "Learning plan generation failed" });
   }
 });
 

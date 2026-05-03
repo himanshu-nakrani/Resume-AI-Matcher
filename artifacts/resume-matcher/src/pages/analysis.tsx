@@ -8,7 +8,9 @@ import {
   useDeleteAnalysis,
   useRewriteBullet,
   useGenerateInterviewQuestions,
+  useGenerateLearningPlan,
 } from "@workspace/api-client-react";
+import type { LearningPlanItem, LearningResource } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScoreCircle } from "@/components/score-circle";
 import { Button } from "@/components/ui/button";
@@ -33,6 +35,12 @@ import {
   ArrowRightLeft,
   MessageSquare,
   Sparkles,
+  GraduationCap,
+  BookOpen,
+  Award,
+  Hammer,
+  BookMarked,
+  Printer,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -45,15 +53,30 @@ const TONE_OPTIONS: { value: CoverLetterTone; label: string; desc: string }[] = 
   { value: "concise", label: "Concise", desc: "Brief & to the point" },
 ];
 
+const PRIORITY_CONFIG = {
+  high: { label: "High Priority", className: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400" },
+  medium: { label: "Medium", className: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400" },
+  low: { label: "Low", className: "bg-muted text-muted-foreground" },
+};
+
+function resourceTypeIcon(type: LearningResource["type"]) {
+  switch (type) {
+    case "course": return <BookOpen className="w-3.5 h-3.5" />;
+    case "certification": return <Award className="w-3.5 h-3.5" />;
+    case "project": return <Hammer className="w-3.5 h-3.5" />;
+    case "book": return <BookMarked className="w-3.5 h-3.5" />;
+    case "article": return <FileText className="w-3.5 h-3.5" />;
+    default: return <BookOpen className="w-3.5 h-3.5" />;
+  }
+}
+
 function BulletRewriter({ analysisId }: { analysisId: number }) {
   const [bulletText, setBulletText] = useState("");
   const [result, setResult] = useState<{ original: string; rewritten: string } | null>(null);
   const { copy, isCopied } = useCopy();
 
   const rewrite = useRewriteBullet({
-    mutation: {
-      onSuccess: (data) => setResult(data),
-    },
+    mutation: { onSuccess: (data) => setResult(data) },
   });
 
   const handleRewrite = () => {
@@ -63,7 +86,7 @@ function BulletRewriter({ analysisId }: { analysisId: number }) {
   };
 
   return (
-    <Card className="border shadow-sm">
+    <Card className="border shadow-sm no-print">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Wand2 className="w-4 h-4 text-purple-500" /> AI Bullet Rewriter
@@ -88,11 +111,7 @@ function BulletRewriter({ analysisId }: { analysisId: number }) {
             className="shrink-0"
             data-testid="button-rewrite"
           >
-            {rewrite.isPending ? (
-              <Wand2 className="w-4 h-4 animate-pulse" />
-            ) : (
-              <Wand2 className="w-4 h-4" />
-            )}
+            <Wand2 className={`w-4 h-4 ${rewrite.isPending ? "animate-pulse" : ""}`} />
             <span className="ml-2 hidden sm:inline">{rewrite.isPending ? "Rewriting..." : "Rewrite"}</span>
           </Button>
         </div>
@@ -121,7 +140,6 @@ function BulletRewriter({ analysisId }: { analysisId: number }) {
                   size="sm"
                   className="h-6 px-2 text-xs text-purple-600 dark:text-purple-400"
                   onClick={() => copy(result.rewritten, "Bullet copied")}
-                  data-testid="button-copy-bullet"
                 >
                   {isCopied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
                   Copy
@@ -133,10 +151,7 @@ function BulletRewriter({ analysisId }: { analysisId: number }) {
               variant="ghost"
               size="sm"
               className="text-xs text-muted-foreground"
-              onClick={() => {
-                setBulletText("");
-                setResult(null);
-              }}
+              onClick={() => { setBulletText(""); setResult(null); }}
             >
               Try another bullet
             </Button>
@@ -176,19 +191,12 @@ function InterviewQuestions({ analysisId, existingQuestions }: { analysisId: num
           onClick={() => generate.mutate({ id: analysisId })}
           disabled={generate.isPending}
           data-testid="button-generate-interview-questions"
+          className="no-print shrink-0"
         >
           {generate.isPending ? (
-            <>
-              <Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />
-              Generating...
-            </>
-          ) : allQuestions.length > 0 ? (
-            "Regenerate"
-          ) : (
-            <>
-              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-              Generate
-            </>
+            <><Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />Generating...</>
+          ) : allQuestions.length > 0 ? "Regenerate" : (
+            <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Generate</>
           )}
         </Button>
       </CardHeader>
@@ -224,9 +232,8 @@ function InterviewQuestions({ analysisId, existingQuestions }: { analysisId: num
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 no-print"
                   onClick={() => copy(q, "Question copied")}
-                  data-testid={`button-copy-question-${i}`}
                 >
                   {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                 </Button>
@@ -235,12 +242,107 @@ function InterviewQuestions({ analysisId, existingQuestions }: { analysisId: num
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs text-muted-foreground mt-1"
+              className="text-xs text-muted-foreground mt-1 no-print"
               onClick={() => copy(allQuestions.join("\n\n"), "All questions copied")}
             >
               <Copy className="w-3 h-3 mr-1.5" />
               Copy all questions
             </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LearningPlanSection({ analysisId, existingItems }: { analysisId: number; existingItems: LearningPlanItem[] }) {
+  const queryClient = useQueryClient();
+
+  const generate = useGenerateLearningPlan({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) }),
+    },
+  });
+
+  const items = (generate.data?.items ?? existingItems) as LearningPlanItem[];
+
+  return (
+    <Card className="border shadow-sm print-break-inside-avoid">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-blue-500" /> Personalized Learning Plan
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Targeted resources to close your skill gaps for this role.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant={items.length > 0 ? "outline" : "default"}
+          onClick={() => generate.mutate({ id: analysisId })}
+          disabled={generate.isPending}
+          data-testid="button-generate-learning-plan"
+          className="no-print shrink-0"
+        >
+          {generate.isPending ? (
+            <><Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />Generating...</>
+          ) : items.length > 0 ? "Regenerate" : (
+            <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Generate</>
+          )}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {generate.isPending ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-lg border p-4 space-y-2">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-3 w-2/3" />
+                <Skeleton className="h-3 w-full" />
+              </div>
+            ))}
+          </div>
+        ) : items.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">
+            Click "Generate" to get a personalized study plan based on your skill gaps for this role.
+          </p>
+        ) : (
+          <div className="space-y-4" data-testid="learning-plan-list">
+            {items.map((item, i) => {
+              const priority = PRIORITY_CONFIG[item.priority as keyof typeof PRIORITY_CONFIG] ?? PRIORITY_CONFIG.medium;
+              return (
+                <div key={i} className="rounded-lg border p-4 space-y-3 print-break-inside-avoid" data-testid={`learning-item-${i}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-sm">{item.skill}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.why}</p>
+                    </div>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0 ${priority.className}`}>
+                      {priority.label}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {item.resources.map((res, j) => (
+                      <div key={j} className="flex items-start gap-2.5 bg-muted/40 rounded-lg px-3 py-2">
+                        <span className="mt-0.5 text-muted-foreground shrink-0">
+                          {resourceTypeIcon(res.type as LearningResource["type"])}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs font-semibold">{res.title}</p>
+                            {res.platform && (
+                              <span className="text-xs text-muted-foreground">· {res.platform}</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{res.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>
@@ -273,9 +375,7 @@ export function Analysis() {
   });
 
   const deleteAnalysis = useDeleteAnalysis({
-    mutation: {
-      onSuccess: () => setLocation("/"),
-    },
+    mutation: { onSuccess: () => setLocation("/") },
   });
 
   if (isLoading) {
@@ -308,15 +408,16 @@ export function Analysis() {
   const atsMatched = (analysis.atsKeywordsMatched as string[]) ?? [];
   const atsMissing = (analysis.atsKeywordsMissing as string[]) ?? [];
   const interviewQuestions = (analysis.interviewQuestions as string[]) ?? [];
+  const learningPlan = (analysis.learningPlan as LearningPlanItem[]) ?? [];
 
   return (
-    <div className="space-y-8" data-testid={`analysis-${id}`}>
+    <div className="space-y-8 print-full-width" data-testid={`analysis-${id}`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <button
             onClick={() => setLocation("/")}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2 transition-colors"
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2 transition-colors no-print"
             data-testid="button-back"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back
@@ -329,16 +430,28 @@ export function Analysis() {
             {formatDistanceToNow(new Date(analysis.createdAt), { addSuffix: true })}
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground hover:text-destructive shrink-0"
-          onClick={() => deleteAnalysis.mutate({ id })}
-          disabled={deleteAnalysis.isPending}
-          data-testid="button-delete"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="no-print"
+            onClick={() => window.print()}
+            data-testid="button-export-pdf"
+          >
+            <Printer className="w-3.5 h-3.5 mr-1.5" />
+            Export PDF
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-destructive no-print"
+            onClick={() => deleteAnalysis.mutate({ id })}
+            disabled={deleteAnalysis.isPending}
+            data-testid="button-delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Scores */}
@@ -466,6 +579,9 @@ export function Analysis() {
       {/* Interview Questions */}
       <InterviewQuestions analysisId={id} existingQuestions={interviewQuestions} />
 
+      {/* Learning Plan */}
+      <LearningPlanSection analysisId={id} existingItems={learningPlan} />
+
       {/* Cover Letter */}
       <Card className="border shadow-sm">
         <CardHeader className="pb-3">
@@ -473,7 +589,7 @@ export function Analysis() {
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="w-4 h-4 text-primary" /> Tailored Cover Letter
             </CardTitle>
-            <div className="flex gap-2">
+            <div className="flex gap-2 no-print">
               {analysis.coverLetter && (
                 <Button
                   variant="ghost"
@@ -498,7 +614,7 @@ export function Analysis() {
           </div>
 
           {/* Tone Selector */}
-          <div className="mt-3">
+          <div className="mt-3 no-print">
             <p className="text-xs font-medium text-muted-foreground mb-2">Tone</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {TONE_OPTIONS.map((tone) => (
@@ -551,7 +667,7 @@ export function Analysis() {
           <CardTitle className="text-base flex items-center gap-2">
             <Linkedin className="w-4 h-4 text-[#0077b5]" /> LinkedIn Post
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex gap-2 no-print">
             {analysis.linkedinPost && (
               <Button
                 variant="ghost"
@@ -590,7 +706,9 @@ export function Analysis() {
               data-testid="textarea-linkedin"
             />
           ) : (
-            <p className="text-sm text-muted-foreground py-4">Click "Generate" to create a LinkedIn post announcing your job search.</p>
+            <p className="text-sm text-muted-foreground py-4">
+              Click "Generate" to create a LinkedIn post announcing your job search.
+            </p>
           )}
         </CardContent>
       </Card>

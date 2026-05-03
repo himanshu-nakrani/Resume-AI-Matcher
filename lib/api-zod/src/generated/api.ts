@@ -42,6 +42,27 @@ export const ListAnalysesResponseItem = zod.object({
     "rejected",
   ]),
   interviewQuestions: zod.array(zod.string()),
+  learningPlan: zod.array(
+    zod.object({
+      skill: zod.string(),
+      why: zod.string(),
+      priority: zod.enum(["high", "medium", "low"]),
+      resources: zod.array(
+        zod.object({
+          title: zod.string(),
+          type: zod.enum([
+            "course",
+            "certification",
+            "project",
+            "book",
+            "article",
+          ]),
+          description: zod.string(),
+          platform: zod.string().nullish(),
+        }),
+      ),
+    }),
+  ),
   createdAt: zod.string(),
 });
 export const ListAnalysesResponse = zod.array(ListAnalysesResponseItem);
@@ -87,6 +108,27 @@ export const GetAnalysisResponse = zod.object({
     "rejected",
   ]),
   interviewQuestions: zod.array(zod.string()),
+  learningPlan: zod.array(
+    zod.object({
+      skill: zod.string(),
+      why: zod.string(),
+      priority: zod.enum(["high", "medium", "low"]),
+      resources: zod.array(
+        zod.object({
+          title: zod.string(),
+          type: zod.enum([
+            "course",
+            "certification",
+            "project",
+            "book",
+            "article",
+          ]),
+          description: zod.string(),
+          platform: zod.string().nullish(),
+        }),
+      ),
+    }),
+  ),
   createdAt: zod.string(),
 });
 
@@ -134,6 +176,27 @@ export const UpdateAnalysisResponse = zod.object({
     "rejected",
   ]),
   interviewQuestions: zod.array(zod.string()),
+  learningPlan: zod.array(
+    zod.object({
+      skill: zod.string(),
+      why: zod.string(),
+      priority: zod.enum(["high", "medium", "low"]),
+      resources: zod.array(
+        zod.object({
+          title: zod.string(),
+          type: zod.enum([
+            "course",
+            "certification",
+            "project",
+            "book",
+            "article",
+          ]),
+          description: zod.string(),
+          platform: zod.string().nullish(),
+        }),
+      ),
+    }),
+  ),
   createdAt: zod.string(),
 });
 
@@ -150,6 +213,37 @@ export const GenerateCoverLetterBody = zod.object({
 
 export const GenerateCoverLetterResponse = zod.object({
   content: zod.string(),
+});
+
+/**
+ * @summary Generate a personalized learning plan to close skill gaps
+ */
+export const GenerateLearningPlanParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GenerateLearningPlanResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      skill: zod.string(),
+      why: zod.string(),
+      priority: zod.enum(["high", "medium", "low"]),
+      resources: zod.array(
+        zod.object({
+          title: zod.string(),
+          type: zod.enum([
+            "course",
+            "certification",
+            "project",
+            "book",
+            "article",
+          ]),
+          description: zod.string(),
+          platform: zod.string().nullish(),
+        }),
+      ),
+    }),
+  ),
 });
 
 /**

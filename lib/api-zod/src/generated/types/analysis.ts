@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AnalysisStatus } from "./analysisStatus";
+import type { LearningPlanItem } from "./learningPlanItem";
 
 export interface Analysis {
   id: number;
@@ -28,5 +29,6 @@ export interface Analysis {
   linkedinPost: string | null;
   status: AnalysisStatus;
   interviewQuestions: string[];
+  learningPlan: LearningPlanItem[];
   createdAt: string;
 }

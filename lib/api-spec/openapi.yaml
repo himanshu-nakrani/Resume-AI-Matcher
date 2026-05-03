@@ -163,6 +163,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /analyses/{id}/learning-plan:
+    post:
+      operationId: generateLearningPlan
+      tags: [analyses]
+      summary: Generate a personalized learning plan to close skill gaps
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Learning plan generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningPlanResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /analyses/{id}/interview-questions:
     post:
       operationId: generateInterviewQuestions
@@ -325,6 +350,10 @@ components:
           type: array
           items:
             type: string
+        learningPlan:
+          type: array
+          items:
+            $ref: "#/components/schemas/LearningPlanItem"
         createdAt:
           type: string
       required:
@@ -345,6 +374,7 @@ components:
         - linkedinPost
         - status
         - interviewQuestions
+        - learningPlan
         - createdAt
 
     CreateAnalysisBody:
@@ -412,6 +442,53 @@ components:
           type: string
       required:
         - content
+
+    LearningResource:
+      type: object
+      properties:
+        title:
+          type: string
+        type:
+          type: string
+          enum: [course, certification, project, book, article]
+        description:
+          type: string
+        platform:
+          type: ["string", "null"]
+      required:
+        - title
+        - type
+        - description
+
+    LearningPlanItem:
+      type: object
+      properties:
+        skill:
+          type: string
+        why:
+          type: string
+        priority:
+          type: string
+          enum: [high, medium, low]
+        resources:
+          type: array
+          items:
+            $ref: "#/components/schemas/LearningResource"
+      required:
+        - skill
+        - why
+        - priority
+        - resources
+
+    LearningPlanResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LearningPlanItem"
+      required:
+        - items
 
     AnalysisStats:
       type: object

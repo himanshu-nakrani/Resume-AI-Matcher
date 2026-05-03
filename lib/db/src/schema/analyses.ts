@@ -5,6 +5,20 @@ import { z } from "zod/v4";
 export const APPLICATION_STATUSES = ["not_applied", "applied", "interview", "offer", "rejected"] as const;
 export type ApplicationStatus = typeof APPLICATION_STATUSES[number];
 
+export type LearningResource = {
+  title: string;
+  type: "course" | "certification" | "project" | "book" | "article";
+  description: string;
+  platform?: string;
+};
+
+export type LearningPlanItem = {
+  skill: string;
+  why: string;
+  priority: "high" | "medium" | "low";
+  resources: LearningResource[];
+};
+
 export const analyses = pgTable("analyses", {
   id: serial("id").primaryKey(),
   jobTitle: text("job_title").notNull(),
@@ -23,6 +37,7 @@ export const analyses = pgTable("analyses", {
   linkedinPost: text("linkedin_post"),
   status: text("status").$type<ApplicationStatus>().notNull().default("not_applied"),
   interviewQuestions: json("interview_questions").$type<string[]>().notNull().default([]),
+  learningPlan: json("learning_plan").$type<LearningPlanItem[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

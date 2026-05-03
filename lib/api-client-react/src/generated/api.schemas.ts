@@ -24,6 +24,41 @@ export const AnalysisStatus = {
   rejected: "rejected",
 } as const;
 
+export type LearningPlanItemPriority =
+  (typeof LearningPlanItemPriority)[keyof typeof LearningPlanItemPriority];
+
+export const LearningPlanItemPriority = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export type LearningResourceType =
+  (typeof LearningResourceType)[keyof typeof LearningResourceType];
+
+export const LearningResourceType = {
+  course: "course",
+  certification: "certification",
+  project: "project",
+  book: "book",
+  article: "article",
+} as const;
+
+export interface LearningResource {
+  title: string;
+  type: LearningResourceType;
+  description: string;
+  /** @nullable */
+  platform?: string | null;
+}
+
+export interface LearningPlanItem {
+  skill: string;
+  why: string;
+  priority: LearningPlanItemPriority;
+  resources: LearningResource[];
+}
+
 export interface Analysis {
   id: number;
   jobTitle: string;
@@ -45,6 +80,7 @@ export interface Analysis {
   linkedinPost: string | null;
   status: AnalysisStatus;
   interviewQuestions: string[];
+  learningPlan: LearningPlanItem[];
   createdAt: string;
 }
 
@@ -89,6 +125,10 @@ export interface RewriteBulletResponse {
 
 export interface GeneratedContent {
   content: string;
+}
+
+export interface LearningPlanResponse {
+  items: LearningPlanItem[];
 }
 
 export interface AnalysisStats {

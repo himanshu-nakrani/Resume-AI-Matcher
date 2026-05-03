@@ -25,6 +25,7 @@ import type {
   GeneratedContent,
   HealthStatus,
   InterviewQuestionsResponse,
+  LearningPlanResponse,
   RewriteBulletBody,
   RewriteBulletResponse,
   UpdateAnalysisBody,
@@ -619,6 +620,90 @@ export const useGenerateCoverLetter = <
   TContext
 > => {
   return useMutation(getGenerateCoverLetterMutationOptions(options));
+};
+
+/**
+ * @summary Generate a personalized learning plan to close skill gaps
+ */
+export const getGenerateLearningPlanUrl = (id: number) => {
+  return `/api/analyses/${id}/learning-plan`;
+};
+
+export const generateLearningPlan = async (
+  id: number,
+  options?: RequestInit,
+): Promise<LearningPlanResponse> => {
+  return customFetch<LearningPlanResponse>(getGenerateLearningPlanUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getGenerateLearningPlanMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateLearningPlan>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateLearningPlan>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["generateLearningPlan"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateLearningPlan>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return generateLearningPlan(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateLearningPlanMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateLearningPlan>>
+>;
+
+export type GenerateLearningPlanMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate a personalized learning plan to close skill gaps
+ */
+export const useGenerateLearningPlan = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateLearningPlan>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateLearningPlan>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getGenerateLearningPlanMutationOptions(options));
 };
 
 /**
