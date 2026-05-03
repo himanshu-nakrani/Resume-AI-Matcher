@@ -51,5 +51,6 @@ export interface Analysis {
   tags: string[];
   companyResearch?: CompanyResearch | null;
   redFlags?: RedFlag[] | null;
+  portfolioLinks?: string[];
   createdAt: string;
 }

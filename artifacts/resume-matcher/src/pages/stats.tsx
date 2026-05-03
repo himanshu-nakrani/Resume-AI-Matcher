@@ -161,6 +161,79 @@ export function Stats() {
         )
       : null;
 
+  // T004: Keyword Trends
+  const keywordTrends = analyses
+    ? (() => {
+        const freq: Record<string, number> = {};
+        for (const a of analyses) {
+          const matched = (a.atsKeywordsMatched as string[]) ?? [];
+          const missing = (a.atsKeywordsMissing as string[]) ?? [];
+          for (const kw of [...matched, ...missing]) {
+            freq[kw] = (freq[kw] ?? 0) + 1;
+          }
+        }
+        return Object.entries(freq)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10)
+          .map(([name, count]) => ({ name, count }));
+      })()
+    : [];
+
+  // T004: Time-in-Stage (Estimate from createdAt to now)
+  const timeInStage = analyses
+    ? (() => {
+        const now = new Date().getTime();
+        const stageTotals: Record<string, number> = {};
+        const stageCounts: Record<string, number> = {};
+        
+        for (const a of analyses) {
+          const created = new Date(a.createdAt).getTime();
+          const days = Math.max(0, (now - created) / (1000 * 60 * 60 * 24));
+          const status = a.status || "not_applied";
+          stageTotals[status] = (stageTotals[status] ?? 0) + days;
+          stageCounts[status] = (stageCounts[status] ?? 0) + 1;
+        }
+
+        return ["not_applied", "applied", "interview", "offer", "rejected"]
+          .map(status => ({
+            status: status.replace("_", " "),
+            avgDays: stageCounts[status] ? Math.round(stageTotals[status] / stageCounts[status]) : 0,
+            fill: STATUS_COLORS[status] || "#94a3b8"
+          }))
+          .filter(d => d.avgDays > 0);
+      })()
+    : [];
+
+  // T004: Success Rate (Interview+ and Offer)
+  const successMetrics = analyses
+    ? (() => {
+        const total = analyses.length;
+        if (total === 0) return { interviewRate: 0, offerRate: 0 };
+        const interviewPlus = analyses.filter(a => ["interview", "offer"].includes(a.status)).length;
+        const offers = analyses.filter(a => a.status === "offer").length;
+        return {
+          interviewRate: Math.round((interviewPlus / total) * 100),
+          offerRate: Math.round((offers / total) * 100),
+        };
+      })()
+    : { interviewRate: 0, offerRate: 0 };
+
+  // T004: Score Momentum
+  const momentum = analyses && analyses.length >= 2
+    ? (() => {
+        const sorted = [...analyses].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        const first5 = sorted.slice(0, 5);
+        const last5 = sorted.slice(-5);
+        const firstAvg = first5.reduce((sum, a) => sum + (a.fitScore || 0), 0) / first5.length;
+        const lastAvg = last5.reduce((sum, a) => sum + (a.fitScore || 0), 0) / last5.length;
+        return {
+          improvement: Math.round(lastAvg - firstAvg),
+          firstAvg: Math.round(firstAvg),
+          lastAvg: Math.round(lastAvg),
+        };
+      })()
+    : null;
+
   const drillAnalyses = drillBucket && analyses
     ? analyses.filter((a) => drillBucket.ids.includes(a.id))
     : [];
@@ -277,6 +350,47 @@ export function Stats() {
               icon={Zap}
               sub="of applications submitted"
             />
+            {momentum && (
+              <StatCard
+                title="Score Momentum"
+                value={`${momentum.improvement > 0 ? "+" : ""}${momentum.improvement}`}
+                icon={TrendingUp}
+                sub={`Trend: ${momentum.firstAvg} → ${momentum.lastAvg}`}
+                highlight={momentum.improvement > 0}
+              />
+            )}
+          </div>
+
+          {/* T004: Success Rate Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <Card className="border shadow-sm">
+                <CardContent className="pt-6 pb-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Interview Conversion</p>
+                      <p className="text-3xl font-bold mt-1 tabular-nums">{successMetrics.interviewRate}%</p>
+                      <p className="text-xs text-muted-foreground mt-1">Analyses reaching Interview or Offer</p>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-amber-500/10">
+                      <Target className="w-5 h-5 text-amber-500" />
+                    </div>
+                  </div>
+                </CardContent>
+             </Card>
+             <Card className="border shadow-sm">
+                <CardContent className="pt-6 pb-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Offer Conversion</p>
+                      <p className="text-3xl font-bold mt-1 tabular-nums">{successMetrics.offerRate}%</p>
+                      <p className="text-xs text-muted-foreground mt-1">Analyses resulting in an Offer</p>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-green-500/10">
+                      <Trophy className="w-5 h-5 text-green-500" />
+                    </div>
+                  </div>
+                </CardContent>
+             </Card>
           </div>
 
           {/* Benchmark message */}
@@ -295,6 +409,72 @@ export function Stats() {
               </CardContent>
             </Card>
           )}
+
+          {/* T004: Keyword Trends and Time-in-Stage */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {keywordTrends.length > 0 && (
+              <Card className="border shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Target className="w-4 h-4 text-primary" /> Top Keyword Trends
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Most frequent keywords across all targeted jobs (matched & missing).
+                  </p>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={keywordTrends} layout="vertical" margin={{ left: 40 }}>
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        tick={{ fontSize: 11 }} 
+                        width={100}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        cursor={{ fill: 'transparent' }}
+                        contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                      />
+                      <Bar dataKey="count" fill="#8884d8" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {timeInStage.length > 0 && (
+              <Card className="border shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-primary" /> Avg Days in Stage
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Estimated average time from creation until now per status.
+                  </p>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={timeInStage}>
+                      <XAxis dataKey="status" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={30} />
+                      <Tooltip
+                        contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                        formatter={(val: number) => [`${val} days`, "Avg Time"]}
+                      />
+                      <Bar dataKey="avgDays" radius={[4, 4, 0, 0]}>
+                        {timeInStage.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
           {trendData.length > 1 && (
             <Card className="border shadow-sm">

@@ -284,6 +284,7 @@ router.patch("/analyses/:id", async (req, res): Promise<void> => {
   if (body.data.contactEmail !== undefined) updates.contactEmail = body.data.contactEmail;
   if (body.data.followUpDate !== undefined) updates.followUpDate = body.data.followUpDate;
   if (body.data.tags !== undefined) updates.tags = body.data.tags;
+  if (body.data.portfolioLinks !== undefined) updates.portfolioLinks = body.data.portfolioLinks;
 
   const [updated] = await db
     .update(analyses)
@@ -1189,6 +1190,128 @@ router.patch("/notifications/:id/read", async (req, res) => {
     read: updated.read,
     createdAt: updated.createdAt instanceof Date ? updated.createdAt.toISOString() : String(updated.createdAt),
   });
+});
+
+// ─── Market Insights ──────────────────────────────────────────────────────────
+
+router.post("/analyses/:id/market-insights", async (req, res) => {
+  const id = Number(req.params.id);
+  const analysis = await db.query.analyses.findFirst({ where: eq(analyses.id, id) });
+  if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+
+  const prompt =
+    "You are a job market analyst. Based on the job title and description below, provide current job market data.\n\n" +
+    "Job Title: " + analysis.jobTitle + "\n" +
+    "Company: " + (analysis.companyName ?? "unknown") + "\n" +
+    "Job Description (first 600 chars): " + analysis.jobDescriptionText.slice(0, 600) + "\n\n" +
+    "Provide real-world market data for this role. Return ONLY valid JSON (no markdown):\n" +
+    '{"demandLevel":"high|medium|low","salaryMin":<annual USD integer>,"salaryMax":<annual USD integer>,"salaryCurrency":"USD","salaryPeriod":"year","topSkills":["<5 most in-demand skills for this role>"],"marketContext":"<2-3 sentence market overview>","hiringTrend":"<one sentence: growing/stable/declining and why>","remoteOutlook":"<one sentence about remote/hybrid/onsite prevalence>"}';
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 600,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    let result: { demandLevel: string; salaryMin: number; salaryMax: number; salaryCurrency: string; salaryPeriod: string; topSkills: string[]; marketContext: string; hiringTrend: string; remoteOutlook: string };
+    try { result = JSON.parse(raw); } catch { result = { demandLevel: "medium", salaryMin: 80000, salaryMax: 120000, salaryCurrency: "USD", salaryPeriod: "year", topSkills: [], marketContext: raw, hiringTrend: "", remoteOutlook: "" }; }
+    res.json({
+      demandLevel: ["high", "medium", "low"].includes(result.demandLevel) ? result.demandLevel : "medium",
+      salaryMin: Number(result.salaryMin) || 80000,
+      salaryMax: Number(result.salaryMax) || 120000,
+      salaryCurrency: result.salaryCurrency ?? "USD",
+      salaryPeriod: ["year", "month", "hour"].includes(result.salaryPeriod) ? result.salaryPeriod : "year",
+      topSkills: Array.isArray(result.topSkills) ? result.topSkills.slice(0, 5) : [],
+      marketContext: result.marketContext ?? "",
+      hiringTrend: result.hiringTrend ?? "",
+      remoteOutlook: result.remoteOutlook ?? "",
+    });
+  } catch (err) {
+    logger.error({ err }, "Market insights generation failed");
+    res.status(500).json({ error: "Market insights generation failed" });
+  }
+});
+
+// ─── Career Path ──────────────────────────────────────────────────────────────
+
+router.post("/analyses/:id/career-path", async (req, res) => {
+  const id = Number(req.params.id);
+  const analysis = await db.query.analyses.findFirst({ where: eq(analyses.id, id) });
+  if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+
+  const prompt =
+    "You are an expert career coach. Based on the target job below, map out a realistic career progression.\n\n" +
+    "Target Job Title: " + analysis.jobTitle + "\n" +
+    "Company: " + (analysis.companyName ?? "unknown") + "\n" +
+    "Matched Skills: " + (analysis.strengths ?? []).slice(0, 5).join(", ") + "\n" +
+    "Skill Gaps: " + (analysis.gaps ?? []).slice(0, 5).join(", ") + "\n\n" +
+    "Provide a career path. Return ONLY valid JSON (no markdown):\n" +
+    '{"currentRoleInference":"<infer likely current role based on gaps>","nextSteps":[{"title":"<role>","description":"<1 sentence>","timeframe":"<e.g. 1-2 years>","keySkills":["<3 skills>"],"isStretch":false},{"title":"<role>","description":"<1 sentence>","timeframe":"<e.g. 2-3 years>","keySkills":["<3 skills>"],"isStretch":false},{"title":"<role>","description":"<1 sentence>","timeframe":"<e.g. 3-4 years>","keySkills":["<3 skills>"],"isStretch":false}],"stretchRoles":[{"title":"<senior/leadership role>","description":"<1 sentence>","timeframe":"<e.g. 5+ years>","keySkills":["<3 skills>"],"isStretch":true},{"title":"<executive/specialized role>","description":"<1 sentence>","timeframe":"<e.g. 7+ years>","keySkills":["<3 skills>"],"isStretch":true}],"overallTimeline":"<1 sentence summary of full journey>","keyThemes":["<3-4 career development themes>"]}';
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 900,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    let result: { currentRoleInference: string; nextSteps: { title: string; description: string; timeframe: string; keySkills: string[]; isStretch: boolean }[]; stretchRoles: { title: string; description: string; timeframe: string; keySkills: string[]; isStretch: boolean }[]; overallTimeline: string; keyThemes: string[] };
+    try { result = JSON.parse(raw); } catch { result = { currentRoleInference: "", nextSteps: [], stretchRoles: [], overallTimeline: raw, keyThemes: [] }; }
+    res.json({
+      currentRoleInference: result.currentRoleInference ?? "",
+      nextSteps: Array.isArray(result.nextSteps) ? result.nextSteps.slice(0, 3) : [],
+      stretchRoles: Array.isArray(result.stretchRoles) ? result.stretchRoles.slice(0, 2) : [],
+      overallTimeline: result.overallTimeline ?? "",
+      keyThemes: Array.isArray(result.keyThemes) ? result.keyThemes.slice(0, 4) : [],
+    });
+  } catch (err) {
+    logger.error({ err }, "Career path generation failed");
+    res.status(500).json({ error: "Career path generation failed" });
+  }
+});
+
+// ─── Follow-up Email ──────────────────────────────────────────────────────────
+
+router.post("/analyses/:id/follow-up-email", async (req, res) => {
+  const id = Number(req.params.id);
+  const analysis = await db.query.analyses.findFirst({ where: eq(analyses.id, id) });
+  if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+
+  const emailType = (req.body?.emailType as string) ?? "after_apply";
+  const emailTypeLabel =
+    emailType === "after_interview" ? "after an interview" :
+    emailType === "thank_you" ? "as a thank-you note after an interview" :
+    "after submitting an application";
+
+  const contactPart = analysis.contactName ? (" The hiring contact is " + analysis.contactName + ".") : "";
+  const prompt =
+    "You are a career coach writing a professional follow-up email " + emailTypeLabel + ".\n\n" +
+    "Job Title: " + analysis.jobTitle + "\n" +
+    "Company: " + (analysis.companyName ?? "the company") + "\n" +
+    "Key Strengths: " + (analysis.strengths ?? []).slice(0, 3).join(", ") + "\n" +
+    contactPart + "\n\n" +
+    "Write a concise, professional follow-up email. Return ONLY valid JSON (no markdown):\n" +
+    '{"subject":"<email subject line>","body":"<full email body, 100-180 words, warm and professional, use [Your Name] placeholder>","tips":["<2-3 brief sending tips>"]}';
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 600,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    let result: { subject: string; body: string; tips: string[] };
+    try { result = JSON.parse(raw); } catch { result = { subject: "Following up on my application", body: raw, tips: [] }; }
+    res.json({
+      subject: result.subject ?? "Following up on my application",
+      body: result.body ?? "",
+      tips: Array.isArray(result.tips) ? result.tips.slice(0, 3) : [],
+    });
+  } catch (err) {
+    logger.error({ err }, "Follow-up email generation failed");
+    res.status(500).json({ error: "Follow-up email generation failed" });
+  }
 });
 
 // ─── Practice Feedback ────────────────────────────────────────────────────────

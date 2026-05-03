@@ -16,4 +16,5 @@ export interface UpdateAnalysisBody {
   contactEmail?: string;
   followUpDate?: string;
   tags?: string[];
+  portfolioLinks?: string[];
 }

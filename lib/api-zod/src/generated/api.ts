@@ -104,6 +104,7 @@ export const ListAnalysesResponseItem = zod.object({
       }),
     )
     .nullish(),
+  portfolioLinks: zod.array(zod.string()).optional(),
   createdAt: zod.string(),
 });
 export const ListAnalysesResponse = zod.array(ListAnalysesResponseItem);
@@ -211,6 +212,7 @@ export const GetAnalysisResponse = zod.object({
       }),
     )
     .nullish(),
+  portfolioLinks: zod.array(zod.string()).optional(),
   createdAt: zod.string(),
 });
 
@@ -239,6 +241,7 @@ export const UpdateAnalysisBody = zod.object({
   contactEmail: zod.string().optional(),
   followUpDate: zod.string().optional(),
   tags: zod.array(zod.string()).optional(),
+  portfolioLinks: zod.array(zod.string()).optional(),
 });
 
 export const UpdateAnalysisResponse = zod.object({
@@ -327,6 +330,7 @@ export const UpdateAnalysisResponse = zod.object({
       }),
     )
     .nullish(),
+  portfolioLinks: zod.array(zod.string()).optional(),
   createdAt: zod.string(),
 });
 
@@ -621,6 +625,7 @@ export const UnshareAnalysisResponse = zod.object({
       }),
     )
     .nullish(),
+  portfolioLinks: zod.array(zod.string()).optional(),
   createdAt: zod.string(),
 });
 
@@ -717,6 +722,7 @@ export const GetSharedAnalysisResponse = zod.object({
       }),
     )
     .nullish(),
+  portfolioLinks: zod.array(zod.string()).optional(),
   createdAt: zod.string(),
 });
 
@@ -774,6 +780,73 @@ export const MarkNotificationReadResponse = zod.object({
   analysisId: zod.number().nullable(),
   read: zod.boolean(),
   createdAt: zod.string(),
+});
+
+/**
+ * @summary Generate AI-powered job market insights for this role
+ */
+export const GenerateMarketInsightsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GenerateMarketInsightsResponse = zod.object({
+  demandLevel: zod.enum(["high", "medium", "low"]),
+  salaryMin: zod.number(),
+  salaryMax: zod.number(),
+  salaryCurrency: zod.string(),
+  salaryPeriod: zod.enum(["year", "month", "hour"]),
+  topSkills: zod.array(zod.string()),
+  marketContext: zod.string(),
+  hiringTrend: zod.string(),
+  remoteOutlook: zod.string(),
+});
+
+/**
+ * @summary Generate an AI-powered career path progression map
+ */
+export const GenerateCareerPathParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GenerateCareerPathResponse = zod.object({
+  currentRoleInference: zod.string(),
+  nextSteps: zod.array(
+    zod.object({
+      title: zod.string(),
+      description: zod.string(),
+      timeframe: zod.string(),
+      keySkills: zod.array(zod.string()),
+      isStretch: zod.boolean(),
+    }),
+  ),
+  stretchRoles: zod.array(
+    zod.object({
+      title: zod.string(),
+      description: zod.string(),
+      timeframe: zod.string(),
+      keySkills: zod.array(zod.string()),
+      isStretch: zod.boolean(),
+    }),
+  ),
+  overallTimeline: zod.string(),
+  keyThemes: zod.array(zod.string()),
+});
+
+/**
+ * @summary Generate a smart follow-up email for this application
+ */
+export const GenerateFollowUpEmailParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GenerateFollowUpEmailBody = zod.object({
+  emailType: zod.enum(["after_apply", "after_interview", "thank_you"]),
+});
+
+export const GenerateFollowUpEmailResponse = zod.object({
+  subject: zod.string(),
+  body: zod.string(),
+  tips: zod.array(zod.string()),
 });
 
 /**

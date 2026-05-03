@@ -77,6 +77,7 @@ export const analyses = pgTable("analyses", {
   tags: json("tags").$type<string[]>().notNull().default([]),
   companyResearch: json("company_research").$type<CompanyResearch>(),
   redFlags: json("red_flags").$type<RedFlag[]>(),
+  portfolioLinks: json("portfolio_links").$type<string[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

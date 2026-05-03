@@ -19,9 +19,15 @@ import {
   useDetectRedFlags,
   useSimulateNegotiation,
   useGenerateStarAnswer,
+  useGenerateFollowUpEmail,
+  useGenerateMarketInsights,
+  useGenerateCareerPath,
 } from "@workspace/api-client-react";
 import { InterviewPractice } from "@/components/interview-practice";
 import { NegotiationCalculator } from "@/components/negotiation-calculator";
+import { FollowUpEmail } from "@/components/follow-up-email";
+import { MarketInsightsSection } from "@/components/market-insights";
+import { CareerPathSection } from "@/components/career-path";
 import type { LearningPlanItem, LearningResource } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScoreCircle } from "@/components/score-circle";
@@ -58,6 +64,7 @@ import {
   Heart,
   Share2,
   Link2,
+  ExternalLink,
   EyeOff,
   StickyNote,
   CalendarClock,
@@ -179,6 +186,7 @@ function JobTrackingSection({ analysisId, analysis }: {
     contactEmail: string | null;
     followUpDate: string | null;
     tags: string[] | null;
+    portfolioLinks: string[] | null;
     jobTitle: string;
     companyName: string | null;
   };
@@ -187,6 +195,7 @@ function JobTrackingSection({ analysisId, analysis }: {
   const { toast } = useToast();
   const [tagInput, setTagInput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [linkInput, setLinkInput] = useState("");
 
   const { data: allAnalyses } = useListAnalyses();
 
@@ -210,6 +219,7 @@ function JobTrackingSection({ analysisId, analysis }: {
   }, [analysisId, update]);
 
   const tags = (analysis.tags as string[]) ?? [];
+  const portfolioLinks = (analysis.portfolioLinks as string[]) ?? [];
 
   const addTag = (t?: string) => {
     const tag = (t ?? tagInput).trim();
@@ -221,6 +231,21 @@ function JobTrackingSection({ analysisId, analysis }: {
 
   const removeTag = (tag: string) => {
     save("tags", tags.filter((t) => t !== tag));
+  };
+
+  const addLink = () => {
+    const link = linkInput.trim();
+    if (!link || portfolioLinks.includes(link)) { setLinkInput(""); return; }
+    if (portfolioLinks.length >= 3) {
+      toast({ title: "Maximum 3 links allowed", variant: "destructive" });
+      return;
+    }
+    save("portfolioLinks", [...portfolioLinks, link]);
+    setLinkInput("");
+  };
+
+  const removeLink = (link: string) => {
+    save("portfolioLinks", portfolioLinks.filter((l) => l !== link));
   };
 
   const emailLink = analysis.contactEmail
@@ -315,6 +340,53 @@ function JobTrackingSection({ analysisId, analysis }: {
               )}
             </div>
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <Link2 className="w-3.5 h-3.5" /> Portfolio & Project Links
+          </label>
+          <div className="flex flex-wrap gap-2 min-h-[28px]">
+            {portfolioLinks.map((link) => (
+              <div key={link} className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-muted border group">
+                <a
+                  href={link.startsWith("http") ? link : `https://${link}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 hover:text-primary transition-colors max-w-[200px] truncate"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  {link.replace(/^https?:\/\/(www\.)?/, "")}
+                </a>
+                <button
+                  onClick={() => removeLink(link)}
+                  className="ml-1 opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Add GitHub, portfolio, or case study URL..."
+              value={linkInput}
+              onChange={(e) => setLinkInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); addLink(); }
+              }}
+              className="text-sm flex-1"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addLink}
+              disabled={!linkInput.trim() || portfolioLinks.length >= 3}
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">Up to 3 relevant links for this application.</p>
         </div>
 
         <div className="space-y-2">
@@ -1529,6 +1601,7 @@ export function Analysis() {
   const { copy, isCopied } = useCopy();
   const { toast } = useToast();
   const [coverLetterTone, setCoverLetterTone] = useState<CoverLetterTone>("professional");
+  const [coverLetterVariation, setCoverLetterVariation] = useState<string | null>(null);
 
   const { data: analysis, isLoading } = useGetAnalysis(id, {
     query: { enabled: !!id, queryKey: getGetAnalysisQueryKey(id) },
@@ -1536,9 +1609,29 @@ export function Analysis() {
 
   const generateCoverLetter = useGenerateCoverLetter({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) }),
+      onSuccess: (data) => {
+        // If we want to persist the first generation but not the second, 
+        // we'd need a separate hook or more complex logic.
+        // For simplicity, let's just update the main one, but if we're generating a variation 
+        // we'll store it in local state.
+        if (generateCoverLetter.variables?.data?.tone !== coverLetterTone) {
+          setCoverLetterVariation(data.content);
+        } else {
+          queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) });
+        }
+      },
     },
   });
+
+  const generateVariation = () => {
+    // Cycle tone for variation
+    const currentIndex = TONE_OPTIONS.findIndex(t => t.value === coverLetterTone);
+    const nextTone = TONE_OPTIONS[(currentIndex + 1) % TONE_OPTIONS.length].value;
+    generateCoverLetter.mutate({ 
+      id, 
+      data: { tone: nextTone } 
+    });
+  };
 
   const generateLinkedinPost = useGenerateLinkedinPost({
     mutation: {
@@ -1608,6 +1701,8 @@ export function Analysis() {
   const redFlags = analysis.redFlags as Array<{
     severity: string; title: string; description: string; quote: string;
   }> | null ?? null;
+  const marketInsights = (analysis as any).marketInsights as any | null ?? null;
+  const careerPath = (analysis as any).careerPath as any | null ?? null;
 
   return (
     <div className="space-y-8 print-full-width" data-testid={`analysis-${id}`}>
@@ -1832,10 +1927,14 @@ export function Analysis() {
           contactEmail: analysis.contactEmail ?? null,
           followUpDate: analysis.followUpDate ?? null,
           tags: (analysis.tags as string[]) ?? [],
+          portfolioLinks: (analysis.portfolioLinks as string[]) ?? [],
           jobTitle: analysis.jobTitle,
           companyName: analysis.companyName ?? null,
         }}
       />
+
+      {/* Follow-up Email */}
+      <FollowUpEmail analysisId={id} />
 
       {/* Salary Guide */}
       <SalaryGuideSection analysisId={id} existing={salaryGuide} />
@@ -1872,6 +1971,12 @@ export function Analysis() {
 
       {/* Learning Plan */}
       <LearningPlanSection analysisId={id} existingItems={learningPlan} />
+
+      {/* Market Insights */}
+      <MarketInsightsSection analysisId={id} existing={marketInsights} />
+
+      {/* Career Path Planner */}
+      <CareerPathSection analysisId={id} existing={careerPath} />
 
       {/* Interview Practice Mode */}
       {interviewQuestions.length > 0 && (
@@ -1940,7 +2045,7 @@ export function Analysis() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {generateCoverLetter.isPending ? (
             <div className="space-y-2">
               <Skeleton className="h-4 w-full" />
@@ -1950,12 +2055,51 @@ export function Analysis() {
               <Skeleton className="h-4 w-full" />
             </div>
           ) : analysis.coverLetter ? (
-            <Textarea
-              value={analysis.coverLetter}
-              readOnly
-              className="min-h-[300px] font-mono text-sm resize-none bg-muted/30"
-              data-testid="textarea-cover-letter"
-            />
+            <>
+              <Textarea
+                value={analysis.coverLetter}
+                readOnly
+                className="min-h-[300px] font-mono text-sm resize-none bg-muted/30"
+                data-testid="textarea-cover-letter"
+              />
+              
+              <div className="pt-2 flex flex-col gap-4">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full sm:w-auto"
+                  onClick={generateVariation}
+                  disabled={generateCoverLetter.isPending}
+                >
+                  <Sparkles className="w-3.5 h-3.5 mr-2" />
+                  Generate 2nd Variation
+                </Button>
+
+                {coverLetterVariation && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <Wand2 className="w-3 h-3" /> Alternative Variation
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={() => copy(coverLetterVariation, "Variation copied")}
+                      >
+                        {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        Copy Variation
+                      </Button>
+                    </div>
+                    <Textarea
+                      value={coverLetterVariation}
+                      readOnly
+                      className="min-h-[300px] font-mono text-sm resize-none bg-primary/5 border-primary/20"
+                    />
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground py-4">
               Select a tone above, then click "Generate" to create a tailored cover letter.

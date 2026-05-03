@@ -589,6 +589,87 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /analyses/{id}/market-insights:
+    post:
+      operationId: generateMarketInsights
+      tags: [analyses]
+      summary: Generate AI-powered job market insights for this role
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Market insights generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketInsightsResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/{id}/career-path:
+    post:
+      operationId: generateCareerPath
+      tags: [analyses]
+      summary: Generate an AI-powered career path progression map
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Career path generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CareerPathResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/{id}/follow-up-email:
+    post:
+      operationId: generateFollowUpEmail
+      tags: [analyses]
+      summary: Generate a smart follow-up email for this application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FollowUpEmailBody"
+      responses:
+        "200":
+          description: Follow-up email generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowUpEmailResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /analyses/{id}/practice-feedback:
     post:
       operationId: getPracticeFeedback
@@ -723,6 +804,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RedFlag"
+        portfolioLinks:
+          type: array
+          items:
+            type: string
         createdAt:
           type: string
       required:
@@ -790,6 +875,10 @@ components:
         followUpDate:
           type: string
         tags:
+          type: array
+          items:
+            type: string
+        portfolioLinks:
           type: array
           items:
             type: string
@@ -1186,6 +1275,115 @@ components:
           type: integer
       required:
         - id
+
+    MarketInsightsResponse:
+      type: object
+      properties:
+        demandLevel:
+          type: string
+          enum: [high, medium, low]
+        salaryMin:
+          type: integer
+        salaryMax:
+          type: integer
+        salaryCurrency:
+          type: string
+        salaryPeriod:
+          type: string
+          enum: [year, month, hour]
+        topSkills:
+          type: array
+          items:
+            type: string
+        marketContext:
+          type: string
+        hiringTrend:
+          type: string
+        remoteOutlook:
+          type: string
+      required:
+        - demandLevel
+        - salaryMin
+        - salaryMax
+        - salaryCurrency
+        - salaryPeriod
+        - topSkills
+        - marketContext
+        - hiringTrend
+        - remoteOutlook
+
+    CareerPathStep:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        timeframe:
+          type: string
+        keySkills:
+          type: array
+          items:
+            type: string
+        isStretch:
+          type: boolean
+      required:
+        - title
+        - description
+        - timeframe
+        - keySkills
+        - isStretch
+
+    CareerPathResponse:
+      type: object
+      properties:
+        currentRoleInference:
+          type: string
+        nextSteps:
+          type: array
+          items:
+            $ref: "#/components/schemas/CareerPathStep"
+        stretchRoles:
+          type: array
+          items:
+            $ref: "#/components/schemas/CareerPathStep"
+        overallTimeline:
+          type: string
+        keyThemes:
+          type: array
+          items:
+            type: string
+      required:
+        - currentRoleInference
+        - nextSteps
+        - stretchRoles
+        - overallTimeline
+        - keyThemes
+
+    FollowUpEmailBody:
+      type: object
+      properties:
+        emailType:
+          type: string
+          enum: [after_apply, after_interview, thank_you]
+      required:
+        - emailType
+
+    FollowUpEmailResponse:
+      type: object
+      properties:
+        subject:
+          type: string
+        body:
+          type: string
+        tips:
+          type: array
+          items:
+            type: string
+      required:
+        - subject
+        - body
+        - tips
 
     PracticeFeedbackBody:
       type: object

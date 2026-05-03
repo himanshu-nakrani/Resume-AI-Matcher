@@ -19,16 +19,20 @@ import type {
 import type {
   Analysis,
   AnalysisStats,
+  CareerPathResponse,
   CompanyResearchResponse,
   CreateAnalysisBody,
   ErrorResponse,
   FetchJobBody,
   FetchJobResponse,
+  FollowUpEmailBody,
+  FollowUpEmailResponse,
   GenerateCoverLetterBody,
   GeneratedContent,
   HealthStatus,
   InterviewQuestionsResponse,
   LearningPlanResponse,
+  MarketInsightsResponse,
   NegotiateBody,
   NegotiateResponse,
   Notification,
@@ -2145,6 +2149,261 @@ export const useMarkNotificationRead = <
   TContext
 > => {
   return useMutation(getMarkNotificationReadMutationOptions(options));
+};
+
+/**
+ * @summary Generate AI-powered job market insights for this role
+ */
+export const getGenerateMarketInsightsUrl = (id: number) => {
+  return `/api/analyses/${id}/market-insights`;
+};
+
+export const generateMarketInsights = async (
+  id: number,
+  options?: RequestInit,
+): Promise<MarketInsightsResponse> => {
+  return customFetch<MarketInsightsResponse>(getGenerateMarketInsightsUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getGenerateMarketInsightsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateMarketInsights>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateMarketInsights>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["generateMarketInsights"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateMarketInsights>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return generateMarketInsights(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateMarketInsightsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateMarketInsights>>
+>;
+
+export type GenerateMarketInsightsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate AI-powered job market insights for this role
+ */
+export const useGenerateMarketInsights = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateMarketInsights>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateMarketInsights>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getGenerateMarketInsightsMutationOptions(options));
+};
+
+/**
+ * @summary Generate an AI-powered career path progression map
+ */
+export const getGenerateCareerPathUrl = (id: number) => {
+  return `/api/analyses/${id}/career-path`;
+};
+
+export const generateCareerPath = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CareerPathResponse> => {
+  return customFetch<CareerPathResponse>(getGenerateCareerPathUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getGenerateCareerPathMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateCareerPath>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateCareerPath>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["generateCareerPath"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateCareerPath>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return generateCareerPath(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateCareerPathMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateCareerPath>>
+>;
+
+export type GenerateCareerPathMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate an AI-powered career path progression map
+ */
+export const useGenerateCareerPath = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateCareerPath>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateCareerPath>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getGenerateCareerPathMutationOptions(options));
+};
+
+/**
+ * @summary Generate a smart follow-up email for this application
+ */
+export const getGenerateFollowUpEmailUrl = (id: number) => {
+  return `/api/analyses/${id}/follow-up-email`;
+};
+
+export const generateFollowUpEmail = async (
+  id: number,
+  followUpEmailBody: FollowUpEmailBody,
+  options?: RequestInit,
+): Promise<FollowUpEmailResponse> => {
+  return customFetch<FollowUpEmailResponse>(getGenerateFollowUpEmailUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(followUpEmailBody),
+  });
+};
+
+export const getGenerateFollowUpEmailMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateFollowUpEmail>>,
+    TError,
+    { id: number; data: BodyType<FollowUpEmailBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateFollowUpEmail>>,
+  TError,
+  { id: number; data: BodyType<FollowUpEmailBody> },
+  TContext
+> => {
+  const mutationKey = ["generateFollowUpEmail"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateFollowUpEmail>>,
+    { id: number; data: BodyType<FollowUpEmailBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return generateFollowUpEmail(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateFollowUpEmailMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateFollowUpEmail>>
+>;
+export type GenerateFollowUpEmailMutationBody = BodyType<FollowUpEmailBody>;
+export type GenerateFollowUpEmailMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate a smart follow-up email for this application
+ */
+export const useGenerateFollowUpEmail = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateFollowUpEmail>>,
+    TError,
+    { id: number; data: BodyType<FollowUpEmailBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateFollowUpEmail>>,
+  TError,
+  { id: number; data: BodyType<FollowUpEmailBody> },
+  TContext
+> => {
+  return useMutation(getGenerateFollowUpEmailMutationOptions(options));
 };
 
 /**

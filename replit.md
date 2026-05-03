@@ -67,6 +67,14 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 29. **Funnel Analytics (Phase 12)** — pipeline widget on home page (applied → interview → offer conversion rates); full pipeline breakdown on Stats page
 30. **Error Boundary (Tech Debt)** — wraps all routes in `Layout` + outer App; shows friendly error UI with "Try again" button
 31. **DB Indexes (Tech Debt)** — indexes on `analyses.created_at`, `analyses.status`, `analyses.fit_score`, `notifications.read`, `notifications.created_at`
+32. **Kanban Job Board** — `/board` page with 5 status columns; drag-and-drop cards (HTML5 API) to change status; Ember amber headers
+33. **Brand Dashboard** — `/brand` page: keyword strength bars, skill gap map, fit score trend line chart, personal summary stats, strengths word-cloud
+34. **Stats Enhancements** — keyword trends bar chart, time-in-stage metrics, interview/offer conversion cards, score momentum indicator
+35. **Market Insights AI** — POST /analyses/:id/market-insights → role demand level, salary range, top in-demand skills, market context, hiring trend, remote outlook
+36. **Career Path Planner AI** — POST /analyses/:id/career-path → current role inference, 3 next-step roles with timelines, 2 stretch/senior roles, overall timeline, key themes
+37. **Follow-up Email Generator** — POST /analyses/:id/follow-up-email with emailType (after_apply/after_interview/thank_you) → subject, body, tips; copy-to-clipboard; shown on analysis page
+38. **Portfolio Links** — up to 3 URLs (GitHub, portfolio, case study) saved per analysis via PATCH; shown as clickable ExternalLink badges
+39. **Cover Letter Variations** — "Generate 2nd Variation" button cycles through tones; stored in local state for comparison/copying
 
 ### Key AI notes
 - Model: `gpt-5.4` with `max_completion_tokens`
@@ -76,7 +84,7 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 ### DB schema
 - Table: `analyses` in `lib/db/src/schema/analyses.ts`
 - Table: `notifications` in `lib/db/src/schema/notifications.ts` — fields: id, type (deadline/follow_up/info), title, body, analysisId (FK→analyses cascade), read, createdAt
-- Key analyses fields: `fitScore`, `atsScore`, `strengths[]`, `gaps[]`, `improvements[]`, `atsKeywordsMatched[]`, `atsKeywordsMissing[]`, `coverLetter`, `linkedinPost`, `interviewQuestions[]`, `learningPlan[]`, `status`, `isFavorite`, `notes`, `shareToken`, `isPublic`, `deadline`, `contactName`, `contactEmail`, `followUpDate`, `tags[]`, `salaryGuide` (jsonb)
+- Key analyses fields: `fitScore`, `atsScore`, `strengths[]`, `gaps[]`, `improvements[]`, `atsKeywordsMatched[]`, `atsKeywordsMissing[]`, `coverLetter`, `linkedinPost`, `interviewQuestions[]`, `learningPlan[]`, `status`, `isFavorite`, `notes`, `shareToken`, `isPublic`, `deadline`, `contactName`, `contactEmail`, `followUpDate`, `tags[]`, `salaryGuide` (jsonb), `portfolioLinks[]`
 
 ### API contract
 - OpenAPI spec: `lib/api-spec/openapi.yaml`

@@ -6,9 +6,11 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/layout";
 import { Home } from "@/pages/home";
+import { Board } from "@/pages/board";
 import { Analysis } from "@/pages/analysis";
 import { History } from "@/pages/history";
 import { Stats } from "@/pages/stats";
+import { Brand } from "@/pages/brand";
 import { SharedAnalysis } from "@/pages/shared";
 import { Compare } from "@/pages/compare";
 import { Skills } from "@/pages/skills";
@@ -33,9 +35,11 @@ function Router() {
           <ErrorBoundary>
             <Switch>
               <Route path="/" component={Home} />
+              <Route path="/board" component={Board} />
               <Route path="/analysis/:id" component={Analysis} />
               <Route path="/history" component={History} />
               <Route path="/stats" component={Stats} />
+              <Route path="/brand" component={Brand} />
               <Route path="/compare" component={Compare} />
               <Route path="/skills" component={Skills} />
               <Route component={NotFound} />

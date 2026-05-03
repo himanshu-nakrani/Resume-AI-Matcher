@@ -144,6 +144,7 @@ export interface Analysis {
   tags: string[];
   companyResearch?: CompanyResearch | null;
   redFlags?: RedFlag[] | null;
+  portfolioLinks?: string[];
   createdAt: string;
 }
 
@@ -174,6 +175,7 @@ export interface UpdateAnalysisBody {
   contactEmail?: string;
   followUpDate?: string;
   tags?: string[];
+  portfolioLinks?: string[];
 }
 
 export type SalaryGuideResponsePeriod =
@@ -324,6 +326,71 @@ export interface Notification {
 
 export interface MarkNotificationReadParams {
   id: number;
+}
+
+export type MarketInsightsResponseDemandLevel =
+  (typeof MarketInsightsResponseDemandLevel)[keyof typeof MarketInsightsResponseDemandLevel];
+
+export const MarketInsightsResponseDemandLevel = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export type MarketInsightsResponseSalaryPeriod =
+  (typeof MarketInsightsResponseSalaryPeriod)[keyof typeof MarketInsightsResponseSalaryPeriod];
+
+export const MarketInsightsResponseSalaryPeriod = {
+  year: "year",
+  month: "month",
+  hour: "hour",
+} as const;
+
+export interface MarketInsightsResponse {
+  demandLevel: MarketInsightsResponseDemandLevel;
+  salaryMin: number;
+  salaryMax: number;
+  salaryCurrency: string;
+  salaryPeriod: MarketInsightsResponseSalaryPeriod;
+  topSkills: string[];
+  marketContext: string;
+  hiringTrend: string;
+  remoteOutlook: string;
+}
+
+export interface CareerPathStep {
+  title: string;
+  description: string;
+  timeframe: string;
+  keySkills: string[];
+  isStretch: boolean;
+}
+
+export interface CareerPathResponse {
+  currentRoleInference: string;
+  nextSteps: CareerPathStep[];
+  stretchRoles: CareerPathStep[];
+  overallTimeline: string;
+  keyThemes: string[];
+}
+
+export type FollowUpEmailBodyEmailType =
+  (typeof FollowUpEmailBodyEmailType)[keyof typeof FollowUpEmailBodyEmailType];
+
+export const FollowUpEmailBodyEmailType = {
+  after_apply: "after_apply",
+  after_interview: "after_interview",
+  thank_you: "thank_you",
+} as const;
+
+export interface FollowUpEmailBody {
+  emailType: FollowUpEmailBodyEmailType;
+}
+
+export interface FollowUpEmailResponse {
+  subject: string;
+  body: string;
+  tips: string[];
 }
 
 export interface PracticeFeedbackBody {

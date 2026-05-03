@@ -3,10 +3,10 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, ArrowRight } from "lucide-react";
-import type { ListAnalysesResponseItem } from "@workspace/api-client-react";
+import type { Analysis } from "@workspace/api-client-react";
 
 interface Props {
-  analyses: ListAnalysesResponseItem[];
+  analyses: Analysis[];
 }
 
 const STAGES = [
