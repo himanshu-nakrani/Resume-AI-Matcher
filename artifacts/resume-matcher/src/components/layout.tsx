@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, History, BarChart2, PlusCircle, Moon, Sun, GitCompareArrows, Keyboard, GraduationCap, X } from "lucide-react";
+import { History, BarChart2, PlusCircle, Moon, Sun, GitCompareArrows, Keyboard, GraduationCap, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 import { useTheme, type ThemeVariant } from "@/hooks/use-theme";
@@ -126,23 +126,54 @@ export function Layout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", handler);
   }, [setLocation]);
 
+  const isEmberTheme = theme === "warm";
+
   return (
-    <div className="flex min-h-screen w-full bg-muted/30">
+    <div className="flex min-h-screen w-full bg-background">
       <CommandPalette />
       <ShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
-      {/* Desktop sidebar */}
-      <aside className="w-64 border-r bg-card flex-col hidden md:flex">
-        <div className="p-6 border-b">
-          <div className="flex items-center gap-2 font-bold text-lg text-primary tracking-tight">
-            <LayoutDashboard className="w-5 h-5" />
-            <span>OptiMatch</span>
+      {/* Desktop sidebar — Ember warm treatment when warm theme active */}
+      <aside
+        className={`w-64 flex-col hidden md:flex h-screen sticky top-0 z-10 overflow-hidden ${
+          isEmberTheme
+            ? "bg-[#78350f] text-[#fef3c7] rounded-r-3xl shadow-xl"
+            : "border-r bg-card"
+        }`}
+      >
+        {/* Logo */}
+        <div className={`p-7 flex items-center gap-3 ${!isEmberTheme ? "border-b" : ""}`}>
+          <Sparkles className={`w-5 h-5 shrink-0 ${isEmberTheme ? "text-[#fcd34d]" : "text-primary"}`} />
+          <div>
+            <span className={`font-bold text-lg tracking-tight ${isEmberTheme ? "text-white" : "text-foreground"}`}>
+              OptiMatch
+            </span>
+            <p className={`text-[11px] font-medium mt-0 leading-tight ${isEmberTheme ? "text-[#fde68a]" : "text-muted-foreground"}`}>
+              AI Career Intelligence
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 font-medium">AI Career Intelligence</p>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
+
+        {/* Nav */}
+        <nav className="flex-1 px-4 space-y-1 mt-1">
           {navItems.map((item) => {
             const active = isActive(location, item.href);
+            if (isEmberTheme) {
+              return (
+                <Link key={item.href} href={item.href} className="block">
+                  <div
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-colors cursor-pointer ${
+                      active
+                        ? "bg-[#92400e] text-white font-semibold"
+                        : "text-[#fde68a] hover:bg-[#92400e]/50 font-medium"
+                    }`}
+                  >
+                    <item.icon className="w-4 h-4 shrink-0" />
+                    {item.label}
+                  </div>
+                </Link>
+              );
+            }
             return (
               <Link key={item.href} href={item.href} className="block">
                 <Button
@@ -156,21 +187,37 @@ export function Layout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="px-4 pt-3 border-t flex items-center justify-between">
-          <span className="text-xs font-semibold text-muted-foreground">Notifications</span>
+
+        {/* Notifications */}
+        <div
+          className={`px-4 pt-3 flex items-center justify-between ${
+            isEmberTheme ? "border-t border-[#92400e]/60" : "border-t"
+          }`}
+        >
+          <span className={`text-xs font-semibold ${isEmberTheme ? "text-[#fde68a]" : "text-muted-foreground"}`}>
+            Notifications
+          </span>
           <NotificationsPanel />
         </div>
+
+        {/* Bottom controls */}
         <div className="p-4 space-y-2">
-          <div className="text-xs font-semibold text-muted-foreground px-2 mb-2">Theme</div>
+          <div className={`text-xs font-semibold px-2 mb-2 ${isEmberTheme ? "text-[#fde68a]" : "text-muted-foreground"}`}>
+            Theme
+          </div>
           <div className="flex gap-2">
             {themes.map((t) => (
               <button
                 key={t.value}
                 onClick={() => setTheme(t.value)}
-                className={`flex-1 px-2 py-2 rounded text-xs font-medium transition-all ${
+                className={`flex-1 px-2 py-2 rounded-xl text-xs font-medium transition-all ${
                   theme === t.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-secondary"
+                    ? isEmberTheme
+                      ? "bg-[#fcd34d] text-[#78350f]"
+                      : "bg-primary text-primary-foreground"
+                    : isEmberTheme
+                      ? "bg-[#92400e]/50 text-[#fde68a] hover:bg-[#92400e]"
+                      : "bg-muted text-muted-foreground hover:bg-secondary"
                 }`}
                 title={t.label}
               >
@@ -178,20 +225,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </button>
             ))}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-muted-foreground font-medium mt-2"
+          <button
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all mt-1 ${
+              isEmberTheme
+                ? "text-[#fde68a] hover:bg-[#92400e]/50"
+                : "text-muted-foreground hover:bg-secondary"
+            }`}
             onClick={toggle}
             aria-label="Toggle dark mode"
           >
-            {isDark ? <Sun className="w-4 h-4 mr-3" /> : <Moon className="w-4 h-4 mr-3" />}
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             {isDark ? "Light mode" : "Dark mode"}
-          </Button>
+          </button>
           <div className="flex items-center gap-2 px-2 pt-1">
             <button
               onClick={() => setShowShortcuts(true)}
-              className="flex items-center gap-2 text-[10px] text-muted-foreground/60 font-medium hover:text-muted-foreground transition-colors"
+              className={`flex items-center gap-2 text-[10px] font-medium hover:opacity-80 transition-opacity ${
+                isEmberTheme ? "text-[#fde68a]/60" : "text-muted-foreground/60"
+              }`}
             >
               <Keyboard className="w-3.5 h-3.5" />
               <span>⌘K to search · ⌘? shortcuts</span>
@@ -202,14 +253,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
-        <header className="md:hidden flex items-center justify-between px-4 py-3 border-b bg-card sticky top-0 z-10">
-          <div className="flex items-center gap-2 font-bold text-base text-primary">
-            <LayoutDashboard className="w-4 h-4" />
+        <header
+          className={`md:hidden flex items-center justify-between px-4 py-3 sticky top-0 z-10 ${
+            isEmberTheme ? "bg-[#78350f] text-[#fef3c7]" : "border-b bg-card"
+          }`}
+        >
+          <div className={`flex items-center gap-2 font-bold text-base ${isEmberTheme ? "text-white" : "text-primary"}`}>
+            <Sparkles className={`w-4 h-4 ${isEmberTheme ? "text-[#fcd34d]" : ""}`} />
             <span>OptiMatch</span>
           </div>
           <div className="flex items-center gap-1">
             <NotificationsPanel />
-            <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle dark mode">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggle}
+              aria-label="Toggle dark mode"
+              className={isEmberTheme ? "text-[#fde68a] hover:bg-[#92400e]/50" : ""}
+            >
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
           </div>

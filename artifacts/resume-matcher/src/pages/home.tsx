@@ -18,6 +18,7 @@ import { Sparkles, Trash2, ArrowRight, Clock, Upload, Link2, X, Heart, AlertCirc
 import { formatDistanceToNow, format, isWithinInterval, addDays, isPast } from "date-fns";
 import mammoth from "mammoth";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/hooks/use-theme";
 
 const formSchema = z.object({
   jobTitle: z.string().min(1, "Job title is required"),
@@ -33,6 +34,8 @@ export function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { theme } = useTheme();
+  const isEmber = theme === "warm";
   const [resumeFileName, setResumeFileName] = useState("");
   const [resumeFileError, setResumeFileError] = useState("");
   const [isParsingResume, setIsParsingResume] = useState(false);
@@ -141,12 +144,30 @@ export function Home() {
 
   return (
     <div className="space-y-10">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">New Analysis</h1>
-        <p className="text-muted-foreground mt-1">Paste your resume and job description to get an AI-powered fit score and recommendations.</p>
-      </div>
+      {/* Page header */}
+      {isEmber ? (
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">
+            Let's find your next great role.
+          </h1>
+          <p className="text-muted-foreground mt-2 text-lg leading-relaxed max-w-2xl">
+            Paste your resume and the job description below. We'll analyze your fit, highlight your strengths, and guide you on what to emphasize.
+          </p>
+        </div>
+      ) : (
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">New Analysis</h1>
+          <p className="text-muted-foreground mt-1">Paste your resume and job description to get an AI-powered fit score and recommendations.</p>
+        </div>
+      )}
 
-      <Card className="border shadow-sm">
+      {/* Analysis form card */}
+      <Card
+        className={isEmber
+          ? "border-[#fde68a] rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.05)]"
+          : "border shadow-sm"
+        }
+      >
         <CardContent className="pt-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" data-testid="form-analysis">
@@ -156,9 +177,16 @@ export function Home() {
                   name="jobTitle"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Job Title <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel className={isEmber ? "text-foreground font-semibold" : ""}>
+                        Job Title <span className="text-destructive">*</span>
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. Senior Software Engineer" {...field} data-testid="input-job-title" />
+                        <Input
+                          placeholder="e.g. Senior Software Engineer"
+                          className={isEmber ? "rounded-xl border-[#fde68a] bg-background focus-visible:ring-[#d97706] h-11" : ""}
+                          {...field}
+                          data-testid="input-job-title"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -169,9 +197,16 @@ export function Home() {
                   name="companyName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Company Name <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                      <FormLabel className={isEmber ? "text-foreground font-semibold" : ""}>
+                        Company Name <span className="text-muted-foreground text-xs">(optional)</span>
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. Acme Corp" {...field} data-testid="input-company-name" />
+                        <Input
+                          placeholder="e.g. Acme Corp"
+                          className={isEmber ? "rounded-xl border-[#fde68a] bg-background focus-visible:ring-[#d97706] h-11" : ""}
+                          {...field}
+                          data-testid="input-company-name"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -185,11 +220,15 @@ export function Home() {
                   name="resumeText"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Resume <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel className={isEmber ? "text-foreground font-semibold" : ""}>
+                        Resume <span className="text-destructive">*</span>
+                      </FormLabel>
                       <FormControl>
                         <div className="space-y-3">
                           <div className="flex flex-wrap items-center gap-3">
-                            <Button type="button" variant="secondary" disabled={isParsingResume} asChild>
+                            <Button type="button" variant="secondary" disabled={isParsingResume} asChild
+                              className={isEmber ? "rounded-xl bg-[#fef3c7] text-[#92400e] hover:bg-[#fde68a] border-[#fde68a]" : ""}
+                            >
                               <label className="cursor-pointer">
                                 <Upload className="w-4 h-4 mr-2" />
                                 {isParsingResume ? "Reading file..." : "Upload resume"}
@@ -201,7 +240,10 @@ export function Home() {
                           </div>
                           <Textarea
                             placeholder="Paste your resume text here..."
-                            className="min-h-[260px] font-mono text-sm resize-none"
+                            className={isEmber
+                              ? "min-h-[260px] rounded-2xl border-[#fde68a] bg-background focus-visible:ring-[#d97706] p-4 text-sm resize-none leading-relaxed"
+                              : "min-h-[260px] font-mono text-sm resize-none"
+                            }
                             {...field}
                             data-testid="textarea-resume"
                           />
@@ -217,7 +259,9 @@ export function Home() {
                   name="jobDescriptionText"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Job Description <span className="text-destructive">*</span></FormLabel>
+                      <FormLabel className={isEmber ? "text-foreground font-semibold" : ""}>
+                        Job Description <span className="text-destructive">*</span>
+                      </FormLabel>
                       <FormControl>
                         <div className="space-y-3">
                           <div className="flex flex-wrap items-center gap-2">
@@ -226,6 +270,7 @@ export function Home() {
                               variant="secondary"
                               size="sm"
                               onClick={() => setShowUrlInput(!showUrlInput)}
+                              className={isEmber ? "rounded-xl bg-[#fef3c7] text-[#92400e] hover:bg-[#fde68a] border-[#fde68a]" : ""}
                             >
                               <Link2 className="w-3.5 h-3.5 mr-1.5" />
                               Import from URL
@@ -239,13 +284,14 @@ export function Home() {
                                 value={jobUrlInput}
                                 onChange={(e) => setJobUrlInput(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleImportUrl()}
-                                className="flex-1 text-sm"
+                                className={isEmber ? "flex-1 text-sm rounded-xl border-[#fde68a] focus-visible:ring-[#d97706]" : "flex-1 text-sm"}
                               />
                               <Button
                                 type="button"
                                 size="sm"
                                 onClick={handleImportUrl}
                                 disabled={fetchJob.isPending || !jobUrlInput.trim()}
+                                className={isEmber ? "bg-[#d97706] hover:bg-[#b45309] text-white rounded-xl" : ""}
                               >
                                 {fetchJob.isPending ? "Importing..." : "Import"}
                               </Button>
@@ -262,7 +308,10 @@ export function Home() {
                           )}
                           <Textarea
                             placeholder="Paste the job description here..."
-                            className="min-h-[260px] font-mono text-sm resize-none"
+                            className={isEmber
+                              ? "min-h-[260px] rounded-2xl border-[#fde68a] bg-background focus-visible:ring-[#d97706] p-4 text-sm resize-none leading-relaxed"
+                              : "min-h-[260px] font-mono text-sm resize-none"
+                            }
                             {...field}
                             data-testid="textarea-jd"
                           />
@@ -274,19 +323,42 @@ export function Home() {
                 />
               </div>
 
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full md:w-auto"
-                disabled={createAnalysis.isPending}
-                data-testid="button-analyze"
-              >
-                {createAnalysis.isPending ? (
-                  <><Sparkles className="w-4 h-4 mr-2 animate-pulse" />Analyzing with AI...</>
-                ) : (
-                  <><Sparkles className="w-4 h-4 mr-2" />Analyze Fit</>
-                )}
-              </Button>
+              {isEmber ? (
+                <div className="pt-2 flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={createAnalysis.isPending}
+                    className="bg-[#d97706] hover:bg-[#b45309] text-white rounded-full px-10 py-6 text-base font-semibold shadow-lg shadow-[#d97706]/25 transition-all hover:shadow-[#d97706]/40 hover:-translate-y-0.5"
+                    data-testid="button-analyze"
+                  >
+                    {createAnalysis.isPending ? (
+                      <span className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Analyzing fit...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        Analyze Fit
+                        <Sparkles className="w-4 h-4" />
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full md:w-auto"
+                  disabled={createAnalysis.isPending}
+                  data-testid="button-analyze"
+                >
+                  {createAnalysis.isPending ? (
+                    <><Sparkles className="w-4 h-4 mr-2 animate-pulse" />Analyzing with AI...</>
+                  ) : (
+                    <><Sparkles className="w-4 h-4 mr-2" />Analyze Fit</>
+                  )}
+                </Button>
+              )}
             </form>
           </Form>
         </CardContent>

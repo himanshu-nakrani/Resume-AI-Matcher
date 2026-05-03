@@ -1,26 +1,51 @@
-/* WARM & PLAYFUL THEME */
+/* EMBER — WARM & HUMAN THEME (default) */
 html[data-theme="warm"] {
-  --background: 18 100% 97%;
-  --foreground: 0 0% 10%;
-  --card: 15 100% 98%;
-  --card-foreground: 0 0% 10%;
-  --card-border: 20 100% 87%;
-  --border: 20 100% 87%;
-  --input: 20 100% 87%;
-  --ring: 14 100% 58%;
-  --primary: 14 100% 58%;
+  --app-font-sans: 'DM Sans', sans-serif;
+  --radius: 0.625rem;
+
+  --background: 35 33% 97%;
+  --foreground: 20 90% 14%;
+  --border: 46 97% 76%;
+  --input: 46 97% 80%;
+  --ring: 38 92% 45%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 20 90% 14%;
+  --card-border: 48 100% 88%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 90% 14%;
+  --popover-border: 48 100% 88%;
+
+  --primary: 38 92% 45%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 23 100% 66%;
-  --secondary-foreground: 0 0% 10%;
-  --muted: 18 100% 90%;
-  --muted-foreground: 19 58% 49%;
-  --accent: 32 100% 50%;
-  --accent-foreground: 0 0% 100%;
+
+  --secondary: 25 100% 92%;
+  --secondary-foreground: 17 88% 40%;
+
+  --muted: 48 100% 92%;
+  --muted-foreground: 27 82% 30%;
+
+  --accent: 43 96% 65%;
+  --accent-foreground: 25 81% 26%;
+
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --popover: 15 100% 98%;
-  --popover-foreground: 0 0% 10%;
-  --popover-border: 20 100% 87%;
+
+  --sidebar: 25 81% 26%;
+  --sidebar-foreground: 48 100% 88%;
+  --sidebar-border: 25 75% 20%;
+  --sidebar-primary: 43 96% 60%;
+  --sidebar-primary-foreground: 25 81% 20%;
+  --sidebar-accent: 27 75% 31%;
+  --sidebar-accent-foreground: 48 100% 88%;
+  --sidebar-ring: 43 96% 65%;
+
+  --chart-1: 38 92% 45%;
+  --chart-2: 17 88% 40%;
+  --chart-3: 160 60% 40%;
+  --chart-4: 46 97% 60%;
+  --chart-5: 0 80% 50%;
 }
 
 /* FORMAL & PROFESSIONAL THEME */
