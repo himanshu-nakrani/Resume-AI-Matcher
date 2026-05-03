@@ -19,6 +19,8 @@ import {
   UnshareAnalysisParams,
   GetSharedAnalysisParams,
   FetchJobDescriptionBody,
+  DuplicateAnalysisParams,
+  GenerateSalaryGuideParams,
 } from "@workspace/api-zod";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
@@ -227,6 +229,11 @@ router.patch("/analyses/:id", async (req, res): Promise<void> => {
   if (body.data.status !== undefined) updates.status = body.data.status as typeof existing.status;
   if (body.data.notes !== undefined) updates.notes = body.data.notes;
   if (body.data.isFavorite !== undefined) updates.isFavorite = body.data.isFavorite;
+  if (body.data.deadline !== undefined) updates.deadline = body.data.deadline;
+  if (body.data.contactName !== undefined) updates.contactName = body.data.contactName;
+  if (body.data.contactEmail !== undefined) updates.contactEmail = body.data.contactEmail;
+  if (body.data.followUpDate !== undefined) updates.followUpDate = body.data.followUpDate;
+  if (body.data.tags !== undefined) updates.tags = body.data.tags;
 
   const [updated] = await db
     .update(analyses)
@@ -235,6 +242,123 @@ router.patch("/analyses/:id", async (req, res): Promise<void> => {
     .returning();
 
   res.json(updated);
+});
+
+// --- Duplicate ---
+
+router.post("/analyses/:id/duplicate", async (req, res): Promise<void> => {
+  const params = DuplicateAnalysisParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [original] = await db
+    .select()
+    .from(analyses)
+    .where(eq(analyses.id, params.data.id));
+
+  if (!original) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+
+  req.log.info({ id: params.data.id }, "Duplicating analysis");
+
+  const [newRow] = await db
+    .insert(analyses)
+    .values({
+      jobTitle: original.jobTitle + " (copy)",
+      companyName: original.companyName,
+      resumeText: original.resumeText,
+      jobDescriptionText: original.jobDescriptionText,
+      fitScore: original.fitScore,
+      fitRationale: original.fitRationale,
+      strengths: (original.strengths as string[]) ?? [],
+      gaps: (original.gaps as string[]) ?? [],
+      improvements: (original.improvements as string[]) ?? [],
+      atsKeywordsMatched: (original.atsKeywordsMatched as string[]) ?? [],
+      atsKeywordsMissing: (original.atsKeywordsMissing as string[]) ?? [],
+      atsScore: original.atsScore,
+      coverLetter: null,
+      linkedinPost: null,
+      status: "not_applied",
+      interviewQuestions: [],
+      learningPlan: [],
+      isFavorite: false,
+      notes: null,
+      shareToken: null,
+      isPublic: false,
+    })
+    .returning();
+
+  res.status(201).json(newRow);
+});
+
+// --- Salary Guide ---
+
+router.post("/analyses/:id/salary-guide", async (req, res): Promise<void> => {
+  const params = GenerateSalaryGuideParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [analysis] = await db
+    .select()
+    .from(analyses)
+    .where(eq(analyses.id, params.data.id));
+
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+
+  req.log.info({ id: params.data.id }, "Generating salary guide");
+
+  const prompt =
+    "You are a compensation expert with access to current market data. Provide a realistic salary range estimate.\n\n" +
+    "Job Title: " + analysis.jobTitle + "\n" +
+    "Company: " + (analysis.companyName ?? "unspecified company") + "\n" +
+    "Candidate Strengths: " + ((analysis.strengths as string[]).slice(0, 3).join("; ") || "not specified") + "\n" +
+    "Candidate Gaps: " + ((analysis.gaps as string[]).slice(0, 3).join("; ") || "none") + "\n" +
+    "Fit Score: " + analysis.fitScore + "/100\n\n" +
+    "Based on current market rates (2024-2025), provide a realistic salary estimate. Consider the role level implied by title and candidate profile.\n" +
+    "Return ONLY valid JSON (no markdown):\n" +
+    '{"low": <integer annual USD>, "mid": <integer annual USD>, "high": <integer annual USD>, "currency": "USD", "period": "year", ' +
+    '"context": "<2-3 sentence market context explaining these numbers>", ' +
+    '"factors": ["<factor that could push salary higher 1>", "<factor 2>", "<factor 3>"], ' +
+    '"negotiationTips": ["<specific negotiation tip 1>", "<tip 2>", "<tip 3>"]}';
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    let guide: {
+      low: number; mid: number; high: number; currency: string; period: string;
+      context: string; factors: string[]; negotiationTips: string[];
+    };
+    try {
+      guide = JSON.parse(raw);
+    } catch {
+      res.status(500).json({ error: "Failed to parse salary guide" });
+      return;
+    }
+
+    await db
+      .update(analyses)
+      .set({ salaryGuide: guide })
+      .where(eq(analyses.id, params.data.id));
+
+    res.json(guide);
+  } catch (err) {
+    logger.error({ err }, "Salary guide generation failed");
+    res.status(500).json({ error: "Salary guide generation failed" });
+  }
 });
 
 // --- Phase 1: Sharing ---

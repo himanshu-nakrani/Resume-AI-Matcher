@@ -19,6 +19,17 @@ export type LearningPlanItem = {
   resources: LearningResource[];
 };
 
+export type SalaryRange = {
+  low: number;
+  mid: number;
+  high: number;
+  currency: string;
+  period: "year" | "month" | "hour";
+  context: string;
+  factors: string[];
+  negotiationTips: string[];
+};
+
 export const analyses = pgTable("analyses", {
   id: serial("id").primaryKey(),
   jobTitle: text("job_title").notNull(),
@@ -44,6 +55,15 @@ export const analyses = pgTable("analyses", {
   // Phase 1: Sharing
   shareToken: text("share_token"),
   isPublic: boolean("is_public").notNull().default(false),
+  // Job Tracking
+  deadline: text("deadline"),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  followUpDate: text("follow_up_date"),
+  // Salary Guide
+  salaryGuide: json("salary_guide").$type<SalaryRange>(),
+  // Tags
+  tags: json("tags").$type<string[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

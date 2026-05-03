@@ -1,13 +1,15 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, History, BarChart2, PlusCircle, Moon, Sun, Palette } from "lucide-react";
+import { LayoutDashboard, History, BarChart2, PlusCircle, Moon, Sun, GitCompareArrows, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 import { useTheme, type ThemeVariant } from "@/hooks/use-theme";
+import { CommandPalette } from "@/components/command-palette";
 
 const navItems = [
   { href: "/", label: "New Analysis", icon: PlusCircle },
   { href: "/history", label: "History", icon: History },
   { href: "/stats", label: "Stats", icon: BarChart2 },
+  { href: "/compare", label: "Compare", icon: GitCompareArrows },
 ];
 
 const themes: { value: ThemeVariant; label: string; emoji: string }[] = [
@@ -18,7 +20,7 @@ const themes: { value: ThemeVariant; label: string; emoji: string }[] = [
 
 function isActive(location: string, href: string) {
   if (href === "/") return location === "/" || location.startsWith("/analysis/");
-  return location === href;
+  return location === href || location.startsWith(href + "/");
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -28,6 +30,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen w-full bg-muted/30">
+      <CommandPalette />
+
       {/* Desktop sidebar */}
       <aside className="w-64 border-r bg-card flex-col hidden md:flex">
         <div className="p-6 border-b">
@@ -81,6 +85,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {isDark ? <Sun className="w-4 h-4 mr-3" /> : <Moon className="w-4 h-4 mr-3" />}
             {isDark ? "Light mode" : "Dark mode"}
           </Button>
+          <div className="flex items-center gap-2 px-2 pt-1">
+            <Keyboard className="w-3.5 h-3.5 text-muted-foreground/60" />
+            <span className="text-[10px] text-muted-foreground/60 font-medium">⌘K to search</span>
+          </div>
         </div>
       </aside>
 

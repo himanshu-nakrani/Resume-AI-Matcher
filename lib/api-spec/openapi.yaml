@@ -105,7 +105,7 @@ paths:
     patch:
       operationId: updateAnalysis
       tags: [analyses]
-      summary: Update an analysis (status, notes, favorite)
+      summary: Update an analysis (status, notes, favorite, tracking)
       parameters:
         - name: id
           in: path
@@ -125,6 +125,56 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Analysis"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/{id}/duplicate:
+    post:
+      operationId: duplicateAnalysis
+      tags: [analyses]
+      summary: Duplicate an analysis (clone resume+JD for comparison)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Duplicate analysis created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analysis"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/{id}/salary-guide:
+    post:
+      operationId: generateSalaryGuide
+      tags: [analyses]
+      summary: Generate AI salary range estimate for this role
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Salary guide generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalaryGuideResponse"
         "404":
           description: Not found
           content:
@@ -460,6 +510,21 @@ components:
           type: ["string", "null"]
         isPublic:
           type: boolean
+        deadline:
+          type: ["string", "null"]
+        contactName:
+          type: ["string", "null"]
+        contactEmail:
+          type: ["string", "null"]
+        followUpDate:
+          type: ["string", "null"]
+        salaryGuide:
+          nullable: true
+          $ref: "#/components/schemas/SalaryRange"
+        tags:
+          type: array
+          items:
+            type: string
         createdAt:
           type: string
       required:
@@ -485,6 +550,11 @@ components:
         - notes
         - shareToken
         - isPublic
+        - deadline
+        - contactName
+        - contactEmail
+        - followUpDate
+        - tags
         - createdAt
 
     CreateAnalysisBody:
@@ -513,6 +583,86 @@ components:
           type: string
         isFavorite:
           type: boolean
+        deadline:
+          type: string
+        contactName:
+          type: string
+        contactEmail:
+          type: string
+        followUpDate:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    SalaryRange:
+      type: object
+      properties:
+        low:
+          type: integer
+        mid:
+          type: integer
+        high:
+          type: integer
+        currency:
+          type: string
+        period:
+          type: string
+          enum: [year, month, hour]
+        context:
+          type: string
+        factors:
+          type: array
+          items:
+            type: string
+        negotiationTips:
+          type: array
+          items:
+            type: string
+      required:
+        - low
+        - mid
+        - high
+        - currency
+        - period
+        - context
+        - factors
+        - negotiationTips
+
+    SalaryGuideResponse:
+      type: object
+      properties:
+        low:
+          type: integer
+        mid:
+          type: integer
+        high:
+          type: integer
+        currency:
+          type: string
+        period:
+          type: string
+          enum: [year, month, hour]
+        context:
+          type: string
+        factors:
+          type: array
+          items:
+            type: string
+        negotiationTips:
+          type: array
+          items:
+            type: string
+      required:
+        - low
+        - mid
+        - high
+        - currency
+        - period
+        - context
+        - factors
+        - negotiationTips
 
     ShareResponse:
       type: object

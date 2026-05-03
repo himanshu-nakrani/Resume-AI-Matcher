@@ -30,6 +30,7 @@ import type {
   LearningPlanResponse,
   RewriteBulletBody,
   RewriteBulletResponse,
+  SalaryGuideResponse,
   ShareResponse,
   UpdateAnalysisBody,
 } from "./api.schemas";
@@ -452,7 +453,7 @@ export const useDeleteAnalysis = <
 };
 
 /**
- * @summary Update an analysis (status, notes, favorite)
+ * @summary Update an analysis (status, notes, favorite, tracking)
  */
 export const getUpdateAnalysisUrl = (id: number) => {
   return `/api/analyses/${id}`;
@@ -516,7 +517,7 @@ export type UpdateAnalysisMutationBody = BodyType<UpdateAnalysisBody>;
 export type UpdateAnalysisMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Update an analysis (status, notes, favorite)
+ * @summary Update an analysis (status, notes, favorite, tracking)
  */
 export const useUpdateAnalysis = <
   TError = ErrorType<ErrorResponse>,
@@ -536,6 +537,174 @@ export const useUpdateAnalysis = <
   TContext
 > => {
   return useMutation(getUpdateAnalysisMutationOptions(options));
+};
+
+/**
+ * @summary Duplicate an analysis (clone resume+JD for comparison)
+ */
+export const getDuplicateAnalysisUrl = (id: number) => {
+  return `/api/analyses/${id}/duplicate`;
+};
+
+export const duplicateAnalysis = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Analysis> => {
+  return customFetch<Analysis>(getDuplicateAnalysisUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getDuplicateAnalysisMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof duplicateAnalysis>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof duplicateAnalysis>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["duplicateAnalysis"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof duplicateAnalysis>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return duplicateAnalysis(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DuplicateAnalysisMutationResult = NonNullable<
+  Awaited<ReturnType<typeof duplicateAnalysis>>
+>;
+
+export type DuplicateAnalysisMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Duplicate an analysis (clone resume+JD for comparison)
+ */
+export const useDuplicateAnalysis = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof duplicateAnalysis>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof duplicateAnalysis>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDuplicateAnalysisMutationOptions(options));
+};
+
+/**
+ * @summary Generate AI salary range estimate for this role
+ */
+export const getGenerateSalaryGuideUrl = (id: number) => {
+  return `/api/analyses/${id}/salary-guide`;
+};
+
+export const generateSalaryGuide = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SalaryGuideResponse> => {
+  return customFetch<SalaryGuideResponse>(getGenerateSalaryGuideUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getGenerateSalaryGuideMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateSalaryGuide>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateSalaryGuide>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["generateSalaryGuide"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateSalaryGuide>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return generateSalaryGuide(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateSalaryGuideMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateSalaryGuide>>
+>;
+
+export type GenerateSalaryGuideMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate AI salary range estimate for this role
+ */
+export const useGenerateSalaryGuide = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateSalaryGuide>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateSalaryGuide>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getGenerateSalaryGuideMutationOptions(options));
 };
 
 /**

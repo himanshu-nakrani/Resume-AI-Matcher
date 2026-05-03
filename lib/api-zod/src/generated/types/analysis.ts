@@ -7,6 +7,7 @@
  */
 import type { AnalysisStatus } from "./analysisStatus";
 import type { LearningPlanItem } from "./learningPlanItem";
+import type { SalaryRange } from "./salaryRange";
 
 export interface Analysis {
   id: number;
@@ -36,5 +37,15 @@ export interface Analysis {
   /** @nullable */
   shareToken: string | null;
   isPublic: boolean;
+  /** @nullable */
+  deadline: string | null;
+  /** @nullable */
+  contactName: string | null;
+  /** @nullable */
+  contactEmail: string | null;
+  /** @nullable */
+  followUpDate: string | null;
+  salaryGuide?: SalaryRange | null;
+  tags: string[];
   createdAt: string;
 }

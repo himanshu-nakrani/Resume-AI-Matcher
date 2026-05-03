@@ -9,6 +9,7 @@ import { Analysis } from "@/pages/analysis";
 import { History } from "@/pages/history";
 import { Stats } from "@/pages/stats";
 import { SharedAnalysis } from "@/pages/shared";
+import { Compare } from "@/pages/compare";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ function Router() {
             <Route path="/analysis/:id" component={Analysis} />
             <Route path="/history" component={History} />
             <Route path="/stats" component={Stats} />
+            <Route path="/compare" component={Compare} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

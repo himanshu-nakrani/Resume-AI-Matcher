@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   useGetAnalysis,
@@ -12,6 +12,8 @@ import {
   useUpdateAnalysis,
   useShareAnalysis,
   useUnshareAnalysis,
+  useDuplicateAnalysis,
+  useGenerateSalaryGuide,
 } from "@workspace/api-client-react";
 import type { LearningPlanItem, LearningResource } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -50,8 +52,17 @@ import {
   Link2,
   EyeOff,
   StickyNote,
+  CalendarClock,
+  User,
+  Mail,
+  Tag,
+  DollarSign,
+  TrendingUp,
+  GitCompareArrows,
+  X,
+  Plus,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 
 type CoverLetterTone = "professional" | "friendly" | "enthusiastic" | "concise";
 
@@ -79,6 +90,308 @@ function resourceTypeIcon(type: LearningResource["type"]) {
   }
 }
 
+function formatSalary(n: number) {
+  if (n >= 1000) return "$" + Math.round(n / 1000) + "k";
+  return "$" + n;
+}
+
+// --- Job Tracking Section ---
+function JobTrackingSection({ analysisId, analysis }: {
+  analysisId: number;
+  analysis: {
+    deadline: string | null;
+    contactName: string | null;
+    contactEmail: string | null;
+    followUpDate: string | null;
+    tags: string[] | null;
+  };
+}) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [tagInput, setTagInput] = useState("");
+
+  const update = useUpdateAnalysis({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) }),
+      onError: () => toast({ title: "Save failed", variant: "destructive" }),
+    },
+  });
+
+  const save = useCallback((field: string, value: string | string[]) => {
+    update.mutate({ id: analysisId, data: { [field]: value } });
+  }, [analysisId, update]);
+
+  const tags = (analysis.tags as string[]) ?? [];
+
+  const addTag = () => {
+    const t = tagInput.trim();
+    if (!t || tags.includes(t)) { setTagInput(""); return; }
+    const updated = [...tags, t];
+    save("tags", updated);
+    setTagInput("");
+  };
+
+  const removeTag = (tag: string) => {
+    save("tags", tags.filter((t) => t !== tag));
+  };
+
+  const emailLink = analysis.contactEmail
+    ? `mailto:${analysis.contactEmail}?subject=Re: ${encodeURIComponent("Application inquiry")}`
+    : null;
+
+  return (
+    <Card className="border shadow-sm no-print">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <CalendarClock className="w-4 h-4 text-orange-500" /> Job Tracking
+        </CardTitle>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Track deadlines, contacts, and follow-ups for this application.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <CalendarClock className="w-3.5 h-3.5" /> Application Deadline
+            </label>
+            <Input
+              type="date"
+              defaultValue={analysis.deadline ?? ""}
+              onBlur={(e) => save("deadline", e.target.value)}
+              className="text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <CalendarClock className="w-3.5 h-3.5" /> Follow-up Date
+            </label>
+            <Input
+              type="date"
+              defaultValue={analysis.followUpDate ?? ""}
+              onBlur={(e) => save("followUpDate", e.target.value)}
+              className="text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5" /> Contact Name
+            </label>
+            <Input
+              type="text"
+              placeholder="Recruiter or hiring manager..."
+              defaultValue={analysis.contactName ?? ""}
+              onBlur={(e) => save("contactName", e.target.value)}
+              className="text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5" /> Contact Email
+            </label>
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="email@company.com..."
+                defaultValue={analysis.contactEmail ?? ""}
+                onBlur={(e) => save("contactEmail", e.target.value)}
+                className="text-sm flex-1"
+              />
+              {emailLink && (
+                <a
+                  href={emailLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0"
+                >
+                  <Button variant="outline" size="sm" type="button">
+                    <Mail className="w-3.5 h-3.5 mr-1" /> Email
+                  </Button>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <Tag className="w-3.5 h-3.5" /> Tags
+          </label>
+          <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+            {tags.map((tag) => (
+              <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                {tag}
+                <button onClick={() => removeTag(tag)} className="ml-0.5 hover:text-destructive transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Add a tag (e.g. remote, fintech, senior)..."
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+              className="text-sm"
+            />
+            <Button variant="outline" size="sm" onClick={addTag} disabled={!tagInput.trim()}>
+              <Plus className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        {(analysis.deadline || analysis.followUpDate) && (
+          <div className="flex flex-wrap gap-3 pt-1">
+            {analysis.deadline && (
+              <div className="flex items-center gap-1.5 text-xs text-orange-600 dark:text-orange-400 font-medium">
+                <CalendarClock className="w-3.5 h-3.5" />
+                Deadline: {format(new Date(analysis.deadline), "MMM d, yyyy")}
+              </div>
+            )}
+            {analysis.followUpDate && (
+              <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                <CalendarClock className="w-3.5 h-3.5" />
+                Follow-up: {format(new Date(analysis.followUpDate), "MMM d, yyyy")}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Salary Guide ---
+function SalaryGuideSection({ analysisId, existing }: {
+  analysisId: number;
+  existing: {
+    low: number; mid: number; high: number; currency: string; period: string;
+    context: string; factors: string[]; negotiationTips: string[];
+  } | null;
+}) {
+  const queryClient = useQueryClient();
+
+  const generate = useGenerateSalaryGuide({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) }),
+    },
+  });
+
+  const guide = generate.data ?? existing;
+
+  return (
+    <Card className="border shadow-sm">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-green-500" /> Salary Guide
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            AI-estimated market salary range for this role and profile.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant={guide ? "outline" : "default"}
+          onClick={() => generate.mutate({ id: analysisId })}
+          disabled={generate.isPending}
+          className="no-print shrink-0"
+        >
+          {generate.isPending ? (
+            <><Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />Estimating...</>
+          ) : guide ? "Refresh" : (
+            <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Estimate Salary</>
+          )}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {generate.isPending ? (
+          <div className="space-y-3">
+            <Skeleton className="h-16 rounded-xl" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        ) : guide ? (
+          <div className="space-y-5">
+            {/* Salary bar */}
+            <div className="rounded-xl bg-muted/40 p-4">
+              <div className="flex items-end justify-between mb-3">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground font-medium">Low</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{formatSalary(guide.low)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground font-medium">Median</p>
+                  <p className="text-2xl font-extrabold tabular-nums text-primary">{formatSalary(guide.mid)}</p>
+                  <p className="text-xs text-muted-foreground">per {guide.period}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground font-medium">High</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{formatSalary(guide.high)}</p>
+                </div>
+              </div>
+              <div className="relative h-3 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="absolute inset-y-0 rounded-full bg-gradient-to-r from-yellow-400 via-green-500 to-green-600"
+                  style={{ left: "0%", right: "0%" }}
+                />
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary border-2 border-white shadow"
+                  style={{
+                    left: `${Math.min(95, Math.max(5, ((guide.mid - guide.low) / Math.max(guide.high - guide.low, 1)) * 100))}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <p className="text-sm text-muted-foreground">{guide.context}</p>
+
+            {guide.factors.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5" /> Factors that could raise your offer
+                </p>
+                <div className="space-y-1.5">
+                  {guide.factors.map((f, i) => (
+                    <div key={i} className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" />
+                      <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {guide.negotiationTips.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  Negotiation Tips
+                </p>
+                <div className="space-y-2">
+                  {guide.negotiationTips.map((tip, i) => (
+                    <div key={i} className="flex items-start gap-2 p-2.5 bg-muted/50 rounded-lg text-sm">
+                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        {i + 1}
+                      </span>
+                      <span>{tip}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-4">
+            Click "Estimate Salary" to get an AI-powered market salary range for this role based on your profile.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Bullet Rewriter ---
 function BulletRewriter({ analysisId }: { analysisId: number }) {
   const [bulletText, setBulletText] = useState("");
   const [result, setResult] = useState<{ original: string; rewritten: string } | null>(null);
@@ -162,6 +475,7 @@ function BulletRewriter({ analysisId }: { analysisId: number }) {
   );
 }
 
+// --- Interview Questions ---
 function InterviewQuestions({ analysisId, existingQuestions }: { analysisId: number; existingQuestions: string[] }) {
   const queryClient = useQueryClient();
   const { copy, isCopied } = useCopy();
@@ -255,6 +569,7 @@ function InterviewQuestions({ analysisId, existingQuestions }: { analysisId: num
   );
 }
 
+// --- Learning Plan ---
 function LearningPlanSection({ analysisId, existingItems }: { analysisId: number; existingItems: LearningPlanItem[] }) {
   const queryClient = useQueryClient();
 
@@ -350,6 +665,7 @@ function LearningPlanSection({ analysisId, existingItems }: { analysisId: number
   );
 }
 
+// --- Notes ---
 function NotesSection({ analysisId, initialNotes }: { analysisId: number; initialNotes: string | null }) {
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState(initialNotes ?? "");
@@ -403,6 +719,7 @@ function NotesSection({ analysisId, initialNotes }: { analysisId: number; initia
   );
 }
 
+// --- Share Section ---
 function ShareSection({ analysisId, isPublic, shareToken }: { analysisId: number; isPublic: boolean; shareToken: string | null }) {
   const queryClient = useQueryClient();
   const { copy, isCopied } = useCopy();
@@ -461,6 +778,15 @@ function ShareSection({ analysisId, isPublic, shareToken }: { analysisId: number
           <EyeOff className="w-3.5 h-3.5 mr-1" />
           Disable
         </Button>
+        <a
+          href={`mailto:?subject=${encodeURIComponent("Check out my resume analysis")}&body=${encodeURIComponent("I ran an AI analysis of my resume for a " + "job. Here's the result: " + url)}`}
+          className="shrink-0"
+        >
+          <Button variant="ghost" size="sm" className="text-muted-foreground">
+            <Mail className="w-3.5 h-3.5 mr-1" />
+            Email
+          </Button>
+        </a>
       </div>
     );
   }
@@ -483,12 +809,14 @@ function ShareSection({ analysisId, isPublic, shareToken }: { analysisId: number
   );
 }
 
+// --- Main Analysis Page ---
 export function Analysis() {
   const params = useParams<{ id: string }>();
   const id = parseInt(params.id ?? "0", 10);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { copy, isCopied } = useCopy();
+  const { toast } = useToast();
   const [coverLetterTone, setCoverLetterTone] = useState<CoverLetterTone>("professional");
 
   const { data: analysis, isLoading } = useGetAnalysis(id, {
@@ -514,6 +842,16 @@ export function Analysis() {
   const updateAnalysis = useUpdateAnalysis({
     mutation: {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) }),
+    },
+  });
+
+  const duplicateAnalysis = useDuplicateAnalysis({
+    mutation: {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) });
+        toast({ title: "Analysis duplicated", description: "Opening the copy now." });
+        setLocation(`/analysis/${data.id}`);
+      },
     },
   });
 
@@ -548,6 +886,10 @@ export function Analysis() {
   const atsMissing = (analysis.atsKeywordsMissing as string[]) ?? [];
   const interviewQuestions = (analysis.interviewQuestions as string[]) ?? [];
   const learningPlan = (analysis.learningPlan as LearningPlanItem[]) ?? [];
+  const salaryGuide = analysis.salaryGuide as {
+    low: number; mid: number; high: number; currency: string; period: string;
+    context: string; factors: string[]; negotiationTips: string[];
+  } | null ?? null;
 
   return (
     <div className="space-y-8 print-full-width" data-testid={`analysis-${id}`}>
@@ -568,6 +910,27 @@ export function Analysis() {
           <p className="text-xs text-muted-foreground mt-1">
             {formatDistanceToNow(new Date(analysis.createdAt), { addSuffix: true })}
           </p>
+          {/* Tracking summary chips */}
+          <div className="flex flex-wrap gap-2 mt-2">
+            {analysis.deadline && (
+              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-900/30 dark:text-orange-400">
+                <CalendarClock className="w-3 h-3" />
+                Due {format(new Date(analysis.deadline), "MMM d")}
+              </span>
+            )}
+            {analysis.followUpDate && (
+              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400">
+                <CalendarClock className="w-3 h-3" />
+                Follow-up {format(new Date(analysis.followUpDate), "MMM d")}
+              </span>
+            )}
+            {Array.isArray(analysis.tags) && (analysis.tags as string[]).map((tag) => (
+              <span key={tag} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                <Tag className="w-3 h-3" />
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           {/* Favorite toggle */}
@@ -587,6 +950,18 @@ export function Analysis() {
             isPublic={analysis.isPublic ?? false}
             shareToken={analysis.shareToken ?? null}
           />
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="no-print"
+            onClick={() => duplicateAnalysis.mutate({ id })}
+            disabled={duplicateAnalysis.isPending}
+            title="Duplicate this analysis"
+          >
+            <GitCompareArrows className="w-3.5 h-3.5 mr-1.5" />
+            Duplicate
+          </Button>
 
           <Button
             variant="outline"
@@ -730,6 +1105,21 @@ export function Analysis() {
         </CardContent>
       </Card>
 
+      {/* Job Tracking */}
+      <JobTrackingSection
+        analysisId={id}
+        analysis={{
+          deadline: analysis.deadline ?? null,
+          contactName: analysis.contactName ?? null,
+          contactEmail: analysis.contactEmail ?? null,
+          followUpDate: analysis.followUpDate ?? null,
+          tags: (analysis.tags as string[]) ?? [],
+        }}
+      />
+
+      {/* Salary Guide */}
+      <SalaryGuideSection analysisId={id} existing={salaryGuide} />
+
       {/* Notes */}
       <NotesSection analysisId={id} initialNotes={analysis.notes ?? null} />
 
@@ -772,8 +1162,6 @@ export function Analysis() {
               </Button>
             </div>
           </div>
-
-          {/* Tone Selector */}
           <div className="mt-3 no-print">
             <p className="text-xs font-medium text-muted-foreground mb-2">Tone</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

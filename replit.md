@@ -41,13 +41,19 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 5. **Interview Questions** — AI-generated likely questions based on role + resume gaps
 6. **Learning Plan** — personalized study plan with specific resources (courses, certs, projects)
 7. **Application Status Tracking** — mark each analysis as: Not Applied / Applied / Interview / Offer / Rejected
-8. **Social Sharing** — create public share links (`/share/:token`), revocable
+8. **Social Sharing** — create public share links (`/share/:token`), revocable; Email sharing button
 9. **Favorites & Notes** — star analyses, add private notes (auto-saved)
 10. **Job URL Import** — paste a job listing URL → AI extracts job description, title, company
-11. **Advanced Stats** — fit/ATS score trends, distribution histogram, pipeline funnel, top keywords
-12. **History with Search/Filter** — search by title/company, filter by status, filter by favorites
+11. **Advanced Stats** — fit/ATS score trends, distribution histogram, pipeline funnel, top keywords; clickable drilldown to filtered history
+12. **History with Search/Filter** — search by title/company, filter by status, filter by favorites; Saved searches (localStorage); tags/deadline badges
 13. **Themes** — 3 themes (warm/formal/minimal) + dark mode
 14. **Export PDF** — print-optimized layout via `window.print()`
+15. **Bulk CSV Export** — export all analyses from History page as CSV
+16. **Duplicate Analysis** — clone any analysis (strips cover letter/linkedin/share, resets status)
+17. **Job Tracking** — per-analysis deadline, follow-up date, contact name/email (with email mailto link), tags (add/remove chips); tracking chips shown in header
+18. **AI Salary Guide** — AI-estimated salary range (low/mid/high) with market context, salary-raising factors, negotiation tips, visual bar
+19. **Comparison View** — `/compare` route, pick any 2 analyses for side-by-side score/keyword/strength/gap comparison
+20. **Keyboard Command Palette** — `⌘K` / `Ctrl+K` global search across all analyses, quick-jump to any analysis
 
 ### Key AI notes
 - Model: `gpt-5.4` with `max_completion_tokens`
@@ -56,7 +62,7 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 
 ### DB schema
 - Table: `analyses` in `lib/db/src/schema/analyses.ts`
-- Key fields: `fitScore`, `atsScore`, `strengths[]`, `gaps[]`, `improvements[]`, `atsKeywordsMatched[]`, `atsKeywordsMissing[]`, `coverLetter`, `linkedinPost`, `interviewQuestions[]`, `learningPlan[]`, `status`, `isFavorite`, `notes`, `shareToken`, `isPublic`
+- Key fields: `fitScore`, `atsScore`, `strengths[]`, `gaps[]`, `improvements[]`, `atsKeywordsMatched[]`, `atsKeywordsMissing[]`, `coverLetter`, `linkedinPost`, `interviewQuestions[]`, `learningPlan[]`, `status`, `isFavorite`, `notes`, `shareToken`, `isPublic`, `deadline`, `contactName`, `contactEmail`, `followUpDate`, `tags[]`, `salaryGuide` (jsonb)
 
 ### API contract
 - OpenAPI spec: `lib/api-spec/openapi.yaml`

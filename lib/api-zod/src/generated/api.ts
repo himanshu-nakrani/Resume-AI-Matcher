@@ -67,6 +67,23 @@ export const ListAnalysesResponseItem = zod.object({
   notes: zod.string().nullable(),
   shareToken: zod.string().nullable(),
   isPublic: zod.boolean(),
+  deadline: zod.string().nullable(),
+  contactName: zod.string().nullable(),
+  contactEmail: zod.string().nullable(),
+  followUpDate: zod.string().nullable(),
+  salaryGuide: zod
+    .object({
+      low: zod.number(),
+      mid: zod.number(),
+      high: zod.number(),
+      currency: zod.string(),
+      period: zod.enum(["year", "month", "hour"]),
+      context: zod.string(),
+      factors: zod.array(zod.string()),
+      negotiationTips: zod.array(zod.string()),
+    })
+    .nullish(),
+  tags: zod.array(zod.string()),
   createdAt: zod.string(),
 });
 export const ListAnalysesResponse = zod.array(ListAnalysesResponseItem);
@@ -137,6 +154,23 @@ export const GetAnalysisResponse = zod.object({
   notes: zod.string().nullable(),
   shareToken: zod.string().nullable(),
   isPublic: zod.boolean(),
+  deadline: zod.string().nullable(),
+  contactName: zod.string().nullable(),
+  contactEmail: zod.string().nullable(),
+  followUpDate: zod.string().nullable(),
+  salaryGuide: zod
+    .object({
+      low: zod.number(),
+      mid: zod.number(),
+      high: zod.number(),
+      currency: zod.string(),
+      period: zod.enum(["year", "month", "hour"]),
+      context: zod.string(),
+      factors: zod.array(zod.string()),
+      negotiationTips: zod.array(zod.string()),
+    })
+    .nullish(),
+  tags: zod.array(zod.string()),
   createdAt: zod.string(),
 });
 
@@ -148,7 +182,7 @@ export const DeleteAnalysisParams = zod.object({
 });
 
 /**
- * @summary Update an analysis (status, notes, favorite)
+ * @summary Update an analysis (status, notes, favorite, tracking)
  */
 export const UpdateAnalysisParams = zod.object({
   id: zod.coerce.number(),
@@ -160,6 +194,11 @@ export const UpdateAnalysisBody = zod.object({
     .optional(),
   notes: zod.string().optional(),
   isFavorite: zod.boolean().optional(),
+  deadline: zod.string().optional(),
+  contactName: zod.string().optional(),
+  contactEmail: zod.string().optional(),
+  followUpDate: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
 });
 
 export const UpdateAnalysisResponse = zod.object({
@@ -211,7 +250,49 @@ export const UpdateAnalysisResponse = zod.object({
   notes: zod.string().nullable(),
   shareToken: zod.string().nullable(),
   isPublic: zod.boolean(),
+  deadline: zod.string().nullable(),
+  contactName: zod.string().nullable(),
+  contactEmail: zod.string().nullable(),
+  followUpDate: zod.string().nullable(),
+  salaryGuide: zod
+    .object({
+      low: zod.number(),
+      mid: zod.number(),
+      high: zod.number(),
+      currency: zod.string(),
+      period: zod.enum(["year", "month", "hour"]),
+      context: zod.string(),
+      factors: zod.array(zod.string()),
+      negotiationTips: zod.array(zod.string()),
+    })
+    .nullish(),
+  tags: zod.array(zod.string()),
   createdAt: zod.string(),
+});
+
+/**
+ * @summary Duplicate an analysis (clone resume+JD for comparison)
+ */
+export const DuplicateAnalysisParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Generate AI salary range estimate for this role
+ */
+export const GenerateSalaryGuideParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GenerateSalaryGuideResponse = zod.object({
+  low: zod.number(),
+  mid: zod.number(),
+  high: zod.number(),
+  currency: zod.string(),
+  period: zod.enum(["year", "month", "hour"]),
+  context: zod.string(),
+  factors: zod.array(zod.string()),
+  negotiationTips: zod.array(zod.string()),
 });
 
 /**
@@ -366,6 +447,23 @@ export const UnshareAnalysisResponse = zod.object({
   notes: zod.string().nullable(),
   shareToken: zod.string().nullable(),
   isPublic: zod.boolean(),
+  deadline: zod.string().nullable(),
+  contactName: zod.string().nullable(),
+  contactEmail: zod.string().nullable(),
+  followUpDate: zod.string().nullable(),
+  salaryGuide: zod
+    .object({
+      low: zod.number(),
+      mid: zod.number(),
+      high: zod.number(),
+      currency: zod.string(),
+      period: zod.enum(["year", "month", "hour"]),
+      context: zod.string(),
+      factors: zod.array(zod.string()),
+      negotiationTips: zod.array(zod.string()),
+    })
+    .nullish(),
+  tags: zod.array(zod.string()),
   createdAt: zod.string(),
 });
 
@@ -425,6 +523,23 @@ export const GetSharedAnalysisResponse = zod.object({
   notes: zod.string().nullable(),
   shareToken: zod.string().nullable(),
   isPublic: zod.boolean(),
+  deadline: zod.string().nullable(),
+  contactName: zod.string().nullable(),
+  contactEmail: zod.string().nullable(),
+  followUpDate: zod.string().nullable(),
+  salaryGuide: zod
+    .object({
+      low: zod.number(),
+      mid: zod.number(),
+      high: zod.number(),
+      currency: zod.string(),
+      period: zod.enum(["year", "month", "hour"]),
+      context: zod.string(),
+      factors: zod.array(zod.string()),
+      negotiationTips: zod.array(zod.string()),
+    })
+    .nullish(),
+  tags: zod.array(zod.string()),
   createdAt: zod.string(),
 });
 

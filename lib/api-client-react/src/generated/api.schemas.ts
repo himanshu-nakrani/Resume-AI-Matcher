@@ -59,6 +59,26 @@ export interface LearningPlanItem {
   resources: LearningResource[];
 }
 
+export type SalaryRangePeriod =
+  (typeof SalaryRangePeriod)[keyof typeof SalaryRangePeriod];
+
+export const SalaryRangePeriod = {
+  year: "year",
+  month: "month",
+  hour: "hour",
+} as const;
+
+export interface SalaryRange {
+  low: number;
+  mid: number;
+  high: number;
+  currency: string;
+  period: SalaryRangePeriod;
+  context: string;
+  factors: string[];
+  negotiationTips: string[];
+}
+
 export interface Analysis {
   id: number;
   jobTitle: string;
@@ -87,6 +107,16 @@ export interface Analysis {
   /** @nullable */
   shareToken: string | null;
   isPublic: boolean;
+  /** @nullable */
+  deadline: string | null;
+  /** @nullable */
+  contactName: string | null;
+  /** @nullable */
+  contactEmail: string | null;
+  /** @nullable */
+  followUpDate: string | null;
+  salaryGuide?: SalaryRange | null;
+  tags: string[];
   createdAt: string;
 }
 
@@ -112,6 +142,31 @@ export interface UpdateAnalysisBody {
   status?: UpdateAnalysisBodyStatus;
   notes?: string;
   isFavorite?: boolean;
+  deadline?: string;
+  contactName?: string;
+  contactEmail?: string;
+  followUpDate?: string;
+  tags?: string[];
+}
+
+export type SalaryGuideResponsePeriod =
+  (typeof SalaryGuideResponsePeriod)[keyof typeof SalaryGuideResponsePeriod];
+
+export const SalaryGuideResponsePeriod = {
+  year: "year",
+  month: "month",
+  hour: "hour",
+} as const;
+
+export interface SalaryGuideResponse {
+  low: number;
+  mid: number;
+  high: number;
+  currency: string;
+  period: SalaryGuideResponsePeriod;
+  context: string;
+  factors: string[];
+  negotiationTips: string[];
 }
 
 export interface ShareResponse {

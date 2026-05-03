@@ -11,4 +11,9 @@ export interface UpdateAnalysisBody {
   status?: UpdateAnalysisBodyStatus;
   notes?: string;
   isFavorite?: boolean;
+  deadline?: string;
+  contactName?: string;
+  contactEmail?: string;
+  followUpDate?: string;
+  tags?: string[];
 }
