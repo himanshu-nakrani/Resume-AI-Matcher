@@ -7,6 +7,7 @@
  */
 
 export * from "./analysis";
+export * from "./analysisOriginalFileType";
 export * from "./analysisStats";
 export * from "./analysisStatus";
 export * from "./careerPathResponse";
@@ -16,6 +17,7 @@ export * from "./chatMessageRole";
 export * from "./companyResearch";
 export * from "./companyResearchResponse";
 export * from "./createAnalysisBody";
+export * from "./createAnalysisBodyOriginalFileType";
 export * from "./errorResponse";
 export * from "./fetchJobBody";
 export * from "./fetchJobResponse";

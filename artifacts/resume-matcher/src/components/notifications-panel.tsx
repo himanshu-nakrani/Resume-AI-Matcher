@@ -4,7 +4,7 @@ import { Bell, Check, CheckCheck, X, CalendarClock, CalendarCheck, Info } from "
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
-import { useListNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@workspace/api-client-react";
+import { getListNotificationsQueryKey, useListNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const ICON_MAP = {
@@ -25,7 +25,7 @@ export function NotificationsPanel() {
   const [, setLocation] = useLocation();
 
   const { data: notifications = [] } = useListNotifications({
-    query: { refetchInterval: 60_000 },
+    query: { queryKey: getListNotificationsQueryKey(), refetchInterval: 60_000 },
   });
 
   const markAll = useMarkAllNotificationsRead({
@@ -81,7 +81,7 @@ export function NotificationsPanel() {
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2 text-xs"
-                    onClick={() => markAll.mutate({})}
+                    onClick={() => markAll.mutate()}
                   >
                     <CheckCheck className="w-3.5 h-3.5 mr-1" />
                     Mark all read

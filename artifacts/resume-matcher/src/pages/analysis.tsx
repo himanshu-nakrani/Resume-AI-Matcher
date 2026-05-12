@@ -179,6 +179,18 @@ function downloadICS(data: {
   URL.revokeObjectURL(url);
 }
 
+function downloadTextFile(content: string, fileName: string, type = "text/plain;charset=utf-8") {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // --- Job Tracking Section ---
 function JobTrackingSection({ analysisId, analysis }: {
   analysisId: number;
@@ -1762,6 +1774,7 @@ export function Analysis() {
   }> | null ?? null;
   const marketInsights = (analysis as any).marketInsights as any | null ?? null;
   const careerPath = (analysis as any).careerPath as any | null ?? null;
+  const optimizedLatex = (analysis as any).optimizedLatex as string | null ?? null;
 
   return (
     <div className="space-y-8 print-full-width" data-testid={`analysis-${id}`}>
@@ -1843,8 +1856,22 @@ export function Analysis() {
             data-testid="button-export-pdf"
           >
             <Printer className="w-3.5 h-3.5 mr-1.5" />
-            Export PDF
+            Download PDF
           </Button>
+          {optimizedLatex && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="no-print"
+              onClick={() => downloadTextFile(
+                optimizedLatex,
+                `${analysis.companyName ?? "company"}-${analysis.jobTitle}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + ".tex",
+              )}
+            >
+              <FileText className="w-3.5 h-3.5 mr-1.5" />
+              Download LaTeX
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -1857,6 +1884,50 @@ export function Analysis() {
           </Button>
         </div>
       </div>
+
+      {optimizedLatex && (
+        <Card className="border shadow-sm">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" /> Optimized Resume LaTeX
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                This is the AI-tailored LaTeX resume for {analysis.companyName ?? "this company"} and {analysis.jobTitle}.
+              </p>
+            </div>
+            <div className="flex gap-2 no-print">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copy(optimizedLatex, "Optimized LaTeX copied")}
+              >
+                {isCopied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                Copy
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => downloadTextFile(
+                  optimizedLatex,
+                  `${analysis.companyName ?? "company"}-${analysis.jobTitle}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + ".tex",
+                )}
+              >
+                Download LaTeX
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={optimizedLatex}
+              readOnly
+              className="min-h-[360px] font-mono text-xs resize-none bg-muted/30"
+            />
+            <p className="text-xs text-muted-foreground mt-3 no-print">
+              Use Download PDF to open the browser print flow, or compile the LaTeX file locally for exact resume formatting.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Scores */}
       <div className="grid grid-cols-2 gap-4">

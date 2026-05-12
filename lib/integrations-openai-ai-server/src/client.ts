@@ -1,18 +1,19 @@
 import OpenAI from "openai";
 
-if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
-  throw new Error(
-    "AI_INTEGRATIONS_OPENAI_BASE_URL must be set. Did you forget to provision the OpenAI AI integration?",
-  );
+const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
+
+export function getAiClient(apiKey?: string) {
+  return new OpenAI({
+    apiKey:
+      apiKey ??
+      process.env.DEEPSEEK_API_KEY ??
+      process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??
+      "missing-api-key",
+    baseURL:
+      process.env.DEEPSEEK_BASE_URL ??
+      process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ??
+      DEEPSEEK_BASE_URL,
+  });
 }
 
-if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-  throw new Error(
-    "AI_INTEGRATIONS_OPENAI_API_KEY must be set. Did you forget to provision the OpenAI AI integration?",
-  );
-}
-
-export const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+export const openai = getAiClient();

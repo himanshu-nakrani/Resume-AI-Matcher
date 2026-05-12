@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AnalysisOriginalFileType } from "./analysisOriginalFileType";
 import type { AnalysisStatus } from "./analysisStatus";
 import type { CompanyResearch } from "./companyResearch";
 import type { LearningPlanItem } from "./learningPlanItem";
@@ -17,6 +18,13 @@ export interface Analysis {
   /** @nullable */
   companyName: string | null;
   resumeText: string;
+  /** @nullable */
+  originalFileName: string | null;
+  originalFileType: AnalysisOriginalFileType;
+  /** @nullable */
+  sourceLatex: string | null;
+  /** @nullable */
+  optimizedLatex: string | null;
   jobDescriptionText: string;
   fitScore: number;
   fitRationale: string;

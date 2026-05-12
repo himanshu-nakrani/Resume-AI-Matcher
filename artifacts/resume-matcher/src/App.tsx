@@ -15,6 +15,7 @@ import { SharedAnalysis } from "@/pages/shared";
 import { Compare } from "@/pages/compare";
 import { Skills } from "@/pages/skills";
 import { Versions } from "@/pages/versions";
+import { UserPage } from "@/pages/user";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +38,8 @@ function Router() {
             <Switch>
               <Route path="/" component={Home} />
               <Route path="/board" component={Board} />
+              <Route path="/tracker" component={Board} />
+              <Route path="/user" component={UserPage} />
               <Route path="/analysis/:id" component={Analysis} />
               <Route path="/history" component={History} />
               <Route path="/stats" component={Stats} />

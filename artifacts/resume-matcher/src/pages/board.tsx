@@ -16,7 +16,7 @@ import { format } from "date-fns";
 import { useTheme } from "@/hooks/use-theme";
 import { Filter, X, MapPin, DollarSign, Tag, CalendarClock, SlidersHorizontal } from "lucide-react";
 
-type Status = "not_applied" | "applied" | "interview" | "offer" | "rejected";
+type Status = "not_applied" | "applied" | "got_interview" | "got_online_exam" | "selected" | "rejected";
 
 const STATUS_CONFIG: Record<Status, { label: string; className: string; headerColor: string }> = {
   not_applied: { 
@@ -29,13 +29,18 @@ const STATUS_CONFIG: Record<Status, { label: string; className: string; headerCo
     className: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
     headerColor: "bg-blue-500/10"
   },
-  interview: { 
-    label: "Interview", 
+  got_interview: { 
+    label: "Got Interview", 
     className: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800",
     headerColor: "bg-yellow-500/10"
   },
-  offer: { 
-    label: "Offer", 
+  got_online_exam: { 
+    label: "Got Online Exam", 
+    className: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
+    headerColor: "bg-purple-500/10"
+  },
+  selected: { 
+    label: "Selected", 
     className: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
     headerColor: "bg-green-500/10"
   },
@@ -46,7 +51,7 @@ const STATUS_CONFIG: Record<Status, { label: string; className: string; headerCo
   },
 };
 
-const COLUMNS: Status[] = ["not_applied", "applied", "interview", "offer", "rejected"];
+const COLUMNS: Status[] = ["not_applied", "applied", "got_interview", "got_online_exam", "selected", "rejected"];
 
 export function Board() {
   const [, setLocation] = useLocation();
@@ -109,8 +114,9 @@ export function Board() {
     const groups: Record<Status, typeof filtered> = {
       not_applied: [],
       applied: [],
-      interview: [],
-      offer: [],
+      got_interview: [],
+      got_online_exam: [],
+      selected: [],
       rejected: [],
     };
     filtered.forEach((a) => {
@@ -159,9 +165,9 @@ export function Board() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Job Board</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Application Tracker</h1>
           <p className="text-muted-foreground mt-1">
-            Track your job search progress with drag-and-drop kanban.
+            Tracker entries are created automatically after every resume optimization.
             {activeFilterCount > 0 && (
               <span className="ml-2 text-primary font-medium text-sm">
                 {filtered.length} of {allAnalyses?.length ?? 0} shown
