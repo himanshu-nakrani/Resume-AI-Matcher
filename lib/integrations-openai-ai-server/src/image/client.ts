@@ -2,21 +2,18 @@ import fs from "node:fs";
 import OpenAI, { toFile } from "openai";
 import { Buffer } from "node:buffer";
 
-if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
-  throw new Error(
-    "AI_INTEGRATIONS_OPENAI_BASE_URL must be set. Did you forget to provision the OpenAI AI integration?",
-  );
-}
+const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 
-if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-  throw new Error(
-    "AI_INTEGRATIONS_OPENAI_API_KEY must be set. Did you forget to provision the OpenAI AI integration?",
-  );
-}
-
+/** Image helpers use the same env fallbacks as `getAiClient` so the API can boot without Replit integration. */
 export const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey:
+    process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??
+    process.env.DEEPSEEK_API_KEY ??
+    "missing-api-key",
+  baseURL:
+    process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ??
+    process.env.DEEPSEEK_BASE_URL ??
+    DEEPSEEK_BASE_URL,
 });
 
 export async function generateImageBuffer(

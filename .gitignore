@@ -41,6 +41,9 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# Local SQLite (default @workspace/db dev database)
+resume-matcher.sqlite
+
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
