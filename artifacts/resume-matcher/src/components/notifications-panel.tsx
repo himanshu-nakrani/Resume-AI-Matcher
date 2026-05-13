@@ -19,7 +19,11 @@ const COLOR_MAP = {
   info: "text-muted-foreground",
 };
 
-export function NotificationsPanel() {
+type NotificationsPanelProps = {
+  triggerClassName?: string;
+};
+
+export function NotificationsPanel({ triggerClassName }: NotificationsPanelProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -57,7 +61,7 @@ export function NotificationsPanel() {
       <Button
         variant="ghost"
         size="icon"
-        className="relative w-8 h-8"
+        className={`relative h-9 w-9 ${triggerClassName ?? ""}`}
         onClick={() => setOpen((v) => !v)}
         aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ""}`}
       >

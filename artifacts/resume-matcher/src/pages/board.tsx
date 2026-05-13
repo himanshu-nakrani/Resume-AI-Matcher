@@ -13,7 +13,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
-import { useTheme } from "@/hooks/use-theme";
 import { Filter, X, MapPin, DollarSign, Tag, CalendarClock, SlidersHorizontal } from "lucide-react";
 
 type Status = "not_applied" | "applied" | "got_interview" | "got_online_exam" | "selected" | "rejected";
@@ -56,9 +55,6 @@ const COLUMNS: Status[] = ["not_applied", "applied", "got_interview", "got_onlin
 export function Board() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { theme } = useTheme();
-  const isEmberTheme = theme === "warm";
-
   const [showFilters, setShowFilters] = useState(false);
   const [minScore, setMinScore] = useState("");
   const [filterTag, setFilterTag] = useState("");
@@ -184,7 +180,7 @@ export function Board() {
           <SlidersHorizontal className="w-3.5 h-3.5" />
           Filters
           {activeFilterCount > 0 && (
-            <span className="ml-1 bg-white/20 text-white rounded-full w-4 h-4 text-[10px] font-bold flex items-center justify-center">
+            <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-border bg-muted px-1 text-[10px] font-semibold tabular-nums text-foreground">
               {activeFilterCount}
             </span>
           )}
@@ -193,7 +189,7 @@ export function Board() {
 
       {/* Filter Bar */}
       {showFilters && (
-        <div className={`rounded-xl border p-4 space-y-3 ${isEmberTheme ? "bg-[#fef3c7]/50 border-[#92400e]/20" : "bg-muted/30"}`}>
+        <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold flex items-center gap-1.5">
               <Filter className="w-4 h-4" /> Advanced Filters
@@ -314,19 +310,17 @@ export function Board() {
         {COLUMNS.map((status) => (
           <div
             key={status}
-            className={`w-72 shrink-0 flex flex-col max-h-full rounded-2xl border ${
-              isEmberTheme ? "bg-[#78350f]/5 border-[#92400e]/20" : "bg-muted/30"
-            }`}
+            className="w-72 shrink-0 flex flex-col max-h-full rounded-xl border border-border bg-card/80 shadow-sm"
             onDragOver={onDragOver}
             onDrop={(e) => onDrop(e, status)}
           >
-            <div className={`p-4 sticky top-0 z-10 rounded-t-2xl flex items-center justify-between ${
-              isEmberTheme ? "bg-[#92400e] text-white" : STATUS_CONFIG[status].headerColor
-            }`}>
-              <h3 className="font-bold text-sm uppercase tracking-wider">
+            <div
+              className={`sticky top-0 z-10 flex items-center justify-between rounded-t-xl border-b border-border px-4 py-3 ${STATUS_CONFIG[status].headerColor}`}
+            >
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/90">
                 {STATUS_CONFIG[status].label}
               </h3>
-              <Badge variant="secondary" className={isEmberTheme ? "bg-[#78350f] text-white border-none" : ""}>
+              <Badge variant="secondary" className="h-6 min-w-6 justify-center rounded-md px-1.5 text-[11px] font-semibold tabular-nums">
                 {columns[status]?.length || 0}
               </Badge>
             </div>
@@ -341,9 +335,7 @@ export function Board() {
                     key={a.id}
                     draggable
                     onDragStart={(e) => onDragStart(e, a.id)}
-                    className={`cursor-grab active:cursor-grabbing border shadow-sm hover:shadow-md transition-all ${
-                      isEmberTheme ? "bg-[#fef3c7] border-[#92400e]/20 text-[#78350f]" : ""
-                    }`}
+                    className="cursor-grab border border-border bg-card shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing"
                     onClick={() => setLocation(`/analysis/${a.id}`)}
                   >
                     <CardContent className="p-3 space-y-2.5">
@@ -353,7 +345,7 @@ export function Board() {
                             {a.jobTitle}
                           </h4>
                           {a.companyName && (
-                            <p className={`text-xs mt-0.5 truncate ${isEmberTheme ? "text-[#92400e]/80" : "text-muted-foreground"}`}>
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
                               {a.companyName}
                             </p>
                           )}
@@ -362,13 +354,10 @@ export function Board() {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <Badge 
-                          variant="outline" 
-                          className={`text-[10px] h-5 ${isEmberTheme ? "border-[#92400e]/30 text-[#92400e]" : ""}`}
-                        >
+                        <Badge variant="outline" className="h-5 text-[10px] font-medium tabular-nums">
                           ATS {a.atsScore}
                         </Badge>
-                        <span className={`text-[10px] ${isEmberTheme ? "text-[#92400e]/60" : "text-muted-foreground"}`}>
+                        <span className="text-[10px] tabular-nums text-muted-foreground">
                           {format(new Date(a.createdAt), "MMM d")}
                         </span>
                         {aVersion && (
@@ -382,13 +371,15 @@ export function Board() {
                       {(aLocation || aSalary) && (
                         <div className="flex flex-wrap gap-1">
                           {aLocation && (
-                            <span className={`inline-flex items-center gap-0.5 text-[10px] ${isEmberTheme ? "text-[#92400e]/70" : "text-muted-foreground"}`}>
-                              <MapPin className="w-2.5 h-2.5" />{aLocation}
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                              <MapPin className="w-2.5 h-2.5" />
+                              {aLocation}
                             </span>
                           )}
                           {aSalary && (
-                            <span className={`inline-flex items-center gap-0.5 text-[10px] ${isEmberTheme ? "text-[#92400e]/70" : "text-muted-foreground"}`}>
-                              <DollarSign className="w-2.5 h-2.5" />{aSalary}
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                              <DollarSign className="w-2.5 h-2.5" />
+                              {aSalary}
                             </span>
                           )}
                         </div>
@@ -396,7 +387,7 @@ export function Board() {
 
                       {/* Deadline chip */}
                       {a.deadline && (
-                        <div className={`text-[10px] flex items-center gap-0.5 font-medium ${isEmberTheme ? "text-[#92400e]" : "text-orange-600 dark:text-orange-400"}`}>
+                        <div className="flex items-center gap-0.5 text-[10px] font-medium text-orange-600 dark:text-orange-400">
                           <CalendarClock className="w-2.5 h-2.5" />
                           Due {format(new Date(a.deadline), "MMM d")}
                         </div>
@@ -406,7 +397,10 @@ export function Board() {
                       {Array.isArray(a.tags) && (a.tags as string[]).length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {(a.tags as string[]).slice(0, 3).map((tag) => (
-                            <span key={tag} className={`text-[10px] px-1.5 py-0 rounded-full border ${isEmberTheme ? "border-[#92400e]/30 text-[#92400e]" : "bg-primary/5 text-primary border-primary/20"}`}>
+                            <span
+                              key={tag}
+                              className="rounded-full border border-primary/20 bg-primary/5 px-1.5 py-0 text-[10px] text-primary"
+                            >
                               {tag}
                             </span>
                           ))}

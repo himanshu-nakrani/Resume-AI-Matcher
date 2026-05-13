@@ -603,9 +603,9 @@ export function Stats() {
                       contentStyle={{ fontSize: 12, borderRadius: 8 }}
                     />
                     <Legend formatter={(v) => v === "mid" ? "Median" : v === "low" ? "Low" : "High"} wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="low" fill="#fde68a" radius={[2, 2, 0, 0]} name="low" />
-                    <Bar dataKey="mid" fill="#34d399" radius={[2, 2, 0, 0]} name="mid" />
-                    <Bar dataKey="high" fill="#6ee7b7" radius={[2, 2, 0, 0]} name="high" />
+                    <Bar dataKey="low" fill="#94a3b8" radius={[2, 2, 0, 0]} name="low" />
+                    <Bar dataKey="mid" fill="#3b82f6" radius={[2, 2, 0, 0]} name="mid" />
+                    <Bar dataKey="high" fill="#22c55e" radius={[2, 2, 0, 0]} name="high" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -770,7 +770,7 @@ export function Stats() {
             <Card className="border shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-500" /> Most Frequent Matched Skills
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Most Frequent Matched Skills
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -781,8 +781,8 @@ export function Stats() {
                   {topMatchedKeywords.map((kw, i) => (
                     <Badge
                       key={i}
-                      variant="secondary"
-                      className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+                      variant="outline"
+                      className="border-emerald-300 bg-emerald-50 text-emerald-950 shadow-none dark:border-emerald-600 dark:bg-emerald-950/45 dark:text-emerald-50"
                     >
                       {kw}
                     </Badge>
@@ -807,8 +807,8 @@ export function Stats() {
                   {stats.topMissingKeywords.map((kw, i) => (
                     <Badge
                       key={i}
-                      variant="secondary"
-                      className="bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
+                      variant="outline"
+                      className="border-rose-300 bg-rose-50 text-rose-950 shadow-none dark:border-rose-600 dark:bg-rose-950/45 dark:text-rose-50"
                       data-testid={`top-missing-keyword-${i}`}
                     >
                       {kw}
