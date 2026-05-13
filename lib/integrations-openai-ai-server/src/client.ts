@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 
-const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
+/** Default OpenAI-compatible base URL for DeepSeek chat (override with `DEEPSEEK_BASE_URL` or `AI_INTEGRATIONS_OPENAI_BASE_URL`). */
+export const DEEPSEEK_DEFAULT_BASE_URL = "https://api.deepseek.com";
 
 export function getAiClient(apiKey?: string) {
   return new OpenAI({
@@ -12,7 +13,7 @@ export function getAiClient(apiKey?: string) {
     baseURL:
       process.env.DEEPSEEK_BASE_URL ??
       process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ??
-      DEEPSEEK_BASE_URL,
+      DEEPSEEK_DEFAULT_BASE_URL,
   });
 }
 

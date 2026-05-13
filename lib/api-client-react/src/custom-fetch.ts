@@ -18,6 +18,18 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
 
+export type DeepseekApiKeyGetter = () => Promise<string | null> | string | null;
+
+let _deepseekApiKeyGetter: DeepseekApiKeyGetter | null = null;
+
+/**
+ * When set, every request adds `X-DeepSeek-Api-Key` unless that header is already present.
+ * Use with a getter that reads localStorage so salary guide, company research, etc. share the same key as optimize.
+ */
+export function setDeepseekApiKeyGetter(getter: DeepseekApiKeyGetter | null): void {
+  _deepseekApiKeyGetter = getter;
+}
+
 /**
  * Set a base URL that is prepended to every relative request URL
  * (i.e. paths that start with `/`).
@@ -89,6 +101,16 @@ function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
   }
 
   return headers;
+}
+
+function hasDeepseekApiKeyHeader(headers: Headers): boolean {
+  let found = false;
+  headers.forEach((_value, name) => {
+    if (name.toLowerCase() === "x-deepseek-api-key") {
+      found = true;
+    }
+  });
+  return found;
 }
 
 function getMediaType(headers: Headers): string | null {
@@ -355,6 +377,14 @@ export async function customFetch<T = unknown>(
     const token = await _authTokenGetter();
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
+    }
+  }
+
+  if (_deepseekApiKeyGetter && !hasDeepseekApiKeyHeader(headers)) {
+    const key = await _deepseekApiKeyGetter();
+    const trimmed = typeof key === "string" ? key.trim() : "";
+    if (trimmed) {
+      headers.set("X-DeepSeek-Api-Key", trimmed);
     }
   }
 

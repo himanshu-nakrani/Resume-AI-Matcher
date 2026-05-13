@@ -1,20 +1,10 @@
 import fs from "node:fs";
-import OpenAI, { toFile } from "openai";
+import { toFile } from "openai";
 import { Buffer } from "node:buffer";
+import { getAiClient } from "../client";
 
-const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
-
-/** Image helpers use the same env fallbacks as `getAiClient` so the API can boot without Replit integration. */
-export const openai = new OpenAI({
-  apiKey:
-    process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??
-    process.env.DEEPSEEK_API_KEY ??
-    "missing-api-key",
-  baseURL:
-    process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ??
-    process.env.DEEPSEEK_BASE_URL ??
-    DEEPSEEK_BASE_URL,
-});
+/** Same URL/key resolution as chat (`getAiClient`). */
+export const openai = getAiClient();
 
 export async function generateImageBuffer(
   prompt: string,
@@ -25,7 +15,7 @@ export async function generateImageBuffer(
     prompt,
     size,
   });
-  const base64 = response.data[0]?.b64_json ?? "";
+  const base64 = response.data?.[0]?.b64_json ?? "";
   return Buffer.from(base64, "base64");
 }
 
@@ -48,7 +38,7 @@ export async function editImages(
     prompt,
   });
 
-  const imageBase64 = response.data[0]?.b64_json ?? "";
+  const imageBase64 = response.data?.[0]?.b64_json ?? "";
   const imageBytes = Buffer.from(imageBase64, "base64");
 
   if (outputPath) {
