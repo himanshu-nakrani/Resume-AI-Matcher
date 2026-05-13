@@ -5,7 +5,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
-import { useCreateAnalysis, useListAnalyses, getListAnalysesQueryKey, useFetchJobDescription } from "@workspace/api-client-react";
+import {
+  useCreateAnalysis,
+  useListAnalyses,
+  getListAnalysesQueryKey,
+  useFetchJobDescription,
+  useSearchJobs,
+  JobSearchBodySearchType,
+} from "@workspace/api-client-react";
+import type { JobSearchResponse } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -15,14 +23,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScoreCircle } from "@/components/score-circle";
-import { ArrowRight, BriefcaseBusiness, FileText, KeyRound, Link2, Sparkles, Upload, UserRound, Wand2, X } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, FileText, KeyRound, Link2, Search, Sparkles, Upload, UserRound, Wand2, X, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+
+import { DEEPSEEK_KEY_STORAGE_KEY } from "@/lib/deepseek-storage";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const USER_STORAGE_KEY = "optimatch_user_profile";
-const DEEPSEEK_KEY_STORAGE_KEY = "optimatch_deepseek_api_key";
 
 const formSchema = z.object({
   userName: z.string().min(1, "Your name is required"),
@@ -72,6 +81,12 @@ export function Home() {
   const [isParsingResume, setIsParsingResume] = useState(false);
   const [jobUrlInput, setJobUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [exaQuery, setExaQuery] = useState("");
+  const [exaRecent, setExaRecent] = useState(true);
+  const [exaType, setExaType] = useState<JobSearchBodySearchType>(JobSearchBodySearchType.auto);
+  const [exaNumResults, setExaNumResults] = useState(10);
+  const [exaUserLocation, setExaUserLocation] = useState("");
+  const [exaResults, setExaResults] = useState<JobSearchResponse | null>(null);
 
   const savedUser = useMemo(() => {
     try {
@@ -142,6 +157,22 @@ export function Home() {
     },
   });
 
+  const jobSearchExa = useSearchJobs({
+    mutation: {
+      onSuccess: (data) => {
+        setExaResults(data);
+        toast({
+          title: "Job search complete",
+          description: `${data.results.length} listing(s) from Exa.`,
+        });
+      },
+      onError: (err: unknown) => {
+        const message = err instanceof Error ? err.message : "Job search failed.";
+        toast({ title: "Job search failed", description: message, variant: "destructive" });
+      },
+    },
+  });
+
   const { data: analyses, isLoading } = useListAnalyses();
 
   const onResumeFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -185,6 +216,28 @@ export function Home() {
     if (jobUrlInput.trim()) fetchJob.mutate({ data: { url: jobUrlInput.trim() } });
   };
 
+  const handleExaJobSearch = () => {
+    const q = exaQuery.trim();
+    if (q.length < 2) {
+      toast({
+        title: "Add a search query",
+        description: "Describe the role, level, location, or company you want (at least 2 characters).",
+        variant: "destructive",
+      });
+      return;
+    }
+    const loc = exaUserLocation.trim().toUpperCase();
+    jobSearchExa.mutate({
+      data: {
+        query: q,
+        numResults: exaNumResults,
+        searchType: exaType,
+        recentOnly: exaRecent,
+        ...(loc.length === 2 ? { userLocation: loc } : {}),
+      },
+    });
+  };
+
   const onSubmit = (values: FormValues) => {
     createAnalysis.mutate({
       data: {
@@ -204,13 +257,16 @@ export function Home() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-3xl border bg-gradient-to-br from-primary/10 via-background to-background p-6 md:p-8 shadow-sm">
-        <div className="max-w-3xl">
-          <Badge variant="secondary" className="mb-4">Resume AI Matcher</Badge>
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight">
+      <section className="relative overflow-hidden rounded-2xl border border-border bg-card px-6 py-8 shadow-sm sm:px-10 sm:py-10">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/[0.07] blur-3xl dark:bg-primary/10" aria-hidden />
+        <div className="relative max-w-3xl">
+          <Badge variant="secondary" className="mb-4 font-medium tracking-tight">
+            OptiMatch
+          </Badge>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl md:leading-[1.1]">
             Upload once. Tailor every resume for the role.
           </h1>
-          <p className="mt-4 text-muted-foreground text-base md:text-lg">
+          <p className="mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg leading-relaxed">
             Sign in locally, upload PDF or LaTeX, paste the JD, and DeepSeek will generate an ATS-focused LaTeX resume plus a tracker entry for the company and role.
           </p>
         </div>
@@ -299,6 +355,116 @@ export function Home() {
                   </FormItem>
                 )} />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Search className="h-4 w-4 text-primary" /> Job search (Exa)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Neural search for open roles and postings. Results include highlights from each page. Configure{" "}
+                <code className="text-xs bg-muted px-1 py-0.5 rounded">EXA_API_KEY</code> on the API server.
+              </p>
+              <Textarea
+                className="min-h-[100px] text-sm"
+                placeholder='e.g. "senior TypeScript backend engineer remote EU startup job posting"'
+                value={exaQuery}
+                onChange={(e) => setExaQuery(e.target.value)}
+              />
+              <div className="flex flex-wrap gap-3 items-end">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Search mode</label>
+                  <select
+                    className="flex h-9 w-full min-w-[140px] rounded-md border border-input bg-background px-2 text-sm"
+                    value={exaType}
+                    onChange={(e) => setExaType(e.target.value as JobSearchBodySearchType)}
+                  >
+                    {Object.values(JobSearchBodySearchType).map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Results</label>
+                  <select
+                    className="flex h-9 rounded-md border border-input bg-background px-2 text-sm"
+                    value={exaNumResults}
+                    onChange={(e) => setExaNumResults(Number(e.target.value))}
+                  >
+                    {[5, 8, 10, 15].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Country (optional)</label>
+                  <Input
+                    className="h-9 w-20 uppercase"
+                    maxLength={2}
+                    placeholder="US"
+                    value={exaUserLocation}
+                    onChange={(e) => setExaUserLocation(e.target.value)}
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-sm cursor-pointer pb-1">
+                  <input
+                    type="checkbox"
+                    className="rounded border-input"
+                    checked={exaRecent}
+                    onChange={(e) => setExaRecent(e.target.checked)}
+                  />
+                  Prefer recent posts
+                </label>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleExaJobSearch}
+                  disabled={jobSearchExa.isPending}
+                >
+                  {jobSearchExa.isPending ? "Searching…" : "Search jobs"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                <strong>auto</strong> is fastest for browsing; <strong>deep</strong> / <strong>deep-reasoning</strong> can take tens of seconds (see Exa latency docs).
+              </p>
+              {exaResults && exaResults.results.length > 0 && (
+                <ul className="space-y-3 pt-2 border-t">
+                  {exaResults.results.map((hit) => (
+                    <li key={hit.url} className="rounded-lg border bg-card/50 p-3 text-sm">
+                      <a
+                        href={hit.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        {hit.title}
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                      </a>
+                      {hit.publishedDate && (
+                        <p className="text-xs text-muted-foreground mt-1">Published: {hit.publishedDate}</p>
+                      )}
+                      {hit.highlights && hit.highlights.length > 0 && (
+                        <ul className="mt-2 list-disc pl-4 text-muted-foreground space-y-1">
+                          {hit.highlights.slice(0, 3).map((h, i) => (
+                            <li key={`${hit.url}-h-${i}`}>{h}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {exaResults && exaResults.results.length === 0 && (
+                <p className="text-sm text-muted-foreground pt-2 border-t">No results. Try a broader query or a different search mode.</p>
+              )}
             </CardContent>
           </Card>
 
