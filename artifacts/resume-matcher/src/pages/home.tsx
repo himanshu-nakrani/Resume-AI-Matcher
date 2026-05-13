@@ -1,57 +1,129 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useCreateAnalysis, useListAnalyses, useDeleteAnalysis, getListAnalysesQueryKey, useFetchJobDescription } from "@workspace/api-client-react";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
+import { useCreateAnalysis, useListAnalyses, getListAnalysesQueryKey, useFetchJobDescription } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FunnelWidget } from "@/components/funnel-widget";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScoreCircle } from "@/components/score-circle";
-import { Sparkles, Trash2, ArrowRight, Clock, Upload, Link2, X, Heart, AlertCircle, CalendarClock } from "lucide-react";
-import { formatDistanceToNow, format, isWithinInterval, addDays, isPast } from "date-fns";
-import mammoth from "mammoth";
+import { ArrowRight, BriefcaseBusiness, FileText, KeyRound, Link2, Sparkles, Upload, UserRound, Wand2, X } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme } from "@/hooks/use-theme";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+const USER_STORAGE_KEY = "optimatch_user_profile";
+const DEEPSEEK_KEY_STORAGE_KEY = "optimatch_deepseek_api_key";
 
 const formSchema = z.object({
-  jobTitle: z.string().min(1, "Job title is required"),
-  companyName: z.string().optional(),
-  resumeText: z.string().min(50, "Resume must be at least 50 characters"),
+  userName: z.string().min(1, "Your name is required"),
+  userEmail: z.string().email("Enter a valid email"),
+  deepseekApiKey: z.string().min(1, "DeepSeek API key is required"),
+  jobTitle: z.string().min(1, "Role is required"),
+  companyName: z.string().min(1, "Company name is required"),
+  resumeText: z.string().min(50, "Resume content must be at least 50 characters"),
+  sourceLatex: z.string().optional(),
   jobDescriptionText: z.string().min(50, "Job description must be at least 50 characters"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
-const allowedResumeTypes = [".docx", ".txt"].join(",");
+type ResumeFileType = "pdf" | "latex" | "text";
+
+function stripLatexToText(source: string) {
+  return source
+    .replace(/%.*$/gm, " ")
+    .replace(/\\(section|subsection|textbf|textit|emph|item)\*?\{([^}]*)\}/g, "$2")
+    .replace(/\\[a-zA-Z]+\*?(\[[^\]]*\])?(\{[^}]*\})?/g, " ")
+    .replace(/[{}]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function parsePdf(file: File) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+  const pages: string[] = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join(" "));
+  }
+
+  return pages.join("\n\n").replace(/\s{3,}/g, " ").trim();
+}
 
 export function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { theme } = useTheme();
-  const isEmber = theme === "warm";
   const [resumeFileName, setResumeFileName] = useState("");
+  const [resumeFileType, setResumeFileType] = useState<ResumeFileType>("text");
   const [resumeFileError, setResumeFileError] = useState("");
   const [isParsingResume, setIsParsingResume] = useState(false);
   const [jobUrlInput, setJobUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
 
+  const savedUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem(USER_STORAGE_KEY) ?? "{}") as Partial<FormValues>;
+    } catch {
+      return {};
+    }
+  }, []);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { jobTitle: "", companyName: "", resumeText: "", jobDescriptionText: "" },
+    defaultValues: {
+      userName: savedUser.userName ?? "",
+      userEmail: savedUser.userEmail ?? "",
+      deepseekApiKey: localStorage.getItem(DEEPSEEK_KEY_STORAGE_KEY) ?? "",
+      jobTitle: "",
+      companyName: "",
+      resumeText: "",
+      sourceLatex: "",
+      jobDescriptionText: "",
+    },
   });
+
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify({
+        userName: values.userName ?? "",
+        userEmail: values.userEmail ?? "",
+      }));
+      if (values.deepseekApiKey) {
+        localStorage.setItem(DEEPSEEK_KEY_STORAGE_KEY, values.deepseekApiKey);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   const createAnalysis = useCreateAnalysis({
     mutation: {
       onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
+        toast({
+          title: "Resume optimized",
+          description: "A tracker entry was created automatically. Add deadlines or status next.",
+        });
         setLocation(`/analysis/${data.id}`);
+      },
+      onError: () => {
+        toast({
+          title: "Optimization failed",
+          description: "Check your DeepSeek API key and try again.",
+          variant: "destructive",
+        });
       },
     },
   });
@@ -60,55 +132,48 @@ export function Home() {
     mutation: {
       onSuccess: (data) => {
         form.setValue("jobDescriptionText", data.jobDescription, { shouldDirty: true, shouldValidate: true });
-        if (data.jobTitle && !form.getValues("jobTitle")) {
-          form.setValue("jobTitle", data.jobTitle);
-        }
-        if (data.companyName && !form.getValues("companyName")) {
-          form.setValue("companyName", data.companyName ?? "");
-        }
+        if (data.jobTitle && !form.getValues("jobTitle")) form.setValue("jobTitle", data.jobTitle);
+        if (data.companyName && !form.getValues("companyName")) form.setValue("companyName", data.companyName);
         setShowUrlInput(false);
         setJobUrlInput("");
-        toast({ title: "Job description imported", description: "Fields filled from the URL." });
+        toast({ title: "Job description imported", description: "Company, role, and JD were extracted from the URL." });
       },
-      onError: () => {
-        toast({ title: "Could not import", description: "Try copying the job description manually.", variant: "destructive" });
-      },
-    },
-  });
-
-  const deleteAnalysis = useDeleteAnalysis({
-    mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
+      onError: () => toast({ title: "Could not import", description: "Paste the JD manually instead.", variant: "destructive" }),
     },
   });
 
   const { data: analyses, isLoading } = useListAnalyses();
 
-  const parseResumeFile = async (file: File) => {
-    const ext = file.name.toLowerCase().split(".").pop();
-    if (ext === "txt") return await file.text();
-    if (ext === "docx") {
-      try {
-        const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
-        return result.value;
-      } catch {
-        throw new Error("Could not read DOCX file. Please ensure it's a valid Word document.");
-      }
-    }
-    throw new Error("Please upload a DOCX or TXT file. For PDFs, copy the text and paste it above.");
-  };
-
   const onResumeFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    const ext = file.name.toLowerCase().split(".").pop();
+
     setResumeFileError("");
     setIsParsingResume(true);
+    setResumeFileName(file.name);
+
     try {
-      const parsed = await parseResumeFile(file);
-      form.setValue("resumeText", parsed.trim(), { shouldDirty: true, shouldValidate: true });
-      setResumeFileName(file.name);
+      if (ext === "pdf") {
+        const text = await parsePdf(file);
+        setResumeFileType("pdf");
+        form.setValue("resumeText", text, { shouldDirty: true, shouldValidate: true });
+        form.setValue("sourceLatex", "", { shouldDirty: true });
+      } else if (ext === "tex" || ext === "latex") {
+        const latex = await file.text();
+        setResumeFileType("latex");
+        form.setValue("sourceLatex", latex, { shouldDirty: true });
+        form.setValue("resumeText", stripLatexToText(latex), { shouldDirty: true, shouldValidate: true });
+      } else if (ext === "txt") {
+        const text = await file.text();
+        setResumeFileType("text");
+        form.setValue("resumeText", text.trim(), { shouldDirty: true, shouldValidate: true });
+        form.setValue("sourceLatex", "", { shouldDirty: true });
+      } else {
+        throw new Error("Unsupported file");
+      }
     } catch {
-      setResumeFileError("Could not read that file. Please upload a DOCX or TXT resume.");
+      setResumeFileError("Could not read that resume. Upload a PDF, .tex, .latex, or TXT file.");
       setResumeFileName("");
     } finally {
       setIsParsingResume(false);
@@ -117,381 +182,205 @@ export function Home() {
   };
 
   const handleImportUrl = () => {
-    if (!jobUrlInput.trim()) return;
-    fetchJob.mutate({ data: { url: jobUrlInput.trim() } });
+    if (jobUrlInput.trim()) fetchJob.mutate({ data: { url: jobUrlInput.trim() } });
   };
 
   const onSubmit = (values: FormValues) => {
     createAnalysis.mutate({
       data: {
         jobTitle: values.jobTitle,
-        companyName: values.companyName ?? "",
+        companyName: values.companyName,
         resumeText: values.resumeText,
+        sourceLatex: values.sourceLatex ?? "",
+        originalFileName: resumeFileName,
+        originalFileType: resumeFileType,
+        deepseekApiKey: values.deepseekApiKey,
         jobDescriptionText: values.jobDescriptionText,
       },
     });
   };
 
-  const favorites = analyses?.filter((a) => a.isFavorite) ?? [];
-
-  const now = new Date();
-  const in7Days = addDays(now, 7);
-  const upcomingDeadlines = analyses?.filter((a) => {
-    if (!a.deadline) return false;
-    const d = new Date(a.deadline);
-    return isWithinInterval(d, { start: now, end: in7Days }) || isPast(d);
-  }).sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime()) ?? [];
+  const recent = analyses?.slice(0, 4) ?? [];
 
   return (
-    <div className="space-y-10">
-      {/* Page header */}
-      {isEmber ? (
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">
-            Let's find your next great role.
+    <div className="space-y-8">
+      <section className="rounded-3xl border bg-gradient-to-br from-primary/10 via-background to-background p-6 md:p-8 shadow-sm">
+        <div className="max-w-3xl">
+          <Badge variant="secondary" className="mb-4">Resume AI Matcher</Badge>
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight">
+            Upload once. Tailor every resume for the role.
           </h1>
-          <p className="text-muted-foreground mt-2 text-lg leading-relaxed max-w-2xl">
-            Paste your resume and the job description below. We'll analyze your fit, highlight your strengths, and guide you on what to emphasize.
+          <p className="mt-4 text-muted-foreground text-base md:text-lg">
+            Sign in locally, upload PDF or LaTeX, paste the JD, and DeepSeek will generate an ATS-focused LaTeX resume plus a tracker entry for the company and role.
           </p>
         </div>
-      ) : (
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">New Analysis</h1>
-          <p className="text-muted-foreground mt-1">Paste your resume and job description to get an AI-powered fit score and recommendations.</p>
-        </div>
-      )}
+      </section>
 
-      {/* Analysis form card */}
-      <Card
-        className={isEmber
-          ? "border-[#fde68a] rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.05)]"
-          : "border shadow-sm"
-        }
-      >
-        <CardContent className="pt-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" data-testid="form-analysis">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" data-testid="form-analysis">
+          <Card className="border shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <UserRound className="h-4 w-4 text-primary" /> User Login
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField control={form.control} name="userName" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl><Input placeholder="Your name" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="userEmail" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl><Input placeholder="you@example.com" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="deepseekApiKey" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1.5"><KeyRound className="h-3.5 w-3.5" /> DeepSeek API Key</FormLabel>
+                  <FormControl><Input type="password" placeholder="sk-..." {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </CardContent>
+          </Card>
+
+          <Card className="border shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BriefcaseBusiness className="h-4 w-4 text-primary" /> Target Job
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="jobTitle"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={isEmber ? "text-foreground font-semibold" : ""}>
-                        Job Title <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g. Senior Software Engineer"
-                          className={isEmber ? "rounded-xl border-[#fde68a] bg-background focus-visible:ring-[#d97706] h-11" : ""}
-                          {...field}
-                          data-testid="input-job-title"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="companyName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={isEmber ? "text-foreground font-semibold" : ""}>
-                        Company Name <span className="text-muted-foreground text-xs">(optional)</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g. Acme Corp"
-                          className={isEmber ? "rounded-xl border-[#fde68a] bg-background focus-visible:ring-[#d97706] h-11" : ""}
-                          {...field}
-                          data-testid="input-company-name"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="companyName" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company Name</FormLabel>
+                    <FormControl><Input placeholder="e.g. Acme Corp" {...field} data-testid="input-company-name" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="jobTitle" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <FormControl><Input placeholder="e.g. Backend Engineer" {...field} data-testid="input-job-title" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="resumeText"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={isEmber ? "text-foreground font-semibold" : ""}>
-                        Resume <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <div className="space-y-3">
-                          <div className="flex flex-wrap items-center gap-3">
-                            <Button type="button" variant="secondary" disabled={isParsingResume} asChild
-                              className={isEmber ? "rounded-xl bg-[#fef3c7] text-[#92400e] hover:bg-[#fde68a] border-[#fde68a]" : ""}
-                            >
-                              <label className="cursor-pointer">
-                                <Upload className="w-4 h-4 mr-2" />
-                                {isParsingResume ? "Reading file..." : "Upload resume"}
-                                <Input type="file" accept={allowedResumeTypes} className="hidden" onChange={onResumeFileChange} />
-                              </label>
-                            </Button>
-                            {resumeFileName && <Badge variant="outline">{resumeFileName}</Badge>}
-                            <span className="text-xs text-muted-foreground">DOCX or TXT (PDF: paste text)</span>
-                          </div>
-                          <Textarea
-                            placeholder="Paste your resume text here..."
-                            className={isEmber
-                              ? "min-h-[260px] rounded-2xl border-[#fde68a] bg-background focus-visible:ring-[#d97706] p-4 text-sm resize-none leading-relaxed"
-                              : "min-h-[260px] font-mono text-sm resize-none"
-                            }
-                            {...field}
-                            data-testid="textarea-resume"
-                          />
-                          {resumeFileError && <p className="text-sm text-destructive">{resumeFileError}</p>}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="jobDescriptionText"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className={isEmber ? "text-foreground font-semibold" : ""}>
-                        Job Description <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <div className="space-y-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => setShowUrlInput(!showUrlInput)}
-                              className={isEmber ? "rounded-xl bg-[#fef3c7] text-[#92400e] hover:bg-[#fde68a] border-[#fde68a]" : ""}
-                            >
-                              <Link2 className="w-3.5 h-3.5 mr-1.5" />
-                              Import from URL
-                            </Button>
-                            <span className="text-xs text-muted-foreground">or paste below</span>
-                          </div>
-                          {showUrlInput && (
-                            <div className="flex gap-2">
-                              <Input
-                                placeholder="https://jobs.company.com/role/12345"
-                                value={jobUrlInput}
-                                onChange={(e) => setJobUrlInput(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && handleImportUrl()}
-                                className={isEmber ? "flex-1 text-sm rounded-xl border-[#fde68a] focus-visible:ring-[#d97706]" : "flex-1 text-sm"}
-                              />
-                              <Button
-                                type="button"
-                                size="sm"
-                                onClick={handleImportUrl}
-                                disabled={fetchJob.isPending || !jobUrlInput.trim()}
-                                className={isEmber ? "bg-[#d97706] hover:bg-[#b45309] text-white rounded-xl" : ""}
-                              >
-                                {fetchJob.isPending ? "Importing..." : "Import"}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="shrink-0"
-                                onClick={() => { setShowUrlInput(false); setJobUrlInput(""); }}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          )}
-                          <Textarea
-                            placeholder="Paste the job description here..."
-                            className={isEmber
-                              ? "min-h-[260px] rounded-2xl border-[#fde68a] bg-background focus-visible:ring-[#d97706] p-4 text-sm resize-none leading-relaxed"
-                              : "min-h-[260px] font-mono text-sm resize-none"
-                            }
-                            {...field}
-                            data-testid="textarea-jd"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {isEmber ? (
-                <div className="pt-2 flex justify-end">
-                  <Button
-                    type="submit"
-                    disabled={createAnalysis.isPending}
-                    className="bg-[#d97706] hover:bg-[#b45309] text-white rounded-full px-10 py-6 text-base font-semibold shadow-lg shadow-[#d97706]/25 transition-all hover:shadow-[#d97706]/40 hover:-translate-y-0.5"
-                    data-testid="button-analyze"
-                  >
-                    {createAnalysis.isPending ? (
-                      <span className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Analyzing fit...
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        Analyze Fit
-                        <Sparkles className="w-4 h-4" />
-                      </span>
-                    )}
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setShowUrlInput((v) => !v)}>
+                    <Link2 className="h-3.5 w-3.5 mr-1.5" /> Import JD from URL
                   </Button>
+                  <span className="text-xs text-muted-foreground">or paste the job description below</span>
                 </div>
-              ) : (
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full md:w-auto"
-                  disabled={createAnalysis.isPending}
-                  data-testid="button-analyze"
-                >
-                  {createAnalysis.isPending ? (
-                    <><Sparkles className="w-4 h-4 mr-2 animate-pulse" />Analyzing with AI...</>
-                  ) : (
-                    <><Sparkles className="w-4 h-4 mr-2" />Analyze Fit</>
-                  )}
-                </Button>
-              )}
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-
-      {/* Upcoming Deadlines */}
-      {upcomingDeadlines.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight mb-3 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-orange-500" /> Upcoming Deadlines
-            <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 text-xs ml-1">
-              {upcomingDeadlines.length}
-            </Badge>
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {upcomingDeadlines.map((a) => {
-              const deadlineDate = new Date(a.deadline!);
-              const overdue = isPast(deadlineDate);
-              return (
-                <Card
-                  key={a.id}
-                  className={`group border shadow-sm hover:shadow-md transition-shadow cursor-pointer ${overdue ? "border-destructive/40 bg-destructive/5" : "border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-900/10"}`}
-                  onClick={() => setLocation(`/analysis/${a.id}`)}
-                >
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <CalendarClock className={`w-4 h-4 shrink-0 ${overdue ? "text-destructive" : "text-orange-500"}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">{a.jobTitle}</p>
-                      {a.companyName && <p className="text-xs text-muted-foreground truncate">{a.companyName}</p>}
-                      <p className={`text-xs font-medium mt-0.5 ${overdue ? "text-destructive" : "text-orange-600 dark:text-orange-400"}`}>
-                        {overdue ? "Overdue — " : "Due "}{format(deadlineDate, "MMM d, yyyy")}
-                      </p>
-                    </div>
-                    <ScoreCircle score={a.fitScore} size="sm" />
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Favorites */}
-      {favorites.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight mb-3 flex items-center gap-2">
-            <Heart className="w-4 h-4 text-pink-500 fill-pink-500" /> Favorites
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {favorites.slice(0, 4).map((a) => (
-              <Card
-                key={a.id}
-                className="group border shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setLocation(`/analysis/${a.id}`)}
-              >
-                <CardContent className="p-4 flex items-center gap-4">
-                  <ScoreCircle score={a.fitScore} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{a.jobTitle}</p>
-                    {a.companyName && <p className="text-sm text-muted-foreground truncate">{a.companyName}</p>}
+                {showUrlInput && (
+                  <div className="flex gap-2">
+                    <Input value={jobUrlInput} onChange={(e) => setJobUrlInput(e.target.value)} placeholder="https://company.com/jobs/role" />
+                    <Button type="button" onClick={handleImportUrl} disabled={fetchJob.isPending || !jobUrlInput.trim()}>
+                      {fetchJob.isPending ? "Importing..." : "Import"}
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setShowUrlInput(false)}>
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                </CardContent>
-              </Card>
-            ))}
+                )}
+                <FormField control={form.control} name="jobDescriptionText" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Job Description</FormLabel>
+                    <FormControl><Textarea className="min-h-[220px] font-mono text-sm" placeholder="Paste the full JD here..." {...field} data-testid="textarea-jd" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FileText className="h-4 w-4 text-primary" /> Resume Upload
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="button" variant="secondary" disabled={isParsingResume} asChild>
+                  <label className="cursor-pointer">
+                    <Upload className="h-4 w-4 mr-2" />
+                    {isParsingResume ? "Reading file..." : "Upload PDF or LaTeX"}
+                    <Input type="file" accept=".pdf,.tex,.latex,.txt" className="hidden" onChange={onResumeFileChange} />
+                  </label>
+                </Button>
+                {resumeFileName && <Badge variant="outline">{resumeFileName}</Badge>}
+                <span className="text-xs text-muted-foreground">
+                  PDFs are converted to editable LaTeX during optimization. LaTeX files preserve structure.
+                </span>
+              </div>
+              {resumeFileError && <p className="text-sm text-destructive">{resumeFileError}</p>}
+              <FormField control={form.control} name="resumeText" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Parsed Resume Text</FormLabel>
+                  <FormControl><Textarea className="min-h-[220px] font-mono text-sm" placeholder="Parsed resume text appears here..." {...field} data-testid="textarea-resume" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button type="submit" size="lg" disabled={createAnalysis.isPending} data-testid="button-analyze">
+              {createAnalysis.isPending ? (
+                <><Sparkles className="h-4 w-4 mr-2 animate-pulse" />Optimizing with DeepSeek...</>
+              ) : (
+                <><Wand2 className="h-4 w-4 mr-2" />Optimize Resume</>
+              )}
+            </Button>
           </div>
+        </form>
+      </Form>
+
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Recent Optimizations</h2>
+            <p className="text-sm text-muted-foreground">Each optimization is automatically added to the tracker.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setLocation("/tracker")}>Open Tracker</Button>
         </div>
-      )}
-
-      {/* Funnel Pipeline Widget */}
-      {analyses && analyses.length >= 2 && (
-        <FunnelWidget analyses={analyses} />
-      )}
-
-      {/* Recent Analyses */}
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight mb-4">Recent Analyses</h2>
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-28 rounded-xl" />
-            ))}
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
           </div>
-        ) : !analyses || analyses.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground border border-dashed rounded-xl">
-            <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No analyses yet</p>
-            <p className="text-sm mt-1">Run your first analysis above to get started.</p>
+        ) : recent.length === 0 ? (
+          <div className="text-center py-14 border border-dashed rounded-2xl text-muted-foreground">
+            <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-40" />
+            <p className="font-medium">No optimized resumes yet</p>
+            <p className="text-sm mt-1">Run your first optimization above.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {analyses.slice(0, 6).map((a) => (
-              <Card
-                key={a.id}
-                className="group border shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setLocation(`/analysis/${a.id}`)}
-                data-testid={`card-analysis-${a.id}`}
-              >
+            {recent.map((a) => (
+              <Card key={a.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setLocation(`/analysis/${a.id}`)}>
                 <CardContent className="p-4 flex items-center gap-4">
-                  <ScoreCircle score={a.fitScore} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="font-semibold truncate">{a.jobTitle}</p>
-                      {a.isFavorite && <Heart className="w-3 h-3 text-pink-500 fill-pink-500 shrink-0" />}
-                    </div>
-                    {a.companyName && <p className="text-sm text-muted-foreground truncate">{a.companyName}</p>}
-                    <div className="flex items-center gap-2 mt-1">
-                      <Clock className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}</span>
-                      <Badge variant="outline" className="text-xs ml-1">ATS {a.atsScore}</Badge>
-                    </div>
+                  <ScoreCircle score={a.atsScore} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold truncate">{a.jobTitle}</p>
+                    <p className="text-sm text-muted-foreground truncate">{a.companyName}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}</p>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteAnalysis.mutate({ id: a.id });
-                      }}
-                      data-testid={`button-delete-${a.id}`}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

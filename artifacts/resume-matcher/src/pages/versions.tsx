@@ -27,8 +27,9 @@ function groupKey(a: AnalysisItem) {
 
 function statusColor(status: string) {
   switch (status) {
-    case "offer": return "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400";
-    case "interview": return "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400";
+    case "selected": return "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400";
+    case "got_interview": return "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400";
+    case "got_online_exam": return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400";
     case "applied": return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400";
     case "rejected": return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400";
     default: return "bg-muted text-muted-foreground";

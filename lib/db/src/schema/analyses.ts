@@ -1,8 +1,9 @@
-import { pgTable, serial, text, integer, timestamp, json, boolean } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const APPLICATION_STATUSES = ["not_applied", "applied", "interview", "offer", "rejected"] as const;
+export const APPLICATION_STATUSES = ["not_applied", "applied", "got_interview", "got_online_exam", "selected", "rejected"] as const;
 export type ApplicationStatus = typeof APPLICATION_STATUSES[number];
 
 export type LearningResource = {
@@ -46,42 +47,46 @@ export type RedFlag = {
   quote: string;
 };
 
-export const analyses = pgTable("analyses", {
-  id: serial("id").primaryKey(),
+export const analyses = sqliteTable("analyses", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   jobTitle: text("job_title").notNull(),
   companyName: text("company_name"),
   resumeText: text("resume_text").notNull(),
+  originalFileName: text("original_file_name"),
+  originalFileType: text("original_file_type").$type<"pdf" | "latex" | "text">().notNull().default("text"),
+  sourceLatex: text("source_latex"),
+  optimizedLatex: text("optimized_latex"),
   jobDescriptionText: text("job_description_text").notNull(),
   fitScore: integer("fit_score").notNull(),
   fitRationale: text("fit_rationale").notNull(),
-  strengths: json("strengths").$type<string[]>().notNull().default([]),
-  gaps: json("gaps").$type<string[]>().notNull().default([]),
-  improvements: json("improvements").$type<string[]>().notNull().default([]),
-  atsKeywordsMatched: json("ats_keywords_matched").$type<string[]>().notNull().default([]),
-  atsKeywordsMissing: json("ats_keywords_missing").$type<string[]>().notNull().default([]),
+  strengths: text("strengths", { mode: "json" }).$type<string[]>().notNull().$defaultFn(() => []),
+  gaps: text("gaps", { mode: "json" }).$type<string[]>().notNull().$defaultFn(() => []),
+  improvements: text("improvements", { mode: "json" }).$type<string[]>().notNull().$defaultFn(() => []),
+  atsKeywordsMatched: text("ats_keywords_matched", { mode: "json" }).$type<string[]>().notNull().$defaultFn(() => []),
+  atsKeywordsMissing: text("ats_keywords_missing", { mode: "json" }).$type<string[]>().notNull().$defaultFn(() => []),
   atsScore: integer("ats_score").notNull(),
   coverLetter: text("cover_letter"),
   linkedinPost: text("linkedin_post"),
   status: text("status").$type<ApplicationStatus>().notNull().default("not_applied"),
-  interviewQuestions: json("interview_questions").$type<string[]>().notNull().default([]),
-  learningPlan: json("learning_plan").$type<LearningPlanItem[]>().notNull().default([]),
-  isFavorite: boolean("is_favorite").notNull().default(false),
+  interviewQuestions: text("interview_questions", { mode: "json" }).$type<string[]>().notNull().$defaultFn(() => []),
+  learningPlan: text("learning_plan", { mode: "json" }).$type<LearningPlanItem[]>().notNull().$defaultFn(() => []),
+  isFavorite: integer("is_favorite", { mode: "boolean" }).notNull().default(false),
   notes: text("notes"),
   shareToken: text("share_token"),
-  isPublic: boolean("is_public").notNull().default(false),
+  isPublic: integer("is_public", { mode: "boolean" }).notNull().default(false),
   deadline: text("deadline"),
   contactName: text("contact_name"),
   contactEmail: text("contact_email"),
   followUpDate: text("follow_up_date"),
-  salaryGuide: json("salary_guide").$type<SalaryRange>(),
-  tags: json("tags").$type<string[]>().notNull().default([]),
-  companyResearch: json("company_research").$type<CompanyResearch>(),
-  redFlags: json("red_flags").$type<RedFlag[]>(),
-  portfolioLinks: json("portfolio_links").$type<string[]>().notNull().default([]),
+  salaryGuide: text("salary_guide", { mode: "json" }).$type<SalaryRange>(),
+  tags: text("tags", { mode: "json" }).$type<string[]>().notNull().$defaultFn(() => []),
+  companyResearch: text("company_research", { mode: "json" }).$type<CompanyResearch>(),
+  redFlags: text("red_flags", { mode: "json" }).$type<RedFlag[]>(),
+  portfolioLinks: text("portfolio_links", { mode: "json" }).$type<string[]>().notNull().$defaultFn(() => []),
   versionLabel: text("version_label"),
   location: text("location"),
   salaryExpectation: text("salary_expectation"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
 export const insertAnalysisSchema = createInsertSchema(analyses).omit({

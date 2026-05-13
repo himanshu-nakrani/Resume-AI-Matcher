@@ -12,7 +12,7 @@ interface Props {
 const STAGES = [
   { key: "applied", label: "Applied", color: "bg-blue-500" },
   { key: "interview", label: "Interview", color: "bg-violet-500" },
-  { key: "offer", label: "Offer", color: "bg-emerald-500" },
+  { key: "selected", label: "Selected", color: "bg-emerald-500" },
 ] as const;
 
 export function FunnelWidget({ analyses }: Props) {
@@ -20,10 +20,10 @@ export function FunnelWidget({ analyses }: Props) {
 
   const counts = useMemo(() => {
     const total = analyses.length;
-    const applied = analyses.filter((a) => ["applied", "interview", "offer"].includes(a.status)).length;
-    const interview = analyses.filter((a) => ["interview", "offer"].includes(a.status)).length;
-    const offer = analyses.filter((a) => a.status === "offer").length;
-    return { total, applied, interview, offer };
+    const applied = analyses.filter((a) => ["applied", "got_interview", "got_online_exam", "selected"].includes(a.status)).length;
+    const interview = analyses.filter((a) => ["got_interview", "selected"].includes(a.status)).length;
+    const selected = analyses.filter((a) => a.status === "selected").length;
+    return { total, applied, interview, selected };
   }, [analyses]);
 
   const rate = (num: number, denom: number) =>
@@ -31,7 +31,7 @@ export function FunnelWidget({ analyses }: Props) {
 
   const appRate = rate(counts.applied, counts.total);
   const interviewRate = rate(counts.interview, counts.applied);
-  const offerRate = rate(counts.offer, counts.interview);
+  const offerRate = rate(counts.selected, counts.interview);
 
   if (counts.total < 2) return null;
 
@@ -89,7 +89,7 @@ export function FunnelWidget({ analyses }: Props) {
             <p className="text-base font-semibold">{interviewRate}%</p>
           </div>
           <div className="rounded-lg bg-muted/50 p-2">
-            <p className="text-xs text-muted-foreground">Offer rate</p>
+            <p className="text-xs text-muted-foreground">Selection rate</p>
             <p className="text-base font-semibold">{offerRate}%</p>
           </div>
         </div>

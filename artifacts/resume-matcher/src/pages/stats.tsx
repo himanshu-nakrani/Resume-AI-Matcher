@@ -77,8 +77,9 @@ const SCORE_BUCKETS = [
 const STATUS_COLORS: Record<string, string> = {
   not_applied: "#94a3b8",
   applied: "#3b82f6",
-  interview: "#f59e0b",
-  offer: "#22c55e",
+  got_interview: "#f59e0b",
+  got_online_exam: "#a855f7",
+  selected: "#22c55e",
   rejected: "#ef4444",
 };
 
@@ -126,13 +127,13 @@ export function Stats() {
 
   const pipelineData = analyses
     ? (() => {
-        const applied = analyses.filter((a) => ["applied", "interview", "offer"].includes(a.status)).length;
-        const interview = analyses.filter((a) => ["interview", "offer"].includes(a.status)).length;
-        const offer = analyses.filter((a) => a.status === "offer").length;
+        const applied = analyses.filter((a) => ["applied", "got_interview", "got_online_exam", "selected"].includes(a.status)).length;
+        const interview = analyses.filter((a) => ["got_interview", "selected"].includes(a.status)).length;
+        const selected = analyses.filter((a) => a.status === "selected").length;
         return [
           { name: "Applied", value: applied, fill: "#3b82f6" },
           { name: "Interview", value: interview, fill: "#f59e0b" },
-          { name: "Offer", value: offer, fill: "#22c55e" },
+          { name: "Selected", value: selected, fill: "#22c55e" },
         ].filter((d) => d.value > 0);
       })()
     : [];
@@ -155,7 +156,7 @@ export function Stats() {
   const interviewRate =
     analyses && analyses.filter((a) => a.status !== "not_applied").length > 0
       ? Math.round(
-          (analyses.filter((a) => ["interview", "offer"].includes(a.status)).length /
+          (analyses.filter((a) => ["got_interview", "selected"].includes(a.status)).length /
             analyses.filter((a) => a.status !== "not_applied").length) *
             100
         )
@@ -194,7 +195,7 @@ export function Stats() {
           stageCounts[status] = (stageCounts[status] ?? 0) + 1;
         }
 
-        return ["not_applied", "applied", "interview", "offer", "rejected"]
+        return ["not_applied", "applied", "got_interview", "got_online_exam", "selected", "rejected"]
           .map(status => ({
             status: status.replace("_", " "),
             avgDays: stageCounts[status] ? Math.round(stageTotals[status] / stageCounts[status]) : 0,
@@ -204,13 +205,13 @@ export function Stats() {
       })()
     : [];
 
-  // T004: Success Rate (Interview+ and Offer)
+  // T004: Success Rate (Interview+ and Selected)
   const successMetrics = analyses
     ? (() => {
         const total = analyses.length;
         if (total === 0) return { interviewRate: 0, offerRate: 0 };
-        const interviewPlus = analyses.filter(a => ["interview", "offer"].includes(a.status)).length;
-        const offers = analyses.filter(a => a.status === "offer").length;
+        const interviewPlus = analyses.filter(a => ["got_interview", "selected"].includes(a.status)).length;
+        const offers = analyses.filter(a => a.status === "selected").length;
         return {
           interviewRate: Math.round((interviewPlus / total) * 100),
           offerRate: Math.round((offers / total) * 100),
@@ -273,8 +274,8 @@ export function Stats() {
           const title = a.jobTitle;
           if (!roles[title]) roles[title] = { total: 0, interview: 0, offer: 0 };
           roles[title].total += 1;
-          if (["interview", "offer"].includes(a.status)) roles[title].interview += 1;
-          if (a.status === "offer") roles[title].offer += 1;
+          if (["got_interview", "selected"].includes(a.status)) roles[title].interview += 1;
+          if (a.status === "selected") roles[title].offer += 1;
         }
         return Object.entries(roles)
           .filter(([, v]) => v.total >= 1 && (v.interview > 0 || v.offer > 0))

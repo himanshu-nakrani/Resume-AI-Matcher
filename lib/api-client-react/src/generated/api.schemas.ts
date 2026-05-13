@@ -13,14 +13,24 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type AnalysisOriginalFileType =
+  (typeof AnalysisOriginalFileType)[keyof typeof AnalysisOriginalFileType];
+
+export const AnalysisOriginalFileType = {
+  pdf: "pdf",
+  latex: "latex",
+  text: "text",
+} as const;
+
 export type AnalysisStatus =
   (typeof AnalysisStatus)[keyof typeof AnalysisStatus];
 
 export const AnalysisStatus = {
   not_applied: "not_applied",
   applied: "applied",
-  interview: "interview",
-  offer: "offer",
+  got_interview: "got_interview",
+  got_online_exam: "got_online_exam",
+  selected: "selected",
   rejected: "rejected",
 } as const;
 
@@ -110,6 +120,13 @@ export interface Analysis {
   /** @nullable */
   companyName: string | null;
   resumeText: string;
+  /** @nullable */
+  originalFileName: string | null;
+  originalFileType: AnalysisOriginalFileType;
+  /** @nullable */
+  sourceLatex: string | null;
+  /** @nullable */
+  optimizedLatex: string | null;
   jobDescriptionText: string;
   fitScore: number;
   fitRationale: string;
@@ -154,10 +171,23 @@ export interface Analysis {
   createdAt: string;
 }
 
+export type CreateAnalysisBodyOriginalFileType =
+  (typeof CreateAnalysisBodyOriginalFileType)[keyof typeof CreateAnalysisBodyOriginalFileType];
+
+export const CreateAnalysisBodyOriginalFileType = {
+  pdf: "pdf",
+  latex: "latex",
+  text: "text",
+} as const;
+
 export interface CreateAnalysisBody {
   jobTitle: string;
   companyName?: string;
   resumeText: string;
+  originalFileName?: string;
+  originalFileType?: CreateAnalysisBodyOriginalFileType;
+  sourceLatex?: string;
+  deepseekApiKey?: string;
   jobDescriptionText: string;
 }
 
@@ -167,8 +197,9 @@ export type UpdateAnalysisBodyStatus =
 export const UpdateAnalysisBodyStatus = {
   not_applied: "not_applied",
   applied: "applied",
-  interview: "interview",
-  offer: "offer",
+  got_interview: "got_interview",
+  got_online_exam: "got_online_exam",
+  selected: "selected",
   rejected: "rejected",
 } as const;
 

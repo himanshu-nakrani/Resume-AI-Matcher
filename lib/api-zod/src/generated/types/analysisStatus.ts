@@ -12,7 +12,8 @@ export type AnalysisStatus =
 export const AnalysisStatus = {
   not_applied: "not_applied",
   applied: "applied",
-  interview: "interview",
-  offer: "offer",
+  got_interview: "got_interview",
+  got_online_exam: "got_online_exam",
+  selected: "selected",
   rejected: "rejected",
 } as const;

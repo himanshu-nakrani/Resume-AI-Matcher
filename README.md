@@ -71,7 +71,7 @@ An intelligent AI-powered platform that analyzes resumes against job description
 
 ### Backend
 - **Express 5** API server
-- **PostgreSQL** database with **Drizzle ORM**
+- **SQLite** (via **better-sqlite3**) with **Drizzle ORM** for local development
 - **Zod** for runtime validation
 - **Pino** for structured logging
 - **esbuild** for fast builds
@@ -109,8 +109,7 @@ An intelligent AI-powered platform that analyzes resumes against job description
 ### Prerequisites
 - Node.js 24+
 - pnpm package manager
-- PostgreSQL database
-- OpenAI API key
+- OpenAI / DeepSeek API key (depending on integration)
 
 ### Installation
 
@@ -118,7 +117,7 @@ An intelligent AI-powered platform that analyzes resumes against job description
 # Install dependencies
 pnpm install
 
-# Set up database schema
+# Set up database schema (creates/updates ./resume-matcher.sqlite at repo root by default)
 pnpm --filter @workspace/db run push
 
 # Generate API types and hooks

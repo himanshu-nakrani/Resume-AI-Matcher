@@ -786,6 +786,15 @@ components:
           type: ["string", "null"]
         resumeText:
           type: string
+        originalFileName:
+          type: ["string", "null"]
+        originalFileType:
+          type: string
+          enum: [pdf, latex, text]
+        sourceLatex:
+          type: ["string", "null"]
+        optimizedLatex:
+          type: ["string", "null"]
         jobDescriptionText:
           type: string
         fitScore:
@@ -820,7 +829,7 @@ components:
           type: ["string", "null"]
         status:
           type: string
-          enum: [not_applied, applied, interview, offer, rejected]
+          enum: [not_applied, applied, got_interview, got_online_exam, selected, rejected]
         interviewQuestions:
           type: array
           items:
@@ -877,6 +886,10 @@ components:
         - jobTitle
         - companyName
         - resumeText
+        - originalFileName
+        - originalFileType
+        - sourceLatex
+        - optimizedLatex
         - jobDescriptionText
         - fitScore
         - fitRationale
@@ -911,6 +924,15 @@ components:
           type: string
         resumeText:
           type: string
+        originalFileName:
+          type: string
+        originalFileType:
+          type: string
+          enum: [pdf, latex, text]
+        sourceLatex:
+          type: string
+        deepseekApiKey:
+          type: string
         jobDescriptionText:
           type: string
       required:
@@ -923,7 +945,7 @@ components:
       properties:
         status:
           type: string
-          enum: [not_applied, applied, interview, offer, rejected]
+          enum: [not_applied, applied, got_interview, got_online_exam, selected, rejected]
         notes:
           type: string
         isFavorite:

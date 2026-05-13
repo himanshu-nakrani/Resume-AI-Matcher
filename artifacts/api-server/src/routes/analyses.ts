@@ -27,8 +27,9 @@ import {
   ConductMockInterviewParams,
   ConductMockInterviewBody,
 } from "@workspace/api-zod";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { getAiClient, openai } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
+import { parseAiJson } from "../lib/parse-ai-json";
 
 const router: IRouter = Router();
 
@@ -97,6 +98,10 @@ router.post("/analyses", async (req, res): Promise<void> => {
   }
 
   const { jobTitle, companyName, resumeText, jobDescriptionText } = parsed.data;
+  const sourceLatex = "sourceLatex" in parsed.data ? parsed.data.sourceLatex : undefined;
+  const originalFileName = "originalFileName" in parsed.data ? parsed.data.originalFileName : undefined;
+  const originalFileType = "originalFileType" in parsed.data ? parsed.data.originalFileType : undefined;
+  const deepseekApiKey = "deepseekApiKey" in parsed.data ? parsed.data.deepseekApiKey : undefined;
 
   req.log.info({ jobTitle }, "Running AI analysis");
 
@@ -115,7 +120,9 @@ router.post("/analyses", async (req, res): Promise<void> => {
     '  "improvements": ["<specific actionable improvement 1 with concrete example>", "<improvement 2>", "<improvement 3>", "<improvement 4>", "<improvement 5>"],\n' +
     '  "atsKeywordsMatched": ["<keyword1>", "<keyword2>", "<keyword3>", "<keyword4>", "<keyword5>"],\n' +
     '  "atsKeywordsMissing": ["<missing keyword1>", "<missing keyword2>", "<missing keyword3>", "<missing keyword4>", "<missing keyword5>"],\n' +
-    '  "atsScore": <integer 0-100>\n' +
+    '  "atsScore": <integer 0-100>,\n' +
+    '  "sourceLatex": "<complete LaTeX conversion of the original resume before optimization>",\n' +
+    '  "optimizedLatex": "<complete, compilable LaTeX resume tailored to this JD>"\n' +
     "}\n\n" +
     "Detailed Guidelines:\n" +
     "- fitScore: Overall match 0-100 considering required skills presence, experience level, and qualifications match\n" +
@@ -125,7 +132,10 @@ router.post("/analyses", async (req, res): Promise<void> => {
     "- improvements: Provide 5 specific, immediately actionable edits with examples\n" +
     "- atsKeywordsMatched: Extract 5+ exact keywords/phrases from JD that appear in resume\n" +
     "- atsKeywordsMissing: Extract 5+ important keywords/phrases from JD missing from resume\n" +
-    "- atsScore: Rate how ATS will parse resume 0-100";
+    "- atsScore: Rate how ATS will parse resume 0-100\n" +
+    "- sourceLatex: If source LaTeX is provided, return it unchanged except for cleanup. If the resume came from PDF or text, convert the original resume into clean, compilable LaTeX and store it here.\n" +
+    "- optimizedLatex: Return a complete LaTeX resume that preserves truthful facts from the candidate resume, improves wording for ATS, naturally includes matched JD keywords, and does not invent experience. If source LaTeX is provided, preserve its structure and update the content.\n\n" +
+    "Source LaTeX if available:\n" + (sourceLatex || "Not provided");
 
   let aiResult: {
     fitScore: number;
@@ -136,17 +146,20 @@ router.post("/analyses", async (req, res): Promise<void> => {
     atsKeywordsMatched: string[];
     atsKeywordsMissing: string[];
     atsScore: number;
+    sourceLatex?: string;
+    optimizedLatex?: string;
   };
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+    const ai = getAiClient(deepseekApiKey);
+    const completion = await ai.chat.completions.create({
+      model: "deepseek-chat",
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     });
 
     const content = completion.choices[0]?.message?.content ?? "{}";
-    aiResult = JSON.parse(content);
+    aiResult = parseAiJson(content);
   } catch (err) {
     logger.error({ err }, "AI analysis failed");
     res.status(500).json({ error: "AI analysis failed" });
@@ -159,6 +172,10 @@ router.post("/analyses", async (req, res): Promise<void> => {
       jobTitle,
       companyName: companyName ?? null,
       resumeText,
+      originalFileName: originalFileName ?? null,
+      originalFileType: originalFileType ?? "text",
+      sourceLatex: aiResult.sourceLatex ?? sourceLatex ?? null,
+      optimizedLatex: aiResult.optimizedLatex ?? sourceLatex ?? null,
       jobDescriptionText,
       fitScore: aiResult.fitScore ?? 0,
       fitRationale: aiResult.fitRationale ?? "",
@@ -288,6 +305,9 @@ router.patch("/analyses/:id", async (req, res): Promise<void> => {
   if (body.data.followUpDate !== undefined) updates.followUpDate = body.data.followUpDate;
   if (body.data.tags !== undefined) updates.tags = body.data.tags;
   if (body.data.portfolioLinks !== undefined) updates.portfolioLinks = body.data.portfolioLinks;
+  if (body.data.versionLabel !== undefined) updates.versionLabel = body.data.versionLabel;
+  if (body.data.location !== undefined) updates.location = body.data.location;
+  if (body.data.salaryExpectation !== undefined) updates.salaryExpectation = body.data.salaryExpectation;
 
   const [updated] = await db
     .update(analyses)
@@ -386,7 +406,7 @@ router.post("/analyses/:id/salary-guide", async (req, res): Promise<void> => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     });
@@ -397,7 +417,7 @@ router.post("/analyses/:id/salary-guide", async (req, res): Promise<void> => {
       context: string; factors: string[]; negotiationTips: string[];
     };
     try {
-      guide = JSON.parse(raw);
+      guide = parseAiJson(raw);
     } catch {
       res.status(500).json({ error: "Failed to parse salary guide" });
       return;
@@ -554,7 +574,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
       "Webpage text:\n" + text;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 3000,
       messages: [{ role: "user", content: extractPrompt }],
     });
@@ -562,7 +582,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
     let extracted: { jobTitle?: string; companyName?: string; jobDescription?: string } = {};
     try {
-      extracted = JSON.parse(raw);
+      extracted = parseAiJson(raw);
     } catch {
       extracted = { jobDescription: text.slice(0, 3000) };
     }
@@ -618,7 +638,7 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     });
@@ -665,7 +685,7 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     });
@@ -720,7 +740,7 @@ router.post("/analyses/:id/interview-questions", async (req, res): Promise<void>
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
     });
@@ -728,7 +748,7 @@ router.post("/analyses/:id/interview-questions", async (req, res): Promise<void>
     const raw = completion.choices[0]?.message?.content?.trim() ?? "[]";
     let questions: string[] = [];
     try {
-      questions = JSON.parse(raw);
+      questions = parseAiJson(raw);
       if (!Array.isArray(questions)) questions = [];
     } catch {
       questions = [];
@@ -780,7 +800,7 @@ router.post("/analyses/:id/learning-plan", async (req, res): Promise<void> => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 3000,
       messages: [{ role: "user", content: prompt }],
     });
@@ -788,7 +808,7 @@ router.post("/analyses/:id/learning-plan", async (req, res): Promise<void> => {
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
     let parsed: { items: unknown[] } = { items: [] };
     try {
-      parsed = JSON.parse(raw);
+      parsed = parseAiJson(raw);
       if (!Array.isArray(parsed.items)) parsed.items = [];
     } catch {
       parsed = { items: [] };
@@ -851,7 +871,7 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 512,
       messages: [{ role: "user", content: prompt }],
     });
@@ -905,7 +925,7 @@ router.post("/analyses/:id/company-research", async (req, res): Promise<void> =>
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
     });
@@ -916,7 +936,7 @@ router.post("/analyses/:id/company-research", async (req, res): Promise<void> =>
       recentNews: string[]; glassdoorRating: string; tips: string[];
     };
     try {
-      research = JSON.parse(raw);
+      research = parseAiJson(raw);
     } catch {
       res.status(500).json({ error: "Failed to parse company research" });
       return;
@@ -971,7 +991,7 @@ router.post("/analyses/:id/red-flags", async (req, res): Promise<void> => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
     });
@@ -983,7 +1003,7 @@ router.post("/analyses/:id/red-flags", async (req, res): Promise<void> => {
       overallRisk: string;
     };
     try {
-      result = JSON.parse(raw);
+      result = parseAiJson(raw);
       if (!Array.isArray(result.flags)) result.flags = [];
     } catch {
       res.status(500).json({ error: "Failed to parse red flags analysis" });
@@ -1049,7 +1069,7 @@ router.post("/analyses/:id/negotiate", async (req, res): Promise<void> => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 512,
       messages: [
         { role: "system", content: systemPrompt },
@@ -1060,7 +1080,7 @@ router.post("/analyses/:id/negotiate", async (req, res): Promise<void> => {
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
     let result: { message: string; tip?: string };
     try {
-      result = JSON.parse(raw);
+      result = parseAiJson(raw);
     } catch {
       result = { message: raw };
     }
@@ -1132,7 +1152,7 @@ router.post("/analyses/:id/star-answer", async (req, res): Promise<void> => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     });
@@ -1140,7 +1160,7 @@ router.post("/analyses/:id/star-answer", async (req, res): Promise<void> => {
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
     let result: { answer: string; tips: string[] };
     try {
-      result = JSON.parse(raw);
+      result = parseAiJson(raw);
       if (!Array.isArray(result.tips)) result.tips = [];
     } catch {
       result = { answer: raw, tips: [] };
@@ -1212,13 +1232,13 @@ router.post("/analyses/:id/market-insights", async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 600,
       messages: [{ role: "user", content: prompt }],
     });
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
     let result: { demandLevel: string; salaryMin: number; salaryMax: number; salaryCurrency: string; salaryPeriod: string; topSkills: string[]; marketContext: string; hiringTrend: string; remoteOutlook: string };
-    try { result = JSON.parse(raw); } catch { result = { demandLevel: "medium", salaryMin: 80000, salaryMax: 120000, salaryCurrency: "USD", salaryPeriod: "year", topSkills: [], marketContext: raw, hiringTrend: "", remoteOutlook: "" }; }
+    try { result = parseAiJson(raw); } catch { result = { demandLevel: "medium", salaryMin: 80000, salaryMax: 120000, salaryCurrency: "USD", salaryPeriod: "year", topSkills: [], marketContext: raw, hiringTrend: "", remoteOutlook: "" }; }
     res.json({
       demandLevel: ["high", "medium", "low"].includes(result.demandLevel) ? result.demandLevel : "medium",
       salaryMin: Number(result.salaryMin) || 80000,
@@ -1254,13 +1274,13 @@ router.post("/analyses/:id/career-path", async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 900,
       messages: [{ role: "user", content: prompt }],
     });
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
     let result: { currentRoleInference: string; nextSteps: { title: string; description: string; timeframe: string; keySkills: string[]; isStretch: boolean }[]; stretchRoles: { title: string; description: string; timeframe: string; keySkills: string[]; isStretch: boolean }[]; overallTimeline: string; keyThemes: string[] };
-    try { result = JSON.parse(raw); } catch { result = { currentRoleInference: "", nextSteps: [], stretchRoles: [], overallTimeline: raw, keyThemes: [] }; }
+    try { result = parseAiJson(raw); } catch { result = { currentRoleInference: "", nextSteps: [], stretchRoles: [], overallTimeline: raw, keyThemes: [] }; }
     res.json({
       currentRoleInference: result.currentRoleInference ?? "",
       nextSteps: Array.isArray(result.nextSteps) ? result.nextSteps.slice(0, 3) : [],
@@ -1299,13 +1319,13 @@ router.post("/analyses/:id/follow-up-email", async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 600,
       messages: [{ role: "user", content: prompt }],
     });
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
     let result: { subject: string; body: string; tips: string[] };
-    try { result = JSON.parse(raw); } catch { result = { subject: "Following up on my application", body: raw, tips: [] }; }
+    try { result = parseAiJson(raw); } catch { result = { subject: "Following up on my application", body: raw, tips: [] }; }
     res.json({
       subject: result.subject ?? "Following up on my application",
       body: result.body ?? "",
@@ -1340,13 +1360,13 @@ router.post("/analyses/:id/predict-offer", async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 600,
       messages: [{ role: "user", content: prompt }],
     });
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
     let result: { probability: number; rating: string; strengthFactors: string[]; riskFactors: string[]; actionItems: string[]; summary: string };
-    try { result = JSON.parse(raw); } catch {
+    try { result = parseAiJson(raw); } catch {
       result = { probability: 50, rating: "fair", strengthFactors: [], riskFactors: [], actionItems: [], summary: raw };
     }
     res.json({
@@ -1401,7 +1421,7 @@ router.post("/analyses/:id/mock-interview", async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 400,
       messages: apiMessages,
     });
@@ -1443,7 +1463,7 @@ router.post("/analyses/:id/practice-feedback", async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "deepseek-chat",
       max_completion_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     });
@@ -1451,7 +1471,7 @@ router.post("/analyses/:id/practice-feedback", async (req, res) => {
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
     let result: { score: number; feedback: string; strengths: string[]; improvements: string[]; modelAnswer: string };
     try {
-      result = JSON.parse(raw);
+      result = parseAiJson(raw);
     } catch {
       result = { score: 50, feedback: raw, strengths: [], improvements: [], modelAnswer: "" };
     }

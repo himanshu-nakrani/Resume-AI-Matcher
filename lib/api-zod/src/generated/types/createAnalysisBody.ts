@@ -5,10 +5,15 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateAnalysisBodyOriginalFileType } from "./createAnalysisBodyOriginalFileType";
 
 export interface CreateAnalysisBody {
   jobTitle: string;
   companyName?: string;
   resumeText: string;
+  originalFileName?: string;
+  originalFileType?: CreateAnalysisBodyOriginalFileType;
+  sourceLatex?: string;
+  deepseekApiKey?: string;
   jobDescriptionText: string;
 }
