@@ -794,6 +794,152 @@ export const FetchJobDescriptionResponse = zod.object({
 });
 
 /**
+ * Proxies to Exa `POST https://api.exa.ai/search` with highlights. Requires `EXA_API_KEY` on the server.
+
+ * @summary Search the web for job postings via Exa
+ */
+export const searchJobsBodyQueryMin = 2;
+export const searchJobsBodyQueryMax = 2000;
+
+export const searchJobsBodyNumResultsMax = 15;
+
+export const searchJobsBodyOffsetMin = 0;
+
+export const searchJobsBodyUserLocationRegExp = new RegExp("^[A-Z]{2}$");
+
+export const SearchJobsBody = zod.object({
+  query: zod.string().min(searchJobsBodyQueryMin).max(searchJobsBodyQueryMax),
+  numResults: zod.number().min(1).max(searchJobsBodyNumResultsMax).optional(),
+  offset: zod
+    .number()
+    .min(searchJobsBodyOffsetMin)
+    .optional()
+    .describe("Exa pagination offset for loading more results."),
+  searchType: zod
+    .enum(["auto", "fast", "instant", "deep-lite", "deep", "deep-reasoning"])
+    .optional(),
+  userLocation: zod
+    .string()
+    .regex(searchJobsBodyUserLocationRegExp)
+    .optional()
+    .describe("Two-letter ISO country code (Exa `userLocation`)"),
+  recentOnly: zod
+    .boolean()
+    .optional()
+    .describe(
+      "When true, sets `startPublishedDate` to roughly the last 45 days (not used with people\/company category).",
+    ),
+  skipHeuristicAnalysis: zod
+    .boolean()
+    .optional()
+    .describe(
+      "When true, sends your query to Exa as typed (no location\/recency inference or query rewriting). Exa still receives a job-focused system prompt and highlight hints.",
+    ),
+  filters: zod
+    .object({
+      experienceLevel: zod
+        .enum(["entry", "mid", "senior", "lead", "executive"])
+        .optional(),
+      jobType: zod
+        .enum(["full-time", "contract", "part-time", "internship", "freelence"])
+        .optional(),
+      remote: zod.enum(["remote", "hybrid", "on-site"]).optional(),
+      salaryMin: zod.string().optional(),
+      industry: zod.string().optional(),
+      companySize: zod.enum(["startup", "mid-size", "enterprise"]).optional(),
+    })
+    .optional(),
+});
+
+export const SearchJobsResponse = zod.object({
+  results: zod.array(
+    zod.object({
+      title: zod.string(),
+      url: zod.string(),
+      publishedDate: zod.string().nullish(),
+      highlights: zod.array(zod.string()).optional(),
+      favicon: zod.string().nullish(),
+      applyType: zod
+        .enum(["ats", "external", "unknown"])
+        .optional()
+        .describe(
+          "Whether the job is on an ATS (easy apply), external job board, or unknown.",
+        ),
+      salary: zod
+        .string()
+        .nullish()
+        .describe("Extracted salary range from highlights, if detected."),
+    }),
+  ),
+  requestId: zod.string().optional(),
+  searchType: zod.string().optional(),
+  analysis: zod.object({
+    intentSummary: zod
+      .string()
+      .describe(
+        "Short summary of how the server interpreted the prompt (location, recency, remote, etc.).",
+      ),
+    optimizedQuery: zod
+      .string()
+      .describe(
+        "The main query string sent to Exa after cleaning and job-context injection.",
+      ),
+    inferredLocation: zod
+      .string()
+      .nullable()
+      .describe(
+        "ISO 3166-1 alpha-2 country code passed to Exa as userLocation when applicable.",
+      ),
+    recentBias: zod
+      .boolean()
+      .describe(
+        "Whether results were biased toward more recently published pages.",
+      ),
+    additionalQueries: zod
+      .array(zod.string())
+      .describe(
+        "Extra query variations used with Exa deep-style search for broader coverage.",
+      ),
+    effectiveSearchType: zod
+      .enum(["auto", "fast", "instant", "deep-lite", "deep", "deep-reasoning"])
+      .describe(
+        "Exa search type used after applying heuristics (e.g. auto may upgrade to deep for complex prompts).",
+      ),
+  }),
+  metadata: zod
+    .object({
+      totalFound: zod.number().optional(),
+      rankingStats: zod
+        .object({
+          highQuality: zod.number().optional(),
+          mediumQuality: zod.number().optional(),
+          filtered: zod.number().optional(),
+        })
+        .optional(),
+      applyTypeBreakdown: zod
+        .object({
+          ats: zod.number().optional(),
+          external: zod.number().optional(),
+          unknown: zod.number().optional(),
+        })
+        .optional(),
+      cities: zod.array(zod.string()).optional(),
+      companies: zod.array(zod.string()).optional(),
+      searchDurationMs: zod.number().optional(),
+      cachedResult: zod.boolean().optional(),
+    })
+    .optional(),
+  hasMore: zod
+    .boolean()
+    .optional()
+    .describe("Whether more results are available via offset pagination."),
+  nextOffset: zod
+    .number()
+    .optional()
+    .describe("The offset to use for the next page of results."),
+});
+
+/**
  * @summary Get aggregate stats across all analyses
  */
 export const GetAnalysisStatsResponse = zod.object({

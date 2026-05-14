@@ -178,18 +178,30 @@ export function SharedAnalysis() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-green-600 mb-2">Matched</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-200 mb-2">Matched</p>
               <div className="flex flex-wrap gap-2">
                 {atsMatched.map((kw, i) => (
-                  <Badge key={i} variant="secondary" className="bg-green-100 text-green-700 border-green-200">{kw}</Badge>
+                  <Badge
+                    key={i}
+                    variant="outline"
+                    className="border-emerald-300 bg-emerald-50 text-emerald-950 shadow-none dark:border-emerald-600 dark:bg-emerald-950/45 dark:text-emerald-50"
+                  >
+                    {kw}
+                  </Badge>
                 ))}
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-destructive mb-2">Missing</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-rose-800 dark:text-rose-200 mb-2">Missing</p>
               <div className="flex flex-wrap gap-2">
                 {atsMissing.map((kw, i) => (
-                  <Badge key={i} variant="secondary" className="bg-red-100 text-red-700 border-red-200">{kw}</Badge>
+                  <Badge
+                    key={i}
+                    variant="outline"
+                    className="border-rose-300 bg-rose-50 text-rose-950 shadow-none dark:border-rose-600 dark:bg-rose-950/45 dark:text-rose-50"
+                  >
+                    {kw}
+                  </Badge>
                 ))}
               </div>
             </div>

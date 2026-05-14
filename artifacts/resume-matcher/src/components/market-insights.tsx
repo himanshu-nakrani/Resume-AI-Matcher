@@ -20,9 +20,9 @@ export function MarketInsightsSection({ analysisId, existing }: {
   const insights = generate.data ?? existing;
 
   const demandColors = {
-    High: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200",
-    Medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200",
-    Low: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200",
+    High: "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-600 dark:bg-emerald-950/45 dark:text-emerald-50",
+    Medium: "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-600 dark:bg-amber-950/45 dark:text-amber-50",
+    Low: "border-rose-300 bg-rose-50 text-rose-950 dark:border-rose-600 dark:bg-rose-950/45 dark:text-rose-50",
   };
 
   return (

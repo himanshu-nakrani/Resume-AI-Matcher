@@ -143,20 +143,28 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
-            <p className="text-xs font-semibold text-green-600 mb-1.5">Matched ({atsMatched.length})</p>
+            <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-200 mb-1.5">Matched ({atsMatched.length})</p>
             <div className="flex flex-wrap gap-1.5">
               {atsMatched.map((kw, i) => (
-                <Badge key={i} variant="secondary" className="text-xs bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400">
+                <Badge
+                  key={i}
+                  variant="outline"
+                  className="text-xs border-emerald-300 bg-emerald-50 text-emerald-950 shadow-none dark:border-emerald-600 dark:bg-emerald-950/45 dark:text-emerald-50"
+                >
                   {kw}
                 </Badge>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold text-destructive mb-1.5">Missing ({atsMissing.length})</p>
+            <p className="text-xs font-semibold text-rose-800 dark:text-rose-200 mb-1.5">Missing ({atsMissing.length})</p>
             <div className="flex flex-wrap gap-1.5">
               {atsMissing.map((kw, i) => (
-                <Badge key={i} variant="secondary" className="text-xs bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400">
+                <Badge
+                  key={i}
+                  variant="outline"
+                  className="text-xs border-rose-300 bg-rose-50 text-rose-950 shadow-none dark:border-rose-600 dark:bg-rose-950/45 dark:text-rose-50"
+                >
                   {kw}
                 </Badge>
               ))}

@@ -312,6 +312,184 @@ export interface FetchJobResponse {
   companyName?: string;
 }
 
+export type JobSearchBodySearchType =
+  (typeof JobSearchBodySearchType)[keyof typeof JobSearchBodySearchType];
+
+export const JobSearchBodySearchType = {
+  auto: "auto",
+  fast: "fast",
+  instant: "instant",
+  "deep-lite": "deep-lite",
+  deep: "deep",
+  "deep-reasoning": "deep-reasoning",
+} as const;
+
+export type JobSearchBodyFiltersExperienceLevel =
+  (typeof JobSearchBodyFiltersExperienceLevel)[keyof typeof JobSearchBodyFiltersExperienceLevel];
+
+export const JobSearchBodyFiltersExperienceLevel = {
+  entry: "entry",
+  mid: "mid",
+  senior: "senior",
+  lead: "lead",
+  executive: "executive",
+} as const;
+
+export type JobSearchBodyFiltersJobType =
+  (typeof JobSearchBodyFiltersJobType)[keyof typeof JobSearchBodyFiltersJobType];
+
+export const JobSearchBodyFiltersJobType = {
+  "full-time": "full-time",
+  contract: "contract",
+  "part-time": "part-time",
+  internship: "internship",
+  freelence: "freelence",
+} as const;
+
+export type JobSearchBodyFiltersRemote =
+  (typeof JobSearchBodyFiltersRemote)[keyof typeof JobSearchBodyFiltersRemote];
+
+export const JobSearchBodyFiltersRemote = {
+  remote: "remote",
+  hybrid: "hybrid",
+  "on-site": "on-site",
+} as const;
+
+export type JobSearchBodyFiltersCompanySize =
+  (typeof JobSearchBodyFiltersCompanySize)[keyof typeof JobSearchBodyFiltersCompanySize];
+
+export const JobSearchBodyFiltersCompanySize = {
+  startup: "startup",
+  "mid-size": "mid-size",
+  enterprise: "enterprise",
+} as const;
+
+export type JobSearchBodyFilters = {
+  experienceLevel?: JobSearchBodyFiltersExperienceLevel;
+  jobType?: JobSearchBodyFiltersJobType;
+  remote?: JobSearchBodyFiltersRemote;
+  salaryMin?: string;
+  industry?: string;
+  companySize?: JobSearchBodyFiltersCompanySize;
+};
+
+export interface JobSearchBody {
+  /**
+   * @minLength 2
+   * @maxLength 2000
+   */
+  query: string;
+  /**
+   * @minimum 1
+   * @maximum 15
+   */
+  numResults?: number;
+  /**
+   * Exa pagination offset for loading more results.
+   * @minimum 0
+   */
+  offset?: number;
+  searchType?: JobSearchBodySearchType;
+  /**
+   * Two-letter ISO country code (Exa `userLocation`)
+   * @pattern ^[A-Z]{2}$
+   */
+  userLocation?: string;
+  /** When true, sets `startPublishedDate` to roughly the last 45 days (not used with people/company category). */
+  recentOnly?: boolean;
+  /** When true, sends your query to Exa as typed (no location/recency inference or query rewriting). Exa still receives a job-focused system prompt and highlight hints. */
+  skipHeuristicAnalysis?: boolean;
+  filters?: JobSearchBodyFilters;
+}
+
+/**
+ * Exa search type used after applying heuristics (e.g. auto may upgrade to deep for complex prompts).
+ */
+export type JobSearchAnalysisEffectiveSearchType =
+  (typeof JobSearchAnalysisEffectiveSearchType)[keyof typeof JobSearchAnalysisEffectiveSearchType];
+
+export const JobSearchAnalysisEffectiveSearchType = {
+  auto: "auto",
+  fast: "fast",
+  instant: "instant",
+  "deep-lite": "deep-lite",
+  deep: "deep",
+  "deep-reasoning": "deep-reasoning",
+} as const;
+
+export interface JobSearchAnalysis {
+  /** Short summary of how the server interpreted the prompt (location, recency, remote, etc.). */
+  intentSummary: string;
+  /** The main query string sent to Exa after cleaning and job-context injection. */
+  optimizedQuery: string;
+  /** ISO 3166-1 alpha-2 country code passed to Exa as userLocation when applicable. */
+  inferredLocation: string | null;
+  /** Whether results were biased toward more recently published pages. */
+  recentBias: boolean;
+  /** Extra query variations used with Exa deep-style search for broader coverage. */
+  additionalQueries: string[];
+  /** Exa search type used after applying heuristics (e.g. auto may upgrade to deep for complex prompts). */
+  effectiveSearchType: JobSearchAnalysisEffectiveSearchType;
+}
+
+/**
+ * Whether the job is on an ATS (easy apply), external job board, or unknown.
+ */
+export type JobSearchHitApplyType =
+  (typeof JobSearchHitApplyType)[keyof typeof JobSearchHitApplyType];
+
+export const JobSearchHitApplyType = {
+  ats: "ats",
+  external: "external",
+  unknown: "unknown",
+} as const;
+
+export interface JobSearchHit {
+  title: string;
+  url: string;
+  publishedDate?: string | null;
+  highlights?: string[];
+  favicon?: string | null;
+  /** Whether the job is on an ATS (easy apply), external job board, or unknown. */
+  applyType?: JobSearchHitApplyType;
+  /** Extracted salary range from highlights, if detected. */
+  salary?: string | null;
+}
+
+export type SearchMetadataRankingStats = {
+  highQuality?: number;
+  mediumQuality?: number;
+  filtered?: number;
+};
+
+export type SearchMetadataApplyTypeBreakdown = {
+  ats?: number;
+  external?: number;
+  unknown?: number;
+};
+
+export interface SearchMetadata {
+  totalFound?: number;
+  rankingStats?: SearchMetadataRankingStats;
+  applyTypeBreakdown?: SearchMetadataApplyTypeBreakdown;
+  cities?: string[];
+  companies?: string[];
+  searchDurationMs?: number;
+  cachedResult?: boolean;
+}
+
+export interface JobSearchResponse {
+  results: JobSearchHit[];
+  requestId?: string;
+  searchType?: string;
+  analysis: JobSearchAnalysis;
+  metadata?: SearchMetadata;
+  /** Whether more results are available via offset pagination. */
+  hasMore?: boolean;
+  /** The offset to use for the next page of results. */
+  nextOffset?: number;
+}
+
 export interface InterviewQuestionsResponse {
   questions: string[];
 }

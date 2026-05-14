@@ -15,6 +15,8 @@ import {
   Fingerprint,
   GitBranch,
   UserRound,
+  Bookmark,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDarkMode } from "@/hooks/use-dark-mode";
@@ -32,6 +34,8 @@ const navItems = [
   { href: "/stats", label: "Stats", icon: BarChart2 },
   { href: "/compare", label: "Compare", icon: GitCompareArrows },
   { href: "/skills", label: "Skills", icon: GraduationCap },
+  { href: "/saved-jobs", label: "Saved Jobs", icon: Bookmark },
+  { href: "/alerts", label: "Alerts", icon: Bell },
 ];
 
 const SHORTCUTS = [

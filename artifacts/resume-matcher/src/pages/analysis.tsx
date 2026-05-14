@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { DEEPSEEK_KEY_STORAGE_KEY } from "@/lib/deepseek-storage";
 import { useCopy } from "@/hooks/use-copy";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -62,7 +63,7 @@ import {
   Award,
   Hammer,
   BookMarked,
-  Printer,
+  Download,
   Heart,
   Share2,
   Link2,
@@ -181,6 +182,10 @@ function downloadICS(data: {
 
 function downloadTextFile(content: string, fileName: string, type = "text/plain;charset=utf-8") {
   const blob = new Blob([content], { type });
+  downloadBlob(blob, fileName);
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -189,6 +194,22 @@ function downloadTextFile(content: string, fileName: string, type = "text/plain;
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function safeFileName(parts: Array<string | null | undefined>, extension: string) {
+  const base = parts
+    .filter(Boolean)
+    .join("-")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+  return `${base || "optimized-resume"}.${extension}`;
+}
+
+function filenameFromDisposition(value: string | null): string | null {
+  const match = value?.match(/filename="?([^";]+)"?/i);
+  return match?.[1] ?? null;
 }
 
 // --- Job Tracking Section ---
@@ -1673,6 +1694,7 @@ export function Analysis() {
   const { toast } = useToast();
   const [coverLetterTone, setCoverLetterTone] = useState<CoverLetterTone>("professional");
   const [coverLetterVariation, setCoverLetterVariation] = useState<string | null>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const { data: analysis, isLoading } = useGetAnalysis(id, {
     query: { enabled: !!id, queryKey: getGetAnalysisQueryKey(id) },
@@ -1729,6 +1751,49 @@ export function Analysis() {
       },
     },
   });
+
+  const downloadOptimizedPdf = async () => {
+    if (!analysis?.optimizedLatex) {
+      toast({
+        title: "PDF unavailable",
+        description: "This analysis does not have optimized LaTeX to compile.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDownloadingPdf(true);
+    try {
+      const deepseekKey = localStorage.getItem(DEEPSEEK_KEY_STORAGE_KEY)?.trim();
+      const response = await fetch(`/api/analyses/${id}/resume.pdf`, {
+        headers: {
+          Accept: "application/pdf, application/json",
+          ...(deepseekKey ? { "X-DeepSeek-Api-Key": deepseekKey } : {}),
+        },
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Could not compile optimized resume PDF.");
+      }
+
+      const blob = await response.blob();
+      const fileName =
+        filenameFromDisposition(response.headers.get("content-disposition")) ??
+        safeFileName([analysis.companyName, analysis.jobTitle], "pdf");
+      downloadBlob(blob, fileName);
+      toast({ title: "PDF downloaded", description: "Validated by AI, then compiled from optimized LaTeX." });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not compile optimized resume PDF.";
+      toast({
+        title: "Could not download PDF",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -1852,11 +1917,12 @@ export function Analysis() {
             variant="outline"
             size="sm"
             className="no-print"
-            onClick={() => window.print()}
+            onClick={downloadOptimizedPdf}
+            disabled={isDownloadingPdf || !optimizedLatex}
             data-testid="button-export-pdf"
           >
-            <Printer className="w-3.5 h-3.5 mr-1.5" />
-            Download PDF
+            <Download className="w-3.5 h-3.5 mr-1.5" />
+            {isDownloadingPdf ? "Validating..." : "Download PDF"}
           </Button>
           {optimizedLatex && (
             <Button
@@ -1923,7 +1989,7 @@ export function Analysis() {
               className="min-h-[360px] font-mono text-xs resize-none bg-muted/30"
             />
             <p className="text-xs text-muted-foreground mt-3 no-print">
-              Use Download PDF to open the browser print flow, or compile the LaTeX file locally for exact resume formatting.
+              Download PDF validates and repairs this optimized LaTeX with AI, then compiles it on the API server.
             </p>
           </CardContent>
         </Card>
@@ -2018,13 +2084,18 @@ export function Analysis() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-green-600 mb-2">Matched</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-200 mb-2">Matched</p>
             <div className="flex flex-wrap gap-2">
               {atsMatched.length === 0 ? (
                 <p className="text-sm text-muted-foreground">None matched</p>
               ) : (
                 atsMatched.map((kw, i) => (
-                  <Badge key={i} variant="secondary" className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" data-testid={`keyword-matched-${i}`}>
+                  <Badge
+                    key={i}
+                    variant="outline"
+                    className="border-emerald-300 bg-emerald-50 text-emerald-950 shadow-none dark:border-emerald-600 dark:bg-emerald-950/45 dark:text-emerald-50"
+                    data-testid={`keyword-matched-${i}`}
+                  >
                     {kw}
                   </Badge>
                 ))
@@ -2032,13 +2103,18 @@ export function Analysis() {
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-destructive mb-2">Missing</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-rose-800 dark:text-rose-200 mb-2">Missing</p>
             <div className="flex flex-wrap gap-2">
               {atsMissing.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No missing keywords</p>
               ) : (
                 atsMissing.map((kw, i) => (
-                  <Badge key={i} variant="secondary" className="bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800" data-testid={`keyword-missing-${i}`}>
+                  <Badge
+                    key={i}
+                    variant="outline"
+                    className="border-rose-300 bg-rose-50 text-rose-950 shadow-none dark:border-rose-600 dark:bg-rose-950/45 dark:text-rose-50"
+                    data-testid={`keyword-missing-${i}`}
+                  >
                     {kw}
                   </Badge>
                 ))

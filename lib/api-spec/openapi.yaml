@@ -529,6 +529,45 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /job-search:
+    post:
+      operationId: searchJobs
+      tags: [analyses]
+      summary: Search the web for job postings via Exa
+      description: >
+        Proxies to Exa `POST https://api.exa.ai/search` with highlights. Requires `EXA_API_KEY` on the server.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobSearchBody"
+      responses:
+        "200":
+          description: Normalized search hits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobSearchResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Exa API error or invalid response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Exa not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /analyses/stats:
     get:
       operationId: getAnalysisStats
@@ -1221,6 +1260,191 @@ components:
           type: string
       required:
         - jobDescription
+
+    JobSearchBody:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 2
+          maxLength: 2000
+        numResults:
+          type: integer
+          minimum: 1
+          maximum: 15
+        offset:
+          type: integer
+          minimum: 0
+          description: Exa pagination offset for loading more results.
+        searchType:
+          type: string
+          enum:
+            - auto
+            - fast
+            - instant
+            - deep-lite
+            - deep
+            - deep-reasoning
+        userLocation:
+          type: string
+          description: Two-letter ISO country code (Exa `userLocation`)
+          pattern: "^[A-Z]{2}$"
+        recentOnly:
+          type: boolean
+          description: When true, sets `startPublishedDate` to roughly the last 45 days (not used with people/company category).
+        skipHeuristicAnalysis:
+          type: boolean
+          description: When true, sends your query to Exa as typed (no location/recency inference or query rewriting). Exa still receives a job-focused system prompt and highlight hints.
+        filters:
+          type: object
+          properties:
+            experienceLevel:
+              type: string
+              enum: [entry, mid, senior, lead, executive]
+            jobType:
+              type: string
+              enum: [full-time, contract, part-time, internship, freelence]
+            remote:
+              type: string
+              enum: [remote, hybrid, on-site]
+            salaryMin:
+              type: string
+            industry:
+              type: string
+            companySize:
+              type: string
+              enum: [startup, mid-size, enterprise]
+      required:
+        - query
+
+    JobSearchAnalysis:
+      type: object
+      required:
+        - intentSummary
+        - optimizedQuery
+        - inferredLocation
+        - recentBias
+        - additionalQueries
+        - effectiveSearchType
+      properties:
+        intentSummary:
+          type: string
+          description: Short summary of how the server interpreted the prompt (location, recency, remote, etc.).
+        optimizedQuery:
+          type: string
+          description: The main query string sent to Exa after cleaning and job-context injection.
+        inferredLocation:
+          type: string
+          nullable: true
+          description: ISO 3166-1 alpha-2 country code passed to Exa as userLocation when applicable.
+        recentBias:
+          type: boolean
+          description: Whether results were biased toward more recently published pages.
+        additionalQueries:
+          type: array
+          items:
+            type: string
+          description: Extra query variations used with Exa deep-style search for broader coverage.
+        effectiveSearchType:
+          type: string
+          enum:
+            - auto
+            - fast
+            - instant
+            - deep-lite
+            - deep
+            - deep-reasoning
+          description: Exa search type used after applying heuristics (e.g. auto may upgrade to deep for complex prompts).
+
+    JobSearchHit:
+      type: object
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+        publishedDate:
+          type: string
+          nullable: true
+        highlights:
+          type: array
+          items:
+            type: string
+        favicon:
+          type: string
+          nullable: true
+        applyType:
+          type: string
+          enum: [ats, external, unknown]
+          description: Whether the job is on an ATS (easy apply), external job board, or unknown.
+        salary:
+          type: string
+          nullable: true
+          description: Extracted salary range from highlights, if detected.
+      required:
+        - title
+        - url
+
+    JobSearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobSearchHit"
+        requestId:
+          type: string
+        searchType:
+          type: string
+        analysis:
+          $ref: "#/components/schemas/JobSearchAnalysis"
+        metadata:
+          $ref: "#/components/schemas/SearchMetadata"
+        hasMore:
+          type: boolean
+          description: Whether more results are available via offset pagination.
+        nextOffset:
+          type: integer
+          description: The offset to use for the next page of results.
+      required:
+        - results
+        - analysis
+
+    SearchMetadata:
+      type: object
+      properties:
+        totalFound:
+          type: integer
+        rankingStats:
+          type: object
+          properties:
+            highQuality:
+              type: integer
+            mediumQuality:
+              type: integer
+            filtered:
+              type: integer
+        applyTypeBreakdown:
+          type: object
+          properties:
+            ats:
+              type: integer
+            external:
+              type: integer
+            unknown:
+              type: integer
+        cities:
+          type: array
+          items:
+            type: string
+        companies:
+          type: array
+          items:
+            type: string
+        searchDurationMs:
+          type: integer
+        cachedResult:
+          type: boolean
 
     InterviewQuestionsResponse:
       type: object
