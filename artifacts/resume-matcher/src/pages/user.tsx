@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { KeyRound, Save, UserRound } from "lucide-react";
 
+import { DEEPSEEK_KEY_STORAGE_KEY } from "@/lib/deepseek-storage";
+
 const USER_STORAGE_KEY = "optimatch_user_profile";
-const DEEPSEEK_KEY_STORAGE_KEY = "optimatch_deepseek_api_key";
 
 type UserProfile = {
   userName: string;

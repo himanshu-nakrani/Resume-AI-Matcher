@@ -1,5 +1,7 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { setDeepseekApiKeyGetter } from "@workspace/api-client-react";
+import { readDeepseekApiKeyFromStorage } from "@/lib/deepseek-storage";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -16,6 +18,8 @@ import { Compare } from "@/pages/compare";
 import { Skills } from "@/pages/skills";
 import { Versions } from "@/pages/versions";
 import { UserPage } from "@/pages/user";
+import { SavedJobsPage } from "@/pages/saved-jobs";
+import { SearchAlertsPage } from "@/pages/search-alerts";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,6 +31,8 @@ const queryClient = new QueryClient({
 });
 
 const base = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
+
+setDeepseekApiKeyGetter(() => readDeepseekApiKeyFromStorage());
 
 function Router() {
   return (
@@ -47,6 +53,8 @@ function Router() {
               <Route path="/compare" component={Compare} />
               <Route path="/skills" component={Skills} />
               <Route path="/versions" component={Versions} />
+              <Route path="/saved-jobs" component={SavedJobsPage} />
+              <Route path="/alerts" component={SearchAlertsPage} />
               <Route component={NotFound} />
             </Switch>
           </ErrorBoundary>

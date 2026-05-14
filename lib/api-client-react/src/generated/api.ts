@@ -31,6 +31,8 @@ import type {
   GeneratedContent,
   HealthStatus,
   InterviewQuestionsResponse,
+  JobSearchBody,
+  JobSearchResponse,
   LearningPlanResponse,
   MarketInsightsResponse,
   MockInterviewBody,
@@ -1837,6 +1839,94 @@ export const useFetchJobDescription = <
   TContext
 > => {
   return useMutation(getFetchJobDescriptionMutationOptions(options));
+};
+
+/**
+ * Proxies to Exa `POST https://api.exa.ai/search` with highlights. Requires `EXA_API_KEY` on the server.
+
+ * @summary Search the web for job postings via Exa
+ */
+export const getSearchJobsUrl = () => {
+  return `/api/job-search`;
+};
+
+export const searchJobs = async (
+  jobSearchBody: JobSearchBody,
+  options?: RequestInit,
+): Promise<JobSearchResponse> => {
+  return customFetch<JobSearchResponse>(getSearchJobsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(jobSearchBody),
+  });
+};
+
+export const getSearchJobsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof searchJobs>>,
+    TError,
+    { data: BodyType<JobSearchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof searchJobs>>,
+  TError,
+  { data: BodyType<JobSearchBody> },
+  TContext
+> => {
+  const mutationKey = ["searchJobs"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof searchJobs>>,
+    { data: BodyType<JobSearchBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return searchJobs(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SearchJobsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof searchJobs>>
+>;
+export type SearchJobsMutationBody = BodyType<JobSearchBody>;
+export type SearchJobsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Search the web for job postings via Exa
+ */
+export const useSearchJobs = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof searchJobs>>,
+    TError,
+    { data: BodyType<JobSearchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof searchJobs>>,
+  TError,
+  { data: BodyType<JobSearchBody> },
+  TContext
+> => {
+  return useMutation(getSearchJobsMutationOptions(options));
 };
 
 /**
