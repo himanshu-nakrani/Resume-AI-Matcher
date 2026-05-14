@@ -1,6 +1,11 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { desc, eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { execFile } from "child_process";
+import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
+import { tmpdir } from "os";
+import path from "path";
+import { promisify } from "util";
 import { z } from "zod";
 import { db, analyses, notifications } from "@workspace/db";
 import {
@@ -27,11 +32,201 @@ import {
   ConductMockInterviewParams,
   ConductMockInterviewBody,
 } from "@workspace/api-zod";
-import { getAiClient, openai } from "@workspace/integrations-openai-ai-server";
+import { getAiClient } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
+import { getAiFromRequest, resolveDeepseekKeyForCreate } from "../lib/ai-from-request";
 import { parseAiJson } from "../lib/parse-ai-json";
 
 const router: IRouter = Router();
+const execFileAsync = promisify(execFile);
+
+function safeDownloadName(parts: Array<string | null | undefined>, extension: string): string {
+  const base = parts
+    .filter(Boolean)
+    .join("-")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+  return `${base || "optimized-resume"}.${extension}`;
+}
+
+async function tryCompileLatex(
+  compiler: "tectonic" | "latexmk" | "pdflatex",
+  workDir: string,
+): Promise<void> {
+  switch (compiler) {
+    case "tectonic":
+      await execFileAsync("tectonic", ["main.tex", "--outdir", workDir], {
+        cwd: workDir,
+        timeout: 45_000,
+      });
+      return;
+    case "latexmk":
+      await execFileAsync("latexmk", ["-pdf", "-interaction=nonstopmode", "-halt-on-error", "main.tex"], {
+        cwd: workDir,
+        timeout: 60_000,
+      });
+      return;
+    case "pdflatex":
+      await execFileAsync(
+        "pdflatex",
+        ["-interaction=nonstopmode", "-halt-on-error", "-output-directory", workDir, "main.tex"],
+        { cwd: workDir, timeout: 60_000 },
+      );
+      return;
+    default: {
+      const _never: never = compiler;
+      return _never;
+    }
+  }
+}
+
+function sanitizeLatexForPdf(latex: string): string {
+  return latex
+    // The AI sometimes emits pdfTeX-only accessibility helpers. Tectonic runs XeTeX.
+    .replace(/\\input\{glyphtounicode\}\s*/g, "")
+    .replace(/\\pdfgentounicode\s*=\s*1\s*/g, "")
+    // fontawesome5 can abort Tectonic in this environment; remove icons but keep link text.
+    .replace(/\\usepackage(?:\[[^\]]*\])?\{fontawesome5\}\s*/g, "")
+    .replace(/\\faIcon\{[^}]+\}/g, "")
+    .replace(/\\fa[A-Za-z]+\b/g, "")
+    // Keep common resume punctuation representable with the default LaTeX fonts.
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/—/g, "--")
+    .replace(/–/g, "-")
+    .replace(/\u00a0/g, " ");
+}
+
+/**
+ * PDF-only tweaks that must not fight the resume template.
+ * - Hides standard section numbers ("7 CERTIFICATIONS") via `secnumdepth`.
+ * Aggressive `fancyhdr` / `\\sectionmark` hooks (v2) broke real resumes (headers/body order);
+ * those are stripped when present; v3 is intentionally minimal.
+ */
+function stripInjectedResumePdfGuards(latex: string): string {
+  return (
+    latex
+      // v2 preamble hook + secnumdepth block before \begin{document}
+      .replace(
+        /% optmatch-pdf-resume-guards-v2 \(preamble\)\r?\n[\s\S]*?\\makeatother\s*(?=\r?\n*\\begin\{document\})/m,
+        "",
+      )
+      // v2 body block immediately after \begin{document}
+      .replace(
+        /(\\begin\{document\}\s*\r?\n)% optmatch-pdf-resume-guards-v2 \(body\)\r?\n[\s\S]*?\\makeatother\r?\n/m,
+        "$1",
+      )
+      // v1 one-line marker + fancy clear after \begin{document}
+      .replace(
+        /% optmatch-pdf-resume-guards\r?\n\\makeatletter\r?\n[\s\S]*?\\makeatother\r?\n?/m,
+        "",
+      )
+  );
+}
+
+function injectResumePdfGuards(latex: string): string {
+  if (latex.includes("optmatch-pdf-resume-guards-v3")) return latex;
+
+  const cleaned = stripInjectedResumePdfGuards(latex);
+
+  return cleaned.replace(
+    /(\\begin\{document\})/,
+    "% optmatch-pdf-resume-guards-v3\n" + "\\setcounter{secnumdepth}{0}\n\n" + "$1\n",
+  );
+}
+
+function extractLatexFromModel(raw: string): string {
+  const trimmed = raw.trim();
+  try {
+    const parsed = parseAiJson<{ latex?: string }>(trimmed);
+    if (typeof parsed.latex === "string" && parsed.latex.trim()) {
+      return parsed.latex.trim();
+    }
+  } catch {
+    // Fall through to fenced/plain LaTeX extraction.
+  }
+
+  return trimmed
+    .replace(/^```(?:latex|tex)?\s*\r?\n?/i, "")
+    .replace(/\r?\n?```\s*$/i, "")
+    .trim();
+}
+
+function assertCompleteLatex(latex: string): void {
+  if (!/\\documentclass\b/.test(latex) || !/\\begin\{document\}/.test(latex) || !/\\end\{document\}/.test(latex)) {
+    throw new Error("The corrected LaTeX was incomplete. Try regenerating the optimization or downloading the .tex file.");
+  }
+}
+
+async function validateAndCorrectLatexForPdf(
+  req: Request,
+  inputLatex: string,
+  context: { jobTitle: string; companyName: string | null },
+): Promise<string> {
+  const prompt =
+    "You are a senior LaTeX resume production editor. Validate and correct this optimized resume LaTeX before PDF compilation.\n\n" +
+    "Goal: produce a clean, readable PDF resume with no overlapping text, no header collisions, no section title collisions, and no content spilling off the page.\n\n" +
+    "Rules:\n" +
+    "- Return a COMPLETE compilable LaTeX document, not a diff.\n" +
+    "- Preserve the candidate's factual content. Do not invent experience, companies, education, dates, links, awards, or metrics.\n" +
+    "- It is OK to adjust spacing, margins, font sizes, section formatting, line breaks, tabular widths, and package choices.\n" +
+    "- The top name/contact block must be visually isolated: no running headers, no `\\\\leftmark`/`\\\\rightmark` text, and no section titles or section numbers printed beside the name.\n" +
+    "- Hide section numbering in the PDF (prefer `\\\\setcounter{secnumdepth}{0}` or unnumbered section macros) so headings read \"CERTIFICATIONS\", not \"7 CERTIFICATIONS\".\n" +
+    "- If `fancyhdr` is used, avoid overlapping header text with the name (do not place `\\\\leftmark`/`\\\\rightmark` or section titles in the same header band as the name); prefer a minimal footer for page numbers rather than clearing the whole page style unless necessary.\n" +
+    "- Remove or replace fragile icon/font packages if they hurt compilation or layout.\n" +
+    "- Remove pdfTeX-only commands that break XeTeX/Tectonic, such as glyphtounicode/pdfgentounicode.\n" +
+    "- Keep contact links as plain readable text when icons are removed.\n" +
+    "- Prefer a compact ATS-friendly resume that fits neatly without text overlap.\n" +
+    "- Return ONLY valid JSON with this shape: {\"latex\":\"<complete corrected LaTeX>\"}\n\n" +
+    `Target role: ${context.jobTitle}\n` +
+    `Company: ${context.companyName ?? "Not specified"}\n\n` +
+    "LaTeX to correct:\n" +
+    inputLatex;
+
+  const completion = await getAiFromRequest(req).chat.completions.create({
+    model: "deepseek-chat",
+    max_completion_tokens: 8192,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const corrected = extractLatexFromModel(completion.choices[0]?.message?.content ?? "");
+  assertCompleteLatex(corrected);
+  return corrected;
+}
+
+function prepareLatexForPdfCompilation(latex: string): string {
+  return sanitizeLatexForPdf(injectResumePdfGuards(latex));
+}
+
+async function compileLatexToPdf(latex: string): Promise<Buffer> {
+  const workDir = await mkdtemp(path.join(tmpdir(), "optimatch-latex-"));
+  try {
+    await writeFile(path.join(workDir, "main.tex"), prepareLatexForPdfCompilation(latex), "utf8");
+
+    const errors: Array<{ compiler: string; message: string }> = [];
+    for (const compiler of ["tectonic", "latexmk", "pdflatex"] as const) {
+      try {
+        await tryCompileLatex(compiler, workDir);
+        return await readFile(path.join(workDir, "main.pdf"));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        errors.push({ compiler, message });
+      }
+    }
+
+    const noCompiler = errors.every((error) => error.message.includes("ENOENT"));
+    const realError = errors.find((error) => !error.message.includes("ENOENT")) ?? errors.at(-1);
+    throw new Error(
+      noCompiler
+        ? "No LaTeX compiler found. Install tectonic, latexmk, or pdflatex on the API server."
+        : `LaTeX compilation failed in ${realError?.compiler ?? "compiler"}. ${realError?.message ?? ""}`.slice(0, 700),
+    );
+  } finally {
+    await rm(workDir, { recursive: true, force: true });
+  }
+}
 
 router.get("/analyses", async (req, res): Promise<void> => {
   req.log.info("Listing analyses");
@@ -151,7 +346,7 @@ router.post("/analyses", async (req, res): Promise<void> => {
   };
 
   try {
-    const ai = getAiClient(deepseekApiKey);
+    const ai = getAiClient(resolveDeepseekKeyForCreate(req, deepseekApiKey));
     const completion = await ai.chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 8192,
@@ -191,6 +386,56 @@ router.post("/analyses", async (req, res): Promise<void> => {
     .returning();
 
   res.status(201).json(row);
+});
+
+router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
+  const params = GetAnalysisParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const analysis = await db.query.analyses.findFirst({
+    where: eq(analyses.id, params.data.id),
+  });
+
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+
+  const latex = analysis.optimizedLatex?.trim();
+  if (!latex) {
+    res.status(400).json({ error: "No optimized LaTeX is available for this analysis." });
+    return;
+  }
+
+  try {
+    const correctedLatex = await validateAndCorrectLatexForPdf(req, latex, {
+      jobTitle: analysis.jobTitle,
+      companyName: analysis.companyName,
+    });
+    const normalizedLatex = correctedLatex.trim();
+    const finalLatex = prepareLatexForPdfCompilation(normalizedLatex);
+    if (finalLatex !== latex) {
+      await db
+        .update(analyses)
+        .set({ optimizedLatex: finalLatex })
+        .where(eq(analyses.id, params.data.id));
+    }
+
+    const pdf = await compileLatexToPdf(finalLatex);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${safeDownloadName([analysis.companyName, analysis.jobTitle], "pdf")}"`,
+    );
+    res.send(pdf);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not compile optimized resume PDF.";
+    logger.error({ err, id: params.data.id }, "Optimized resume PDF compilation failed");
+    res.status(500).json({ error: message });
+  }
 });
 
 router.get("/analyses/stats", async (req, res): Promise<void> => {
@@ -405,7 +650,7 @@ router.post("/analyses/:id/salary-guide", async (req, res): Promise<void> => {
     '"negotiationTips": ["<specific negotiation tip 1>", "<tip 2>", "<tip 3>"]}';
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
@@ -573,7 +818,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
       '{"jobTitle": "<job title or empty string>", "companyName": "<company name or empty string>", "jobDescription": "<full job description text, cleaned up, 200-2000 words>"}\n\n' +
       "Webpage text:\n" + text;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 3000,
       messages: [{ role: "user", content: extractPrompt }],
@@ -637,7 +882,7 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
     "Write a " + tone + " cover letter that: (1) Opens with a specific, genuine insight about this company/role, (2) Highlights the top 3-4 most relevant achievements from the resume matching the JD requirements, using quantified results, (3) Addresses any gaps as learning opportunities not weaknesses, (4) Closes with genuine enthusiasm and confident call to action. Keep it 3-4 paragraphs, no longer than 250 words. Start with 'Dear Hiring Manager,' and write ONLY the cover letter text, no subject lines or commentary.";
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
@@ -684,7 +929,7 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
     "Write 150-250 word LinkedIn post with: (1) A compelling hook that shows genuine insight about the role/industry, (2) 2-3 key achievements demonstrating enthusiasm for THIS role with numbers and results, (3) 2-3 specific strengths that make them ideal, (4) Specific call-to-action about roles they're exploring. Use line breaks for readability, 1-2 natural hashtags only, no emojis unless natural, no forced exclamation marks. Make it authentic. Write ONLY the post text, no preamble.";
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
@@ -739,7 +984,7 @@ router.post("/analyses/:id/interview-questions", async (req, res): Promise<void>
     "Do NOT include answer hints or frameworks. Return ONLY a JSON array of strings with no other text: [\"Question 1?\", \"Question 2?\", ...]";
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
@@ -799,7 +1044,7 @@ router.post("/analyses/:id/learning-plan", async (req, res): Promise<void> => {
     'Return ONLY valid JSON, no markdown: {"items": [{"skill": "name", "why": "reason", "priority": "high", "timeframe": "weeks", "resources": [{"title": "exact name", "type": "course|certification|project|book", "description": "what and why", "platform": "platform name"}]}]}';
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 3000,
       messages: [{ role: "user", content: prompt }],
@@ -870,7 +1115,7 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
     "- Return ONLY the rewritten bullet text, nothing else, no quotes";
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 512,
       messages: [{ role: "user", content: prompt }],
@@ -924,7 +1169,7 @@ router.post("/analyses/:id/company-research", async (req, res): Promise<void> =>
     '"tips": ["<specific preparation tip 1 for THIS role/company>", "<tip 2>", "<tip 3>"]}';
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
@@ -990,7 +1235,7 @@ router.post("/analyses/:id/red-flags", async (req, res): Promise<void> => {
     '"overallRisk": "low|medium|high"}';
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
@@ -1068,7 +1313,7 @@ router.post("/analyses/:id/negotiate", async (req, res): Promise<void> => {
   const messages = body.data.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 512,
       messages: [
@@ -1151,7 +1396,7 @@ router.post("/analyses/:id/star-answer", async (req, res): Promise<void> => {
     '{"answer": "<full polished STAR answer>", "tips": ["<tip 1>", "<tip 2>", "<tip 3>"]}';
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
@@ -1175,7 +1420,7 @@ router.post("/analyses/:id/star-answer", async (req, res): Promise<void> => {
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 
-router.get("/notifications", async (req, res) => {
+router.get("/notifications", async (req, res): Promise<void> => {
   const items = await db
     .select()
     .from(notifications)
@@ -1189,21 +1434,26 @@ router.get("/notifications", async (req, res) => {
     read: n.read,
     createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : String(n.createdAt),
   })));
+  return;
 });
 
-router.patch("/notifications", async (_req, res) => {
+router.patch("/notifications", async (_req, res): Promise<void> => {
   await db.update(notifications).set({ read: true });
   res.status(204).end();
+  return;
 });
 
-router.patch("/notifications/:id/read", async (req, res) => {
+router.patch("/notifications/:id/read", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   const [updated] = await db
     .update(notifications)
     .set({ read: true })
     .where(eq(notifications.id, id))
     .returning();
-  if (!updated) return res.status(404).json({ error: "Notification not found" });
+  if (!updated) {
+    res.status(404).json({ error: "Notification not found" });
+    return;
+  }
   res.json({
     id: updated.id,
     type: updated.type,
@@ -1213,14 +1463,18 @@ router.patch("/notifications/:id/read", async (req, res) => {
     read: updated.read,
     createdAt: updated.createdAt instanceof Date ? updated.createdAt.toISOString() : String(updated.createdAt),
   });
+  return;
 });
 
 // ─── Market Insights ──────────────────────────────────────────────────────────
 
-router.post("/analyses/:id/market-insights", async (req, res) => {
+router.post("/analyses/:id/market-insights", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   const analysis = await db.query.analyses.findFirst({ where: eq(analyses.id, id) });
-  if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
 
   const prompt =
     "You are a job market analyst. Based on the job title and description below, provide current job market data.\n\n" +
@@ -1231,7 +1485,7 @@ router.post("/analyses/:id/market-insights", async (req, res) => {
     '{"demandLevel":"high|medium|low","salaryMin":<annual USD integer>,"salaryMax":<annual USD integer>,"salaryCurrency":"USD","salaryPeriod":"year","topSkills":["<5 most in-demand skills for this role>"],"marketContext":"<2-3 sentence market overview>","hiringTrend":"<one sentence: growing/stable/declining and why>","remoteOutlook":"<one sentence about remote/hybrid/onsite prevalence>"}';
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 600,
       messages: [{ role: "user", content: prompt }],
@@ -1250,18 +1504,23 @@ router.post("/analyses/:id/market-insights", async (req, res) => {
       hiringTrend: result.hiringTrend ?? "",
       remoteOutlook: result.remoteOutlook ?? "",
     });
+    return;
   } catch (err) {
     logger.error({ err }, "Market insights generation failed");
     res.status(500).json({ error: "Market insights generation failed" });
+    return;
   }
 });
 
 // ─── Career Path ──────────────────────────────────────────────────────────────
 
-router.post("/analyses/:id/career-path", async (req, res) => {
+router.post("/analyses/:id/career-path", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   const analysis = await db.query.analyses.findFirst({ where: eq(analyses.id, id) });
-  if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
 
   const prompt =
     "You are an expert career coach. Based on the target job below, map out a realistic career progression.\n\n" +
@@ -1273,7 +1532,7 @@ router.post("/analyses/:id/career-path", async (req, res) => {
     '{"currentRoleInference":"<infer likely current role based on gaps>","nextSteps":[{"title":"<role>","description":"<1 sentence>","timeframe":"<e.g. 1-2 years>","keySkills":["<3 skills>"],"isStretch":false},{"title":"<role>","description":"<1 sentence>","timeframe":"<e.g. 2-3 years>","keySkills":["<3 skills>"],"isStretch":false},{"title":"<role>","description":"<1 sentence>","timeframe":"<e.g. 3-4 years>","keySkills":["<3 skills>"],"isStretch":false}],"stretchRoles":[{"title":"<senior/leadership role>","description":"<1 sentence>","timeframe":"<e.g. 5+ years>","keySkills":["<3 skills>"],"isStretch":true},{"title":"<executive/specialized role>","description":"<1 sentence>","timeframe":"<e.g. 7+ years>","keySkills":["<3 skills>"],"isStretch":true}],"overallTimeline":"<1 sentence summary of full journey>","keyThemes":["<3-4 career development themes>"]}';
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 900,
       messages: [{ role: "user", content: prompt }],
@@ -1288,18 +1547,23 @@ router.post("/analyses/:id/career-path", async (req, res) => {
       overallTimeline: result.overallTimeline ?? "",
       keyThemes: Array.isArray(result.keyThemes) ? result.keyThemes.slice(0, 4) : [],
     });
+    return;
   } catch (err) {
     logger.error({ err }, "Career path generation failed");
     res.status(500).json({ error: "Career path generation failed" });
+    return;
   }
 });
 
 // ─── Follow-up Email ──────────────────────────────────────────────────────────
 
-router.post("/analyses/:id/follow-up-email", async (req, res) => {
+router.post("/analyses/:id/follow-up-email", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   const analysis = await db.query.analyses.findFirst({ where: eq(analyses.id, id) });
-  if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
 
   const emailType = (req.body?.emailType as string) ?? "after_apply";
   const emailTypeLabel =
@@ -1318,7 +1582,7 @@ router.post("/analyses/:id/follow-up-email", async (req, res) => {
     '{"subject":"<email subject line>","body":"<full email body, 100-180 words, warm and professional, use [Your Name] placeholder>","tips":["<2-3 brief sending tips>"]}';
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 600,
       messages: [{ role: "user", content: prompt }],
@@ -1331,18 +1595,23 @@ router.post("/analyses/:id/follow-up-email", async (req, res) => {
       body: result.body ?? "",
       tips: Array.isArray(result.tips) ? result.tips.slice(0, 3) : [],
     });
+    return;
   } catch (err) {
     logger.error({ err }, "Follow-up email generation failed");
     res.status(500).json({ error: "Follow-up email generation failed" });
+    return;
   }
 });
 
 // ─── Predict Offer ────────────────────────────────────────────────────────────
 
-router.post("/analyses/:id/predict-offer", async (req, res) => {
+router.post("/analyses/:id/predict-offer", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   const analysis = await db.query.analyses.findFirst({ where: eq(analyses.id, id) });
-  if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
 
   const prompt =
     "You are a senior recruiter and data scientist predicting the likelihood of a job offer based on a resume vs job description match.\n\n" +
@@ -1359,7 +1628,7 @@ router.post("/analyses/:id/predict-offer", async (req, res) => {
     '{"probability": <0-100>, "rating": "<strong|good|fair|weak>", "strengthFactors": ["<2-3 factors helping the odds>"], "riskFactors": ["<2-3 factors hurting the odds>"], "actionItems": ["<2-3 specific actions to improve odds>"], "summary": "<1 concise sentence prediction with reasoning>"}';
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 600,
       messages: [{ role: "user", content: prompt }],
@@ -1377,18 +1646,23 @@ router.post("/analyses/:id/predict-offer", async (req, res) => {
       actionItems: Array.isArray(result.actionItems) ? result.actionItems.slice(0, 3) : [],
       summary: result.summary ?? "",
     });
+    return;
   } catch (err) {
     logger.error({ err }, "Offer prediction failed");
     res.status(500).json({ error: "Offer prediction failed" });
+    return;
   }
 });
 
 // ─── Mock Interview ────────────────────────────────────────────────────────────
 
-router.post("/analyses/:id/mock-interview", async (req, res) => {
+router.post("/analyses/:id/mock-interview", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   const analysis = await db.query.analyses.findFirst({ where: eq(analyses.id, id) });
-  if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
 
   const messages: { role: string; content: string }[] = Array.isArray(req.body?.messages) ? req.body.messages : [];
   const isStart = messages.length === 0;
@@ -1420,7 +1694,7 @@ router.post("/analyses/:id/mock-interview", async (req, res) => {
   ];
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 400,
       messages: apiMessages,
@@ -1433,21 +1707,29 @@ router.post("/analyses/:id/mock-interview", async (req, res) => {
       isComplete,
       overallNotes: isComplete ? responseText : null,
     });
+    return;
   } catch (err) {
     logger.error({ err }, "Mock interview failed");
     res.status(500).json({ error: "Mock interview failed" });
+    return;
   }
 });
 
 // ─── Practice Feedback ────────────────────────────────────────────────────────
 
-router.post("/analyses/:id/practice-feedback", async (req, res) => {
+router.post("/analyses/:id/practice-feedback", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   const analysis = await db.query.analyses.findFirst({ where: eq(analyses.id, id) });
-  if (!analysis) return res.status(404).json({ error: "Analysis not found" });
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
 
   const body = GetPracticeFeedbackBody.safeParse(req.body);
-  if (!body.success) return res.status(400).json({ error: "Invalid body" });
+  if (!body.success) {
+    res.status(400).json({ error: "Invalid body" });
+    return;
+  }
 
   const prompt =
     "You are an expert interview coach evaluating a candidate's STAR-method answer.\n\n" +
@@ -1462,7 +1744,7 @@ router.post("/analyses/:id/practice-feedback", async (req, res) => {
     '{"score": <0-100>, "feedback": "<1-2 sentence overall summary>", "strengths": ["..."], "improvements": ["..."], "modelAnswer": "<100-200 word STAR answer>"}';
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getAiFromRequest(req).chat.completions.create({
       model: "deepseek-chat",
       max_completion_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
@@ -1483,9 +1765,11 @@ router.post("/analyses/:id/practice-feedback", async (req, res) => {
       improvements: Array.isArray(result.improvements) ? result.improvements : [],
       modelAnswer: result.modelAnswer ?? "",
     });
+    return;
   } catch (err) {
     logger.error({ err }, "Practice feedback generation failed");
     res.status(500).json({ error: "Practice feedback generation failed" });
+    return;
   }
 });
 

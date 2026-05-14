@@ -25,7 +25,11 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use(
+  cors({
+    allowedHeaders: ["Content-Type", "Authorization", "X-DeepSeek-Api-Key"],
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
