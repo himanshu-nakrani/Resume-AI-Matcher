@@ -44,6 +44,11 @@ Thumbs.db
 # Local SQLite (default @workspace/db dev database)
 resume-matcher.sqlite
 
+# Environment variables
+.env
+.env.local
+.env.*.local
+
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
