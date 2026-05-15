@@ -125,18 +125,33 @@ function stripInjectedResumePdfGuards(latex: string): string {
         /% optmatch-pdf-resume-guards\r?\n\\makeatletter\r?\n[\s\S]*?\\makeatother\r?\n?/m,
         "",
       )
+      // v3: legacy setcounter next to \begin{document} (broke some engines / templates)
+      .replace(
+        /% optmatch-pdf-resume-guards-v3\s*\r?\n\\setcounter\{secnumdepth\}\{0\}\s*\r?\n+(?=\\begin\{document\})/m,
+        "",
+      )
+      .replace(
+        /(\\begin\{document\})\s*\r?\n% optmatch-pdf-resume-guards-v3\s*\r?\n\\setcounter\{secnumdepth\}\{0\}\s*\r?\n/m,
+        "$1\n",
+      )
+      // v3: \AtBeginDocument hook (strip before re-injecting)
+      .replace(/% optmatch-pdf-resume-guards-v3\s*\r?\n\\AtBeginDocument\{\\setcounter\{secnumdepth\}\{0\}\}\s*\r?\n?/g, "")
   );
 }
 
 function injectResumePdfGuards(latex: string): string {
-  if (latex.includes("optmatch-pdf-resume-guards-v3")) return latex;
-
   const cleaned = stripInjectedResumePdfGuards(latex);
+  const hookLine = "\\AtBeginDocument{\\setcounter{secnumdepth}{0}}";
+  const guardBlock = `% optmatch-pdf-resume-guards-v3\n${hookLine}\n`;
+  if (cleaned.includes("optmatch-pdf-resume-guards-v3") || cleaned.includes(hookLine))
+    return cleaned;
 
-  return cleaned.replace(
-    /(\\begin\{document\})/,
-    "% optmatch-pdf-resume-guards-v3\n" + "\\setcounter{secnumdepth}{0}\n\n" + "$1\n",
-  );
+  const withAfterClass = cleaned.replace(/(\\documentclass(?:\[[^\]]*\])?\s*\{[^}]+\}\s*)/m, `$1\n${guardBlock}`);
+  if (withAfterClass !== cleaned) return withAfterClass;
+
+  const idx = cleaned.indexOf("\\begin{document}");
+  if (idx === -1) return cleaned;
+  return cleaned.slice(0, idx) + guardBlock + cleaned.slice(idx);
 }
 
 function extractLatexFromModel(raw: string): string {
