@@ -36,6 +36,8 @@ import { getAiClient } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
 import { getAiFromRequest, resolveDeepseekKeyForCreate } from "../lib/ai-from-request";
 import { parseAiJson } from "../lib/parse-ai-json";
+import { optimizeLatexResume, canOptimizeLatex } from "../lib/latex-optimizer";
+import { validateLatex, formatValidationErrors } from "../lib/latex-validator";
 
 const router: IRouter = Router();
 const execFileAsync = promisify(execFile);
@@ -361,6 +363,58 @@ router.post("/analyses", async (req, res): Promise<void> => {
     return;
   }
 
+  // Use multi-stage optimization if source LaTeX is available
+  let finalOptimizedLatex = aiResult.optimizedLatex ?? sourceLatex ?? null;
+  const finalSourceLatex = aiResult.sourceLatex ?? sourceLatex ?? null;
+
+  if (finalSourceLatex) {
+    req.log.info({ jobTitle }, "Running multi-stage LaTeX optimization");
+    
+    // Check if optimization is feasible
+    const canOptimize = canOptimizeLatex(finalSourceLatex);
+    
+    if (canOptimize.canOptimize) {
+      try {
+        const ai = getAiClient(resolveDeepseekKeyForCreate(req, deepseekApiKey));
+        const optimizationResult = await optimizeLatexResume(ai, finalSourceLatex, {
+          jobTitle,
+          companyName: companyName ?? null,
+          jobDescription: jobDescriptionText,
+          resumeText,
+          targetKeywords: aiResult.atsKeywordsMissing ?? [],
+          gaps: aiResult.gaps ?? [],
+        });
+
+        if (optimizationResult.success) {
+          finalOptimizedLatex = optimizationResult.optimizedLatex;
+          req.log.info(
+            {
+              stages: optimizationResult.stages,
+              processingTimeMs: optimizationResult.metadata.processingTimeMs,
+            },
+            "Multi-stage optimization completed successfully"
+          );
+        } else {
+          req.log.warn(
+            {
+              errors: optimizationResult.validationResult.errors.length,
+              warnings: optimizationResult.validationResult.warnings.length,
+            },
+            "Multi-stage optimization completed with validation errors"
+          );
+          // Fall back to AI-generated LaTeX if optimization failed
+          finalOptimizedLatex = aiResult.optimizedLatex ?? finalSourceLatex;
+        }
+      } catch (err) {
+        req.log.error({ err }, "Multi-stage optimization failed, using fallback");
+        // Fall back to AI-generated LaTeX
+        finalOptimizedLatex = aiResult.optimizedLatex ?? finalSourceLatex;
+      }
+    } else {
+      req.log.warn({ reason: canOptimize.reason }, "Skipping multi-stage optimization");
+    }
+  }
+
   const [row] = await db
     .insert(analyses)
     .values({
@@ -369,8 +423,8 @@ router.post("/analyses", async (req, res): Promise<void> => {
       resumeText,
       originalFileName: originalFileName ?? null,
       originalFileType: originalFileType ?? "text",
-      sourceLatex: aiResult.sourceLatex ?? sourceLatex ?? null,
-      optimizedLatex: aiResult.optimizedLatex ?? sourceLatex ?? null,
+      sourceLatex: finalSourceLatex,
+      optimizedLatex: finalOptimizedLatex,
       jobDescriptionText,
       fitScore: aiResult.fitScore ?? 0,
       fitRationale: aiResult.fitRationale ?? "",
@@ -386,6 +440,42 @@ router.post("/analyses", async (req, res): Promise<void> => {
     .returning();
 
   res.status(201).json(row);
+});
+
+router.post("/analyses/:id/validate-latex", async (req, res): Promise<void> => {
+  const params = GetAnalysisParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const analysis = await db.query.analyses.findFirst({
+    where: eq(analyses.id, params.data.id),
+  });
+
+  if (!analysis) {
+    res.status(404).json({ error: "Analysis not found" });
+    return;
+  }
+
+  const latex = analysis.optimizedLatex?.trim();
+  if (!latex) {
+    res.status(400).json({ error: "No LaTeX content available for validation" });
+    return;
+  }
+
+  req.log.info({ id: params.data.id }, "Validating LaTeX");
+
+  const validationResult = validateLatex(latex);
+  const formattedErrors = formatValidationErrors(validationResult);
+
+  res.json({
+    isValid: validationResult.isValid,
+    errors: validationResult.errors,
+    warnings: validationResult.warnings,
+    stats: validationResult.stats,
+    formattedReport: formattedErrors,
+  });
 });
 
 router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
