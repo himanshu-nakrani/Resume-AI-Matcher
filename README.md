@@ -145,6 +145,16 @@ pnpm run typecheck
 pnpm run build
 ```
 
+## Deploy to GitHub Pages
+
+GitHub Actions now deploys the frontend automatically from this repository.
+
+1. Push to `main` (or `master`) to trigger deployment.
+2. In GitHub, set **Settings → Pages → Source** to **GitHub Actions**.
+3. The workflow builds `@workspace/resume-matcher` and publishes `artifacts/resume-matcher/dist/public`.
+
+It automatically sets the correct Vite base path for project pages and includes a `404.html` fallback for client-side routes.
+
 ## License
 
 MIT
