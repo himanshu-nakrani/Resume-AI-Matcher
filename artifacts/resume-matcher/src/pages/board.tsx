@@ -157,46 +157,51 @@ export function Board() {
   }
 
   return (
-    <div className="space-y-4 h-full flex flex-col">
+    <div className="space-y-6 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Application Tracker</h1>
-          <p className="text-muted-foreground mt-1">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+            Application Tracker
+          </h1>
+          <p className="text-muted-foreground text-base">
             Tracker entries are created automatically after every resume optimization.
             {activeFilterCount > 0 && (
-              <span className="ml-2 text-primary font-medium text-sm">
+              <span className="ml-2 text-primary font-semibold">
                 {filtered.length} of {allAnalyses?.length ?? 0} shown
               </span>
             )}
           </p>
         </div>
         <Button
-          variant={showFilters ? "default" : "outline"}
-          size="sm"
-          className="gap-1.5 shrink-0"
+          variant={showFilters ? "gradient" : "outline"}
+          size="lg"
+          className="gap-2 shrink-0 shadow-md"
           onClick={() => setShowFilters((p) => !p)}
         >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
+          <SlidersHorizontal className="w-4 h-4" />
           Filters
           {activeFilterCount > 0 && (
-            <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-border bg-muted px-1 text-[10px] font-semibold tabular-nums text-foreground">
+            <Badge variant="secondary" size="sm" className="ml-1">
               {activeFilterCount}
-            </span>
+            </Badge>
           )}
         </Button>
       </div>
 
       {/* Filter Bar */}
       {showFilters && (
-        <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+        <div className="rounded-2xl border border-border bg-gradient-to-br from-muted/50 to-muted/30 p-6 space-y-4 shadow-lg backdrop-blur-sm animate-slide-in-bottom">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold flex items-center gap-1.5">
-              <Filter className="w-4 h-4" /> Advanced Filters
+            <p className="text-base font-bold flex items-center gap-2">
+              <div className="rounded-lg bg-primary/10 p-2">
+                <Filter className="w-5 h-5 text-primary" />
+              </div>
+              Advanced Filters
             </p>
             {activeFilterCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs h-7">
-                <X className="w-3 h-3" /> Clear all
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-sm h-9 hover:bg-destructive/10 hover:text-destructive">
+                <X className="w-4 h-4" /> Clear all
               </Button>
             )}
           </div>
@@ -306,26 +311,26 @@ export function Board() {
       )}
 
       {/* Kanban Board */}
-      <div className="flex gap-4 overflow-x-auto pb-4 flex-1 min-h-0 items-start">
+      <div className="flex gap-6 overflow-x-auto pb-6 flex-1 min-h-0 items-start">
         {COLUMNS.map((status) => (
           <div
             key={status}
-            className="w-72 shrink-0 flex flex-col max-h-full rounded-xl border border-border bg-card/80 shadow-sm"
+            className="w-80 shrink-0 flex flex-col max-h-full rounded-2xl border-2 border-border bg-card shadow-xl transition-all duration-300 hover:shadow-2xl"
             onDragOver={onDragOver}
             onDrop={(e) => onDrop(e, status)}
           >
             <div
-              className={`sticky top-0 z-10 flex items-center justify-between rounded-t-xl border-b border-border px-4 py-3 ${STATUS_CONFIG[status].headerColor}`}
+              className={`sticky top-0 z-10 flex items-center justify-between rounded-t-xl border-b border-border px-4 py-4 backdrop-blur-sm ${STATUS_CONFIG[status].headerColor}`}
             >
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground/90">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">
                 {STATUS_CONFIG[status].label}
               </h3>
-              <Badge variant="secondary" className="h-6 min-w-6 justify-center rounded-md px-1.5 text-[11px] font-semibold tabular-nums">
+              <Badge variant="secondary" className="h-7 min-w-7 justify-center rounded-lg px-2 text-xs font-bold tabular-nums shadow-sm">
                 {columns[status]?.length || 0}
               </Badge>
             </div>
 
-            <div className="p-3 space-y-3 overflow-y-auto flex-1">
+            <div className="p-4 space-y-4 overflow-y-auto flex-1">
               {columns[status]?.map((a) => {
                 const aLocation = (a as any).location as string | null;
                 const aSalary = (a as any).salaryExpectation as string | null;
@@ -335,22 +340,27 @@ export function Board() {
                     key={a.id}
                     draggable
                     onDragStart={(e) => onDragStart(e, a.id)}
-                    className="cursor-grab border border-border bg-card shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing"
+                    variant="elevated"
+                    hover="lift"
+                    className="group cursor-grab active:cursor-grabbing active:opacity-50 active:rotate-2 transition-all duration-200"
                     onClick={() => setLocation(`/analysis/${a.id}`)}
                   >
-                    <CardContent className="p-3 space-y-2.5">
-                      <div className="flex items-start justify-between gap-2">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-sm leading-tight truncate">
+                          <h4 className="font-bold text-base leading-tight truncate group-hover:text-primary transition-colors">
                             {a.jobTitle}
                           </h4>
                           {a.companyName && (
-                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                            <p className="mt-1 truncate text-sm text-muted-foreground">
                               {a.companyName}
                             </p>
                           )}
                         </div>
-                        <ScoreCircle score={a.fitScore} size="sm" />
+                        <div className="relative">
+                          <ScoreCircle score={a.fitScore} size="sm" />
+                          <div className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-success border-2 border-background animate-pulse" />
+                        </div>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -414,8 +424,16 @@ export function Board() {
                 );
               })}
               {columns[status]?.length === 0 && (
-                <div className="py-8 text-center border-2 border-dashed rounded-xl border-muted-foreground/10">
-                  <p className="text-xs text-muted-foreground/50 italic">No items</p>
+                <div className="py-12 text-center border-2 border-dashed rounded-2xl border-muted-foreground/20 bg-muted/20 transition-all hover:border-primary/30 hover:bg-primary/5">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="rounded-full bg-muted p-3">
+                      <svg className="w-6 h-6 text-muted-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-muted-foreground font-medium">No applications</p>
+                    <p className="text-xs text-muted-foreground/70">Drag cards here</p>
+                  </div>
                 </div>
               )}
             </div>

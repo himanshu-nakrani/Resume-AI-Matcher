@@ -26,25 +26,25 @@ import { formatDistanceToNow } from "date-fns";
 
 function ScoreBar({ score, label, compareScore }: { score: number; label: string; compareScore?: number }) {
   const color =
-    score >= 80 ? "bg-green-500" : score >= 60 ? "bg-yellow-500" : "bg-red-500";
+    score >= 80 ? "bg-gradient-to-r from-green-500 to-green-600" : score >= 60 ? "bg-gradient-to-r from-yellow-500 to-yellow-600" : "bg-gradient-to-r from-red-500 to-red-600";
   const diff = compareScore !== undefined ? score - compareScore : null;
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs items-center">
-        <span className="text-muted-foreground">{label}</span>
-        <div className="flex items-center gap-1.5">
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm items-center">
+        <span className="text-muted-foreground font-medium">{label}</span>
+        <div className="flex items-center gap-2">
           {diff !== null && diff !== 0 && (
-            <span className={`flex items-center gap-0.5 text-xs font-semibold ${diff > 0 ? "text-green-600" : "text-red-500"}`}>
-              {diff > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            <span className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${diff > 0 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}>
+              {diff > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
               {diff > 0 ? "+" : ""}{diff}
             </span>
           )}
-          <span className="font-bold tabular-nums">{score}</span>
+          <span className="font-bold tabular-nums text-base">{score}</span>
         </div>
       </div>
-      <div className="h-2 bg-muted rounded-full overflow-hidden">
+      <div className="h-3 bg-muted rounded-full overflow-hidden shadow-inner">
         <div
-          className={`h-full rounded-full transition-all ${color}`}
+          className={`h-full rounded-full transition-all duration-500 ${color} shadow-sm`}
           style={{ width: `${score}%` }}
         />
       </div>
@@ -96,75 +96,110 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
         </p>
       </div>
 
-      <Card className="border shadow-sm">
-        <CardContent className="pt-5 space-y-3">
+      <Card variant="elevated" className="border-2">
+        <CardContent className="pt-6 space-y-4">
           <ScoreBar score={data.fitScore} label="Fit Score" compareScore={compareData?.fitScore} />
           <ScoreBar score={data.atsScore} label="ATS Score" compareScore={compareData?.atsScore} />
         </CardContent>
       </Card>
 
-      <Card className="border shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> Strengths
+      <Card variant="elevated" hover="lift" className="border-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <div className="rounded-lg bg-green-100 dark:bg-green-900/30 p-1.5">
+              <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+            </div>
+            Strengths
+            <Badge variant="secondary" className="ml-auto">{strengths.length}</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1.5">
+        <CardContent className="space-y-2">
           {strengths.map((s, i) => (
-            <p key={i} className={`text-xs flex items-start gap-1.5 ${uniqueStrengths.includes(s) ? "font-semibold text-green-700 dark:text-green-400" : ""}`}>
-              <CheckCircle2 className={`w-3 h-3 mt-0.5 shrink-0 ${uniqueStrengths.includes(s) ? "text-green-500" : "text-green-400"}`} />
-              {s}
-              {uniqueStrengths.includes(s) && <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-1 rounded shrink-0">unique</span>}
-            </p>
+            <div key={i} className={`text-sm flex items-start gap-2 p-2 rounded-lg transition-colors ${uniqueStrengths.includes(s) ? "bg-green-50 dark:bg-green-900/20 font-semibold text-green-700 dark:text-green-400" : "hover:bg-muted/50"}`}>
+              <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${uniqueStrengths.includes(s) ? "text-green-600 dark:text-green-400" : "text-green-500"}`} />
+              <span className="flex-1">{s}</span>
+              {uniqueStrengths.includes(s) && (
+                <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 shrink-0">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  unique
+                </Badge>
+              )}
+            </div>
           ))}
         </CardContent>
       </Card>
 
-      <Card className="border shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-1.5">
-            <XCircle className="w-3.5 h-3.5 text-destructive" /> Gaps
+      <Card variant="elevated" hover="lift" className="border-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <div className="rounded-lg bg-red-100 dark:bg-red-900/30 p-1.5">
+              <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+            </div>
+            Gaps
+            <Badge variant="secondary" className="ml-auto">{gaps.length}</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1.5">
+        <CardContent className="space-y-2">
           {gaps.map((g, i) => (
-            <p key={i} className={`text-xs flex items-start gap-1.5 ${uniqueGaps.includes(g) ? "font-semibold text-red-600 dark:text-red-400" : ""}`}>
-              <XCircle className="w-3 h-3 text-destructive mt-0.5 shrink-0" />
-              {g}
-              {uniqueGaps.includes(g) && <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-1 rounded shrink-0">unique</span>}
-            </p>
+            <div key={i} className={`text-sm flex items-start gap-2 p-2 rounded-lg transition-colors ${uniqueGaps.includes(g) ? "bg-red-50 dark:bg-red-900/20 font-semibold text-red-700 dark:text-red-400" : "hover:bg-muted/50"}`}>
+              <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+              <span className="flex-1">{g}</span>
+              {uniqueGaps.includes(g) && (
+                <Badge variant="outline" className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700 shrink-0">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  unique
+                </Badge>
+              )}
+            </div>
           ))}
         </CardContent>
       </Card>
 
-      <Card className="border shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">ATS Keywords</CardTitle>
+      <Card variant="elevated" hover="lift" className="border-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <div className="rounded-lg bg-primary/10 p-1.5">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            ATS Keywords
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           <div>
-            <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-200 mb-1.5">Matched ({atsMatched.length})</p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Matched</p>
+              <Badge variant="outline" className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700">
+                {atsMatched.length}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-2">
               {atsMatched.map((kw, i) => (
                 <Badge
                   key={i}
                   variant="outline"
-                  className="text-xs border-emerald-300 bg-emerald-50 text-emerald-950 shadow-none dark:border-emerald-600 dark:bg-emerald-950/45 dark:text-emerald-50"
+                  className="text-xs border-emerald-300 bg-emerald-50 text-emerald-950 hover:bg-emerald-100 transition-colors dark:border-emerald-600 dark:bg-emerald-950/45 dark:text-emerald-50 dark:hover:bg-emerald-900/60"
                 >
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
                   {kw}
                 </Badge>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold text-rose-800 dark:text-rose-200 mb-1.5">Missing ({atsMissing.length})</p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">Missing</p>
+              <Badge variant="outline" className="bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-700">
+                {atsMissing.length}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-2">
               {atsMissing.map((kw, i) => (
                 <Badge
                   key={i}
                   variant="outline"
-                  className="text-xs border-rose-300 bg-rose-50 text-rose-950 shadow-none dark:border-rose-600 dark:bg-rose-950/45 dark:text-rose-50"
+                  className="text-xs border-rose-300 bg-rose-50 text-rose-950 hover:bg-rose-100 transition-colors dark:border-rose-600 dark:bg-rose-950/45 dark:text-rose-50 dark:hover:bg-rose-900/60"
                 >
+                  <XCircle className="w-3 h-3 mr-1" />
                   {kw}
                 </Badge>
               ))}
@@ -174,12 +209,17 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
       </Card>
 
       {data.fitRationale && (
-        <Card className="border shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Fit Summary</CardTitle>
+        <Card variant="elevated" className="border-2 bg-gradient-to-br from-card to-muted/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <div className="rounded-lg bg-primary/10 p-1.5">
+                <Sparkles className="w-4 h-4 text-primary" />
+              </div>
+              Fit Summary
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground">{data.fitRationale}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{data.fitRationale}</p>
           </CardContent>
         </Card>
       )}
@@ -199,35 +239,47 @@ export function Compare() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <button
+      <div className="space-y-4">
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setLocation("/")}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2 transition-colors"
+          className="gap-2 hover:gap-3 transition-all"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back
-        </button>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <GitCompareArrows className="w-7 h-7 text-primary" /> Compare Analyses
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Select two analyses to compare scores, strengths, gaps, and keywords side-by-side.
-        </p>
+          <ArrowLeft className="w-4 h-4" /> Back to Home
+        </Button>
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold tracking-tight flex items-center gap-3">
+            <div className="rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 p-3">
+              <GitCompareArrows className="w-8 h-8 text-primary" />
+            </div>
+            Compare Analyses
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Select two analyses to compare scores, strengths, gaps, and keywords side-by-side.
+          </p>
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-6">
-          <Skeleton className="h-10" />
-          <Skeleton className="h-10" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Skeleton className="h-14 rounded-xl shimmer" />
+          <Skeleton className="h-14 rounded-xl shimmer" />
         </div>
       ) : options.length < 2 ? (
-        <div className="text-center py-20 border border-dashed rounded-xl text-muted-foreground">
-          <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">Not enough analyses to compare</p>
-          <p className="text-sm mt-1">You need at least 2 analyses to use this feature.</p>
-          <Button className="mt-4" onClick={() => setLocation("/")}>
-            Run New Analysis
-          </Button>
-        </div>
+        <Card variant="elevated" className="border-2 border-dashed">
+          <CardContent className="text-center py-16">
+            <div className="rounded-full bg-muted p-4 w-fit mx-auto mb-4">
+              <Sparkles className="w-10 h-10 text-muted-foreground/50" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">Not Enough Analyses</h3>
+            <p className="text-muted-foreground mb-6">You need at least 2 analyses to compare. Create more analyses to use this feature.</p>
+            <Button onClick={() => setLocation("/")} className="gap-2">
+              <ArrowLeft className="w-4 h-4" />
+              Go to Home
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4">

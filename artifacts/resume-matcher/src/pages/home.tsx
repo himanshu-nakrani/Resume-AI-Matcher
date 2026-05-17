@@ -20,13 +20,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScoreCircle } from "@/components/score-circle";
-import { ArrowRight, BriefcaseBusiness, FileText, KeyRound, Link2, Search, Sparkles, Upload, UserRound, Wand2, X, ExternalLink } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, FileText, KeyRound, LayoutGrid, Link2, Search, Sparkles, Upload, UserRound, Wand2, X, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 import { DEEPSEEK_KEY_STORAGE_KEY } from "@/lib/deepseek-storage";
 import { JobDetailModal } from "@/components/job-detail-modal";
@@ -518,18 +519,34 @@ export function Home() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-2xl border border-border bg-card px-6 py-8 shadow-sm sm:px-10 sm:py-10">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/[0.07] blur-3xl dark:bg-primary/10" aria-hidden />
-        <div className="relative max-w-3xl">
-          <Badge variant="secondary" className="mb-4 font-medium tracking-tight">
-            OptiMatch
+      <section className="relative overflow-hidden rounded-3xl border border-border/50 bg-card px-6 py-12 shadow-xl sm:px-12 sm:py-16">
+        <div className="animated-gradient pointer-events-none absolute inset-0 opacity-10" aria-hidden />
+        <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-primary/10 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -left-32 -bottom-32 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl" aria-hidden />
+        <div className="relative max-w-4xl mx-auto text-center">
+          <Badge variant="gradient" className="mb-6 font-semibold tracking-tight shadow-lg animate-bounce-in">
+            <Sparkles className="w-3.5 h-3.5" />
+            OptiMatch AI
           </Badge>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl md:leading-[1.1]">
-            Upload once. Tailor every resume for the role.
+          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl md:leading-[1.1] mb-6">
+            Upload once.{" "}
+            <span className="gradient-text">Tailor every resume</span>
+            {" "}for the role.
           </h1>
-          <p className="mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg leading-relaxed">
-            Sign in locally, upload PDF or LaTeX, paste the JD, and DeepSeek will generate an ATS-focused LaTeX resume plus a tracker entry for the company and role.
+          <p className="mt-6 max-w-3xl mx-auto text-base text-muted-foreground sm:text-lg md:text-xl leading-relaxed">
+            AI-powered resume optimization with ATS scoring, job tracking, and intelligent matching. 
+            Transform your job search with personalized resumes for every opportunity.
           </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex -space-x-2">
+                <div className="h-8 w-8 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center text-xs font-semibold">AI</div>
+                <div className="h-8 w-8 rounded-full bg-success/20 border-2 border-background flex items-center justify-center text-xs font-semibold">ATS</div>
+                <div className="h-8 w-8 rounded-full bg-warning/20 border-2 border-background flex items-center justify-center text-xs font-semibold">PDF</div>
+              </div>
+              <span>Powered by DeepSeek AI</span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -766,7 +783,7 @@ export function Home() {
                     const published = formatPublishedDate(hit.publishedDate);
                     const matchInfo = matchScores.get(hit.url);
                     return (
-                      <li key={hit.url} className="rounded-xl border bg-card p-4 text-sm shadow-sm transition-shadow hover:shadow-md cursor-pointer" onClick={() => { setDetailHit(hit); setDetailOpen(true); }}>
+                  <li key={hit.url} className="group rounded-2xl border bg-card p-5 text-sm shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer" onClick={() => { setDetailHit(hit); setDetailOpen(true); }}>
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0 space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
@@ -831,79 +848,189 @@ export function Home() {
             </CardContent>
           </Card>
 
-          <Card className="border shadow-sm">
+          <Card variant="elevated" hover="lift" className="border shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="h-4 w-4 text-primary" /> Resume Upload
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FileText className="h-5 w-5 text-primary" /> Resume Upload
               </CardTitle>
+              <CardDescription>
+                Upload your resume in PDF, LaTeX, or TXT format. We'll parse it automatically.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <Button type="button" variant="secondary" disabled={isParsingResume} asChild>
-                  <label className="cursor-pointer">
-                    <Upload className="h-4 w-4 mr-2" />
-                    {isParsingResume ? "Reading file..." : "Upload PDF or LaTeX"}
-                    <Input type="file" accept=".pdf,.tex,.latex,.txt" className="hidden" onChange={onResumeFileChange} />
-                  </label>
-                </Button>
-                {resumeFileName && <Badge variant="outline">{resumeFileName}</Badge>}
-                <span className="text-xs text-muted-foreground">
-                  PDFs are converted to editable LaTeX during optimization. LaTeX files preserve structure.
-                </span>
+            <CardContent className="space-y-6">
+              <div 
+                className={cn(
+                  "relative rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-300",
+                  isParsingResume ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-accent/50"
+                )}
+              >
+                <div className="flex flex-col items-center gap-4">
+                  <div className={cn(
+                    "rounded-full p-4 transition-all duration-300",
+                    isParsingResume ? "bg-primary/10 animate-pulse" : "bg-muted"
+                  )}>
+                    <Upload className={cn(
+                      "h-8 w-8 transition-colors",
+                      isParsingResume ? "text-primary animate-bounce" : "text-muted-foreground"
+                    )} />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-base font-semibold">
+                      {isParsingResume ? "Reading your resume..." : "Drag & drop your resume here"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      or click to browse files
+                    </p>
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="gradient" 
+                    size="lg"
+                    disabled={isParsingResume} 
+                    asChild
+                  >
+                    <label className="cursor-pointer">
+                      {isParsingResume ? "Processing..." : "Choose File"}
+                      <Input type="file" accept=".pdf,.tex,.latex,.txt" className="hidden" onChange={onResumeFileChange} />
+                    </label>
+                  </Button>
+                  <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+                    <Badge variant="secondary" size="sm">PDF</Badge>
+                    <Badge variant="secondary" size="sm">LaTeX</Badge>
+                    <Badge variant="secondary" size="sm">TXT</Badge>
+                  </div>
+                </div>
+                {resumeFileName && (
+                  <div className="mt-6 flex items-center justify-center gap-2 rounded-lg bg-success/10 border border-success/20 p-3 animate-bounce-in">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/20">
+                      <FileText className="h-5 w-5 text-success" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-medium text-sm">{resumeFileName}</p>
+                      <p className="text-xs text-muted-foreground">Successfully uploaded</p>
+                    </div>
+                    <Badge variant="success" size="sm">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Ready
+                    </Badge>
+                  </div>
+                )}
+                {resumeFileError && (
+                  <div className="mt-4 rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+                    {resumeFileError}
+                  </div>
+                )}
               </div>
-              {resumeFileError && <p className="text-sm text-destructive">{resumeFileError}</p>}
+              
               <FormField control={form.control} name="resumeText" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Parsed Resume Text</FormLabel>
-                  <FormControl><Textarea className="min-h-[220px] font-mono text-sm" placeholder="Parsed resume text appears here..." {...field} data-testid="textarea-resume" /></FormControl>
+                  <FormLabel className="text-base font-semibold">Parsed Resume Text</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      className="min-h-[220px] font-mono text-sm rounded-xl border-2 focus:border-primary transition-colors" 
+                      placeholder="Your resume content will appear here after upload..." 
+                      {...field} 
+                      data-testid="textarea-resume" 
+                    />
+                  </FormControl>
                   <FormMessage />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    💡 Tip: PDFs are converted to LaTeX during optimization. LaTeX files preserve structure perfectly.
+                  </p>
                 </FormItem>
               )} />
             </CardContent>
           </Card>
 
           <div className="flex justify-end">
-            <Button type="submit" size="lg" disabled={createAnalysis.isPending} data-testid="button-analyze">
-              {createAnalysis.isPending ? (
-                <><Sparkles className="h-4 w-4 mr-2 animate-pulse" />Optimizing with DeepSeek...</>
-              ) : (
-                <><Wand2 className="h-4 w-4 mr-2" />Optimize Resume</>
+            <Button 
+              type="submit" 
+              variant="gradient" 
+              size="xl" 
+              disabled={createAnalysis.isPending} 
+              loading={createAnalysis.isPending}
+              data-testid="button-analyze"
+              className="shadow-xl hover:shadow-2xl"
+            >
+              {!createAnalysis.isPending && (
+                <>
+                  <Wand2 className="h-5 w-5" />
+                  Optimize Resume with AI
+                </>
               )}
             </Button>
           </div>
         </form>
       </Form>
 
-      <section>
-        <div className="flex items-center justify-between mb-4">
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Recent Optimizations</h2>
-            <p className="text-sm text-muted-foreground">Each optimization is automatically added to the tracker.</p>
+            <h2 className="text-2xl font-bold tracking-tight">Recent Optimizations</h2>
+            <p className="text-sm text-muted-foreground mt-1">Each optimization is automatically added to your tracker.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setLocation("/tracker")}>Open Tracker</Button>
+          <Button variant="gradient" size="sm" onClick={() => setLocation("/tracker")} className="shadow-md">
+            <LayoutGrid className="w-4 h-4" />
+            Open Tracker
+          </Button>
         </div>
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-3">
+                <Skeleton variant="shimmer" className="h-32 rounded-2xl" />
+              </div>
+            ))}
           </div>
         ) : recent.length === 0 ? (
-          <div className="text-center py-14 border border-dashed rounded-2xl text-muted-foreground">
-            <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-40" />
-            <p className="font-medium">No optimized resumes yet</p>
-            <p className="text-sm mt-1">Run your first optimization above.</p>
-          </div>
+          <Card variant="elevated" className="text-center py-16 border-2 border-dashed">
+            <div className="flex flex-col items-center gap-4">
+              <div className="rounded-full bg-primary/10 p-6">
+                <Sparkles className="w-12 h-12 text-primary animate-pulse" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold">No optimized resumes yet</p>
+                <p className="text-sm text-muted-foreground mt-2">Upload your resume and run your first optimization above.</p>
+              </div>
+              <Button variant="gradient" size="lg" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-2">
+                <Wand2 className="w-4 h-4" />
+                Get Started
+              </Button>
+            </div>
+          </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {recent.map((a) => (
-              <Card key={a.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setLocation(`/analysis/${a.id}`)}>
-                <CardContent className="p-4 flex items-center gap-4">
-                  <ScoreCircle score={a.atsScore} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold truncate">{a.jobTitle}</p>
-                    <p className="text-sm text-muted-foreground truncate">{a.companyName}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}</p>
+              <Card 
+                key={a.id} 
+                variant="elevated" 
+                hover="lift"
+                className="group cursor-pointer overflow-hidden"
+                onClick={() => setLocation(`/analysis/${a.id}`)}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="relative">
+                      <ScoreCircle score={a.atsScore} size="sm" />
+                      <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-success border-2 border-background" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div>
+                        <p className="font-bold text-base truncate group-hover:text-primary transition-colors">{a.jobTitle}</p>
+                        <p className="text-sm text-muted-foreground truncate">{a.companyName}</p>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="secondary" size="sm">
+                          Fit {a.fitScore}%
+                        </Badge>
+                        <span>•</span>
+                        <span>{formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}</span>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                   </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
                 </CardContent>
               </Card>
             ))}

@@ -2,6 +2,9 @@
 
 An intelligent AI-powered platform that analyzes resumes against job descriptions to provide fit scores, ATS compatibility, personalized improvement suggestions, and comprehensive job application management.
 
+**Live app:** https://himanshu-nakrani.github.io/Resume-AI-Matcher/  
+**Repository:** https://github.com/himanshu-nakrani/Resume-AI-Matcher
+
 ## Features
 
 ### Core Analysis
@@ -144,6 +147,20 @@ pnpm run typecheck
 # Build all packages
 pnpm run build
 ```
+
+## Deploy to GitHub Pages
+
+The frontend is published at:
+
+- https://himanshu-nakrani.github.io/Resume-AI-Matcher/
+
+GitHub Actions can deploy the frontend automatically from this repository.
+
+1. Push to `main` (or `master`) to trigger deployment.
+2. In GitHub, set **Settings → Pages → Source** to **GitHub Actions**.
+3. The workflow builds `@workspace/resume-matcher` and publishes `artifacts/resume-matcher/dist/public`.
+
+It automatically sets the correct Vite base path for project pages and includes a `404.html` fallback for client-side routes.
 
 ## License
 

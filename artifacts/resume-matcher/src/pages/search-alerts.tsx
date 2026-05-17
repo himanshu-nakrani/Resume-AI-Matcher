@@ -28,6 +28,7 @@ export function SearchAlertsPage() {
   const [newQuery, setNewQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [newSearchType, setNewSearchType] = useState("auto");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchAlerts = async () => {
     setLoading(true);
