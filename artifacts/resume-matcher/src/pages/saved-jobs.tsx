@@ -33,6 +33,7 @@ export function SavedJobsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingNotes, setEditingNotes] = useState<number | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
+  const [tagInput, setTagInput] = useState<{ [key: number]: string }>({});
 
   const fetchSavedJobs = async () => {
     setLoading(true);
@@ -95,23 +96,41 @@ export function SavedJobsPage() {
   );
 
   return (
-    <div className="container max-w-5xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Saved Jobs</h1>
-          <p className="text-sm text-muted-foreground mt-1">{savedJobs.length} bookmarked listings</p>
+    <div className="container max-w-6xl mx-auto px-4 py-8 space-y-8">
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 p-3">
+            <Bookmark className="w-8 h-8 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight">Saved Jobs</h1>
+            <p className="text-muted-foreground text-lg mt-1">
+              <Badge variant="secondary" className="mr-2">{savedJobs.length}</Badge>
+              bookmarked listings
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground" />
           <Input
-            placeholder="Search saved jobs..."
-            className="pl-9"
+            placeholder="Search by title, company, or source..."
+            className="pl-12 h-12 text-base rounded-xl border-2"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-2 top-2"
+              onClick={() => setSearchTerm("")}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 

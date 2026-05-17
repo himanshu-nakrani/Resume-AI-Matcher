@@ -173,17 +173,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <CommandPalette />
       <ShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
-      <aside className="sticky top-0 z-20 hidden h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm md:flex lg:w-72">
-        <div className="border-b border-sidebar-border px-5 py-6">
-          <Link href="/" className="flex items-start gap-3 outline-none ring-sidebar-ring focus-visible:ring-2 rounded-lg">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary/15 text-sidebar-primary">
-              <Sparkles className="h-5 w-5" aria-hidden />
+      <aside className="sticky top-0 z-20 hidden h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-xl md:flex lg:w-72 backdrop-blur-glass">
+        <div className="border-b border-sidebar-border px-5 py-6 bg-gradient-to-br from-sidebar-primary/5 to-transparent">
+          <Link href="/" className="group flex items-start gap-3 outline-none ring-sidebar-ring focus-visible:ring-2 rounded-lg transition-all hover:scale-[1.02]">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sidebar-primary to-sidebar-primary/80 text-sidebar-primary-foreground shadow-lg group-hover:shadow-xl transition-all">
+              <Sparkles className="h-6 w-6 group-hover:rotate-12 transition-transform" aria-hidden />
             </div>
-            <div className="min-w-0 pt-0.5">
-              <span className="block truncate text-lg font-semibold tracking-tight text-sidebar-foreground">
+            <div className="min-w-0 pt-1">
+              <span className="block truncate text-xl font-bold tracking-tight text-sidebar-foreground group-hover:text-sidebar-primary transition-colors">
                 OptiMatch
               </span>
-              <p className="mt-0.5 text-xs text-sidebar-foreground/60">Resume &amp; role intelligence</p>
+              <p className="mt-0.5 text-xs text-sidebar-foreground/70 font-medium">AI Resume Intelligence</p>
             </div>
           </Link>
         </div>

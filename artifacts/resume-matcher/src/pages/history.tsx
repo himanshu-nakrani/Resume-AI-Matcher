@@ -44,13 +44,13 @@ import { useToast } from "@/hooks/use-toast";
 
 type Status = "not_applied" | "applied" | "got_interview" | "got_online_exam" | "selected" | "rejected";
 
-const STATUS_CONFIG: Record<Status, { label: string; className: string }> = {
-  not_applied: { label: "Not Applied", className: "bg-muted text-muted-foreground border-muted-foreground/20" },
-  applied: { label: "Applied", className: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800" },
-  got_interview: { label: "Got Interview", className: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800" },
-  got_online_exam: { label: "Got Online Exam", className: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800" },
-  selected: { label: "Selected", className: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" },
-  rejected: { label: "Rejected", className: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800" },
+const STATUS_CONFIG: Record<Status, { label: string; className: string; icon?: string }> = {
+  not_applied: { label: "Not Applied", className: "bg-muted text-muted-foreground border-muted-foreground/30 hover:bg-muted/80 transition-colors" },
+  applied: { label: "Applied", className: "bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 border-blue-300 dark:from-blue-900/30 dark:to-blue-900/20 dark:text-blue-400 dark:border-blue-700 hover:shadow-md transition-all" },
+  got_interview: { label: "Got Interview", className: "bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-700 border-yellow-300 dark:from-yellow-900/30 dark:to-yellow-900/20 dark:text-yellow-400 dark:border-yellow-700 hover:shadow-md transition-all" },
+  got_online_exam: { label: "Got Online Exam", className: "bg-gradient-to-r from-purple-100 to-purple-50 text-purple-700 border-purple-300 dark:from-purple-900/30 dark:to-purple-900/20 dark:text-purple-400 dark:border-purple-700 hover:shadow-md transition-all" },
+  selected: { label: "Selected", className: "bg-gradient-to-r from-green-100 to-green-50 text-green-700 border-green-300 dark:from-green-900/30 dark:to-green-900/20 dark:text-green-400 dark:border-green-700 hover:shadow-md transition-all" },
+  rejected: { label: "Rejected", className: "bg-gradient-to-r from-red-100 to-red-50 text-red-700 border-red-300 dark:from-red-900/30 dark:to-red-900/20 dark:text-red-400 dark:border-red-700 hover:shadow-md transition-all" },
 };
 
 const ALL_STATUSES: Status[] = ["not_applied", "applied", "got_interview", "got_online_exam", "selected", "rejected"];
