@@ -53,8 +53,9 @@ An intelligent AI-powered platform that analyzes resumes against job description
 - **Portfolio Links** — Save up to 3 portfolio URLs (GitHub, portfolio, case study) per analysis
 
 ### User Experience
+- **Professional Minimal UI** — Clean, modern interface with subtle animations and professional color palette
 - **Keyboard Command Palette** — `⌘K` / `Ctrl+K` global search and quick navigation
-- **Themes** — 3 visual themes (warm, formal, minimal) with dark mode support
+- **Dark Mode Support** — Seamless light/dark theme switching
 - **Export PDF** — Print-optimized layout for sharing analyses
 - **Bulk CSV Export** — Export all analyses from History as CSV
 - **In-App Notifications** — Deadline and follow-up reminders with real-time badge count
@@ -80,8 +81,9 @@ An intelligent AI-powered platform that analyzes resumes against job description
 - **esbuild** for fast builds
 
 ### AI Integration
-- **OpenAI GPT** for all AI-powered features
+- **OpenAI GPT** / **DeepSeek** for all AI-powered features
 - Custom AI prompts for resume analysis, interview prep, salary guidance, and career planning
+- Server-side API key management for security
 
 ### Architecture
 - **pnpm workspace monorepo** with shared libraries
@@ -112,7 +114,7 @@ An intelligent AI-powered platform that analyzes resumes against job description
 ### Prerequisites
 - Node.js 24+
 - pnpm package manager
-- OpenAI / DeepSeek API key (depending on integration)
+- OpenAI / DeepSeek API key (configured on backend)
 
 ### Installation
 
@@ -127,6 +129,21 @@ pnpm --filter @workspace/db run push
 pnpm --filter @workspace/api-spec run codegen
 ```
 
+### Configuration
+
+Create a `.env` file in the `artifacts/api-server` directory:
+
+```env
+# Required: AI API Key
+DEEPSEEK_API_KEY=your_api_key_here
+# or
+OPENAI_API_KEY=your_api_key_here
+
+# Optional: Server configuration
+PORT=3000
+NODE_ENV=development
+```
+
 ### Development
 
 ```bash
@@ -137,6 +154,8 @@ pnpm --filter @workspace/api-server run dev
 cd artifacts/resume-matcher
 pnpm run dev
 ```
+
+The frontend will be available at `http://localhost:5173` and the API at `http://localhost:3000`.
 
 ### Build
 
@@ -161,6 +180,17 @@ GitHub Actions can deploy the frontend automatically from this repository.
 3. The workflow builds `@workspace/resume-matcher` and publishes `artifacts/resume-matcher/dist/public`.
 
 It automatically sets the correct Vite base path for project pages and includes a `404.html` fallback for client-side routes.
+
+## UI Design
+
+The application features a professional, minimal design with:
+
+- **Muted Color Palette** — Subtle blue-gray primary colors for a professional look
+- **Clean Typography** — Inter font family with optimized spacing and hierarchy
+- **Minimal Shadows** — Subtle elevation for depth without visual clutter
+- **Smooth Transitions** — Fast, subtle animations for better UX
+- **Responsive Layout** — Mobile-first design with adaptive components
+- **Accessibility** — WCAG compliant with keyboard navigation and screen reader support
 
 ## License
 

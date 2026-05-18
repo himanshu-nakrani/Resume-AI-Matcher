@@ -24,12 +24,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScoreCircle } from "@/components/score-circle";
-import { ArrowRight, BriefcaseBusiness, FileText, KeyRound, LayoutGrid, Link2, Search, Sparkles, Upload, UserRound, Wand2, X, ExternalLink } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, FileText, LayoutGrid, Link2, Search, Sparkles, Upload, UserRound, Wand2, X, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-import { DEEPSEEK_KEY_STORAGE_KEY } from "@/lib/deepseek-storage";
 import { JobDetailModal } from "@/components/job-detail-modal";
 import { Bookmark, ChevronDown, SlidersHorizontal } from "lucide-react";
 
@@ -157,7 +156,6 @@ const USER_STORAGE_KEY = "optimatch_user_profile";
 const formSchema = z.object({
   userName: z.string().min(1, "Your name is required"),
   userEmail: z.string().email("Enter a valid email"),
-  deepseekApiKey: z.string().min(1, "DeepSeek API key is required"),
   jobTitle: z.string().min(1, "Role is required"),
   companyName: z.string().min(1, "Company name is required"),
   resumeText: z.string().min(50, "Resume content must be at least 50 characters"),
@@ -235,7 +233,6 @@ export function Home() {
     defaultValues: {
       userName: savedUser.userName ?? "",
       userEmail: savedUser.userEmail ?? "",
-      deepseekApiKey: localStorage.getItem(DEEPSEEK_KEY_STORAGE_KEY) ?? "",
       jobTitle: "",
       companyName: "",
       resumeText: "",
@@ -250,9 +247,6 @@ export function Home() {
         userName: values.userName ?? "",
         userEmail: values.userEmail ?? "",
       }));
-      if (values.deepseekApiKey) {
-        localStorage.setItem(DEEPSEEK_KEY_STORAGE_KEY, values.deepseekApiKey);
-      }
     });
     return () => subscription.unsubscribe();
   }, [form]);
@@ -509,7 +503,6 @@ export function Home() {
         sourceLatex: values.sourceLatex ?? "",
         originalFileName: resumeFileName,
         originalFileType: resumeFileType,
-        deepseekApiKey: values.deepseekApiKey,
         jobDescriptionText: values.jobDescriptionText,
       },
     });
@@ -519,46 +512,41 @@ export function Home() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl border border-border/50 bg-card px-6 py-12 shadow-xl sm:px-12 sm:py-16">
-        <div className="animated-gradient pointer-events-none absolute inset-0 opacity-10" aria-hidden />
-        <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-primary/10 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute -left-32 -bottom-32 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl" aria-hidden />
+      <section className="relative overflow-hidden rounded-lg border border-border bg-card px-6 py-12 sm:px-12 sm:py-14">
         <div className="relative max-w-4xl mx-auto text-center">
-          <Badge variant="gradient" className="mb-6 font-semibold tracking-tight shadow-lg animate-bounce-in">
-            <Sparkles className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground mb-6">
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
             OptiMatch AI
-          </Badge>
-          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl md:leading-[1.1] mb-6">
-            Upload once.{" "}
-            <span className="gradient-text">Tailor every resume</span>
-            {" "}for the role.
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl mb-4">
+            Upload once. Tailor every resume for the role.
           </h1>
-          <p className="mt-6 max-w-3xl mx-auto text-base text-muted-foreground sm:text-lg md:text-xl leading-relaxed">
-            AI-powered resume optimization with ATS scoring, job tracking, and intelligent matching. 
-            Transform your job search with personalized resumes for every opportunity.
+          <p className="mt-4 max-w-2xl mx-auto text-base text-muted-foreground sm:text-lg leading-relaxed">
+            AI-powered resume optimization with ATS scoring, job tracking, and intelligent matching.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="flex -space-x-2">
-                <div className="h-8 w-8 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center text-xs font-semibold">AI</div>
-                <div className="h-8 w-8 rounded-full bg-success/20 border-2 border-background flex items-center justify-center text-xs font-semibold">ATS</div>
-                <div className="h-8 w-8 rounded-full bg-warning/20 border-2 border-background flex items-center justify-center text-xs font-semibold">PDF</div>
-              </div>
-              <span>Powered by DeepSeek AI</span>
-            </div>
+          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <span>Powered by DeepSeek AI</span>
+            <span>•</span>
+            <span>ATS Compatible</span>
+            <span>•</span>
+            <span>PDF Export</span>
           </div>
         </div>
       </section>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" data-testid="form-analysis">
-          <Card className="border shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <UserRound className="h-4 w-4 text-primary" /> User Login
+          <Card className="border">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <UserRound className="h-4 w-4 text-muted-foreground" /> User Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField control={form.control} name="userName" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Name</FormLabel>
@@ -573,20 +561,13 @@ export function Home() {
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField control={form.control} name="deepseekApiKey" render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-1.5"><KeyRound className="h-3.5 w-3.5" /> DeepSeek API Key</FormLabel>
-                  <FormControl><Input type="password" placeholder="sk-..." {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
             </CardContent>
           </Card>
 
-          <Card className="border shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <BriefcaseBusiness className="h-4 w-4 text-primary" /> Target Job
+          <Card className="border">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <BriefcaseBusiness className="h-4 w-4 text-muted-foreground" /> Target Job
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -636,10 +617,10 @@ export function Home() {
             </CardContent>
           </Card>
 
-          <Card className="border shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Search className="h-4 w-4 text-primary" /> Job search (Exa)
+          <Card className="border">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <Search className="h-4 w-4 text-muted-foreground" /> Job search (Exa)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -783,7 +764,7 @@ export function Home() {
                     const published = formatPublishedDate(hit.publishedDate);
                     const matchInfo = matchScores.get(hit.url);
                     return (
-                  <li key={hit.url} className="group rounded-2xl border bg-card p-5 text-sm shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer" onClick={() => { setDetailHit(hit); setDetailOpen(true); }}>
+                  <li key={hit.url} className="group rounded-lg border bg-card p-4 text-sm transition-all duration-200 hover:border-primary/50 cursor-pointer" onClick={() => { setDetailHit(hit); setDetailOpen(true); }}>
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0 space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
@@ -848,44 +829,44 @@ export function Home() {
             </CardContent>
           </Card>
 
-          <Card variant="elevated" hover="lift" className="border shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <FileText className="h-5 w-5 text-primary" /> Resume Upload
+          <Card className="border">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <FileText className="h-4 w-4 text-muted-foreground" /> Resume Upload
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Upload your resume in PDF, LaTeX, or TXT format. We'll parse it automatically.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div 
                 className={cn(
-                  "relative rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-300",
-                  isParsingResume ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-accent/50"
+                  "relative rounded-lg border border-dashed p-8 text-center transition-all duration-200",
+                  isParsingResume ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/50"
                 )}
               >
                 <div className="flex flex-col items-center gap-4">
                   <div className={cn(
-                    "rounded-full p-4 transition-all duration-300",
-                    isParsingResume ? "bg-primary/10 animate-pulse" : "bg-muted"
+                    "rounded-lg p-3 transition-all duration-200",
+                    isParsingResume ? "bg-primary/10" : "bg-muted"
                   )}>
                     <Upload className={cn(
-                      "h-8 w-8 transition-colors",
-                      isParsingResume ? "text-primary animate-bounce" : "text-muted-foreground"
+                      "h-6 w-6 transition-colors",
+                      isParsingResume ? "text-primary" : "text-muted-foreground"
                     )} />
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-base font-semibold">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">
                       {isParsingResume ? "Reading your resume..." : "Drag & drop your resume here"}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       or click to browse files
                     </p>
                   </div>
                   <Button 
                     type="button" 
-                    variant="gradient" 
-                    size="lg"
+                    variant="default" 
+                    size="sm"
                     disabled={isParsingResume} 
                     asChild
                   >
@@ -895,26 +876,28 @@ export function Home() {
                     </label>
                   </Button>
                   <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="secondary" size="sm">PDF</Badge>
-                    <Badge variant="secondary" size="sm">LaTeX</Badge>
-                    <Badge variant="secondary" size="sm">TXT</Badge>
+                    <span>PDF</span>
+                    <span>•</span>
+                    <span>LaTeX</span>
+                    <span>•</span>
+                    <span>TXT</span>
                   </div>
                 </div>
                 {resumeFileName && (
-                  <div className="mt-6 flex items-center justify-center gap-2 rounded-lg bg-success/10 border border-success/20 p-3 animate-bounce-in">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/20">
-                      <FileText className="h-5 w-5 text-success" />
+                  <div className="mt-4 flex items-center gap-3 rounded-lg bg-success/10 border border-success/20 p-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-success/20">
+                      <FileText className="h-4 w-4 text-success" />
                     </div>
-                    <div className="flex-1 text-left">
-                      <p className="font-medium text-sm">{resumeFileName}</p>
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="font-medium text-sm truncate">{resumeFileName}</p>
                       <p className="text-xs text-muted-foreground">Successfully uploaded</p>
                     </div>
-                    <Badge variant="success" size="sm">
+                    <div className="flex items-center gap-1 text-xs text-success font-medium">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       Ready
-                    </Badge>
+                    </div>
                   </div>
                 )}
                 {resumeFileError && (
@@ -926,10 +909,10 @@ export function Home() {
               
               <FormField control={form.control} name="resumeText" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base font-semibold">Parsed Resume Text</FormLabel>
+                  <FormLabel className="text-sm font-medium">Parsed Resume Text</FormLabel>
                   <FormControl>
                     <Textarea 
-                      className="min-h-[220px] font-mono text-sm rounded-xl border-2 focus:border-primary transition-colors" 
+                      className="min-h-[200px] font-mono text-sm rounded-md border focus:border-primary transition-colors" 
                       placeholder="Your resume content will appear here after upload..." 
                       {...field} 
                       data-testid="textarea-resume" 
@@ -937,7 +920,7 @@ export function Home() {
                   </FormControl>
                   <FormMessage />
                   <p className="text-xs text-muted-foreground mt-2">
-                    💡 Tip: PDFs are converted to LaTeX during optimization. LaTeX files preserve structure perfectly.
+                    Tip: PDFs are converted to LaTeX during optimization. LaTeX files preserve structure perfectly.
                   </p>
                 </FormItem>
               )} />
@@ -947,16 +930,15 @@ export function Home() {
           <div className="flex justify-end">
             <Button 
               type="submit" 
-              variant="gradient" 
-              size="xl" 
+              variant="default" 
+              size="default" 
               disabled={createAnalysis.isPending} 
               loading={createAnalysis.isPending}
               data-testid="button-analyze"
-              className="shadow-xl hover:shadow-2xl"
             >
               {!createAnalysis.isPending && (
                 <>
-                  <Wand2 className="h-5 w-5" />
+                  <Wand2 className="h-4 w-4" />
                   Optimize Resume with AI
                 </>
               )}
@@ -965,13 +947,13 @@ export function Home() {
         </form>
       </Form>
 
-      <section className="space-y-6">
+      <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Recent Optimizations</h2>
+            <h2 className="text-xl font-semibold tracking-tight">Recent Optimizations</h2>
             <p className="text-sm text-muted-foreground mt-1">Each optimization is automatically added to your tracker.</p>
           </div>
-          <Button variant="gradient" size="sm" onClick={() => setLocation("/tracker")} className="shadow-md">
+          <Button variant="outline" size="sm" onClick={() => setLocation("/tracker")}>
             <LayoutGrid className="w-4 h-4" />
             Open Tracker
           </Button>
@@ -985,51 +967,50 @@ export function Home() {
             ))}
           </div>
         ) : recent.length === 0 ? (
-          <Card variant="elevated" className="text-center py-16 border-2 border-dashed">
-            <div className="flex flex-col items-center gap-4">
-              <div className="rounded-full bg-primary/10 p-6">
-                <Sparkles className="w-12 h-12 text-primary animate-pulse" />
+          <Card className="text-center py-12 border border-dashed">
+            <div className="flex flex-col items-center gap-3">
+              <div className="rounded-lg bg-muted p-4">
+                <svg className="w-8 h-8 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
+                </svg>
               </div>
               <div>
-                <p className="text-lg font-semibold">No optimized resumes yet</p>
-                <p className="text-sm text-muted-foreground mt-2">Upload your resume and run your first optimization above.</p>
+                <p className="text-sm font-medium">No optimized resumes yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Upload your resume and run your first optimization above.</p>
               </div>
-              <Button variant="gradient" size="lg" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-2">
-                <Wand2 className="w-4 h-4" />
+              <Button variant="default" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-2">
+                <Wand2 className="w-3.5 h-3.5" />
                 Get Started
               </Button>
             </div>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {recent.map((a) => (
               <Card 
                 key={a.id} 
-                variant="elevated" 
-                hover="lift"
-                className="group cursor-pointer overflow-hidden"
+                className="group cursor-pointer border hover:border-primary/50 transition-all duration-200"
                 onClick={() => setLocation(`/analysis/${a.id}`)}
               >
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
                     <div className="relative">
                       <ScoreCircle score={a.atsScore} size="sm" />
-                      <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-success border-2 border-background" />
                     </div>
-                    <div className="min-w-0 flex-1 space-y-2">
+                    <div className="min-w-0 flex-1 space-y-1.5">
                       <div>
-                        <p className="font-bold text-base truncate group-hover:text-primary transition-colors">{a.jobTitle}</p>
-                        <p className="text-sm text-muted-foreground truncate">{a.companyName}</p>
+                        <p className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{a.jobTitle}</p>
+                        <p className="text-xs text-muted-foreground truncate">{a.companyName}</p>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Badge variant="secondary" size="sm">
-                          Fit {a.fitScore}%
-                        </Badge>
+                        <span className="font-medium">Fit {a.fitScore}%</span>
                         <span>•</span>
                         <span>{formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}</span>
                       </div>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                    <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
                   </div>
                 </CardContent>
               </Card>
