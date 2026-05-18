@@ -10,7 +10,6 @@ import {
   Keyboard,
   GraduationCap,
   X,
-  Sparkles,
   LayoutGrid,
   Fingerprint,
   GitBranch,
@@ -68,11 +67,11 @@ function ShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <div className="relative z-10 w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
+      <div className="relative z-10 w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Keyboard className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-base font-semibold tracking-tight">Keyboard shortcuts</h2>
+            <h2 className="text-sm font-semibold">Keyboard shortcuts</h2>
           </div>
           <button
             type="button"
@@ -91,7 +90,7 @@ function ShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void 
                 {shortcut.keys.map((key, j) => (
                   <kbd
                     key={j}
-                    className="rounded border border-border bg-muted px-2 py-0.5 text-[11px] font-mono font-medium text-muted-foreground shadow-sm"
+                    className="rounded border border-border bg-muted px-2 py-0.5 text-[11px] font-mono font-medium text-muted-foreground"
                   >
                     {key}
                   </kbd>
@@ -162,56 +161,60 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const navLinkClass = (active: boolean) =>
     cn(
-      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",
       active
-        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-        : "text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
+        ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
     );
 
   return (
-    <div className="flex min-h-screen w-full bg-muted/40 dark:bg-background">
+    <div className="flex min-h-screen w-full bg-background">
       <CommandPalette />
       <ShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
-      <aside className="sticky top-0 z-20 hidden h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-xl md:flex lg:w-72 backdrop-blur-glass">
-        <div className="border-b border-sidebar-border px-5 py-6 bg-gradient-to-br from-sidebar-primary/5 to-transparent">
-          <Link href="/" className="group flex items-start gap-3 outline-none ring-sidebar-ring focus-visible:ring-2 rounded-lg transition-all hover:scale-[1.02]">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sidebar-primary to-sidebar-primary/80 text-sidebar-primary-foreground shadow-lg group-hover:shadow-xl transition-all">
-              <Sparkles className="h-6 w-6 group-hover:rotate-12 transition-transform" aria-hidden />
+      <aside className="sticky top-0 z-20 hidden h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+        <div className="border-b border-sidebar-border px-6 py-5">
+          <Link href="/" className="group flex items-center gap-3 outline-none ring-sidebar-ring focus-visible:ring-2 rounded-md transition-all">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
             </div>
-            <div className="min-w-0 pt-1">
-              <span className="block truncate text-xl font-bold tracking-tight text-sidebar-foreground group-hover:text-sidebar-primary transition-colors">
+            <div className="min-w-0">
+              <span className="block truncate text-base font-semibold tracking-tight text-sidebar-foreground">
                 OptiMatch
               </span>
-              <p className="mt-0.5 text-xs text-sidebar-foreground/70 font-medium">AI Resume Intelligence</p>
+              <p className="text-[11px] text-sidebar-foreground/60 font-medium">Resume Intelligence</p>
             </div>
           </Link>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-4" aria-label="Main">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4" aria-label="Main">
           {navItems.map((item) => {
             const active = isActive(location, item.href);
             return (
               <Link key={item.href} href={item.href} className={navLinkClass(active)}>
-                <item.icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                <item.icon className="h-4 w-4 shrink-0" aria-hidden />
                 {item.label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="border-t border-sidebar-border px-4 py-4 space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/50">
-              Inbox
+        <div className="border-t border-sidebar-border px-3 py-3 space-y-2">
+          <div className="flex items-center justify-between px-2 mb-2">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-sidebar-foreground/50">
+              Settings
             </span>
             <NotificationsPanel triggerClassName="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
           </div>
           <Button
             type="button"
-            variant="secondary"
+            variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2 border-sidebar-border bg-sidebar-accent/50 text-sidebar-foreground hover:bg-sidebar-accent"
+            className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent"
             onClick={toggle}
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
           >
@@ -221,7 +224,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => setShowShortcuts(true)}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-sidebar-foreground/55 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground/90"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
           >
             <Keyboard className="h-3.5 w-3.5 shrink-0" />
             <span>Shortcuts · ⌘K · ⌘?</span>
@@ -231,8 +234,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur-md md:hidden">
-          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-foreground">
-            <Sparkles className="h-4 w-4 text-primary" />
+          <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
+            <svg className="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
             OptiMatch
           </Link>
           <div className="flex items-center gap-1">
@@ -244,7 +251,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="flex-1 pb-20 md:pb-0">
-          <div className="mx-auto h-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10">{children}</div>
+          <div className="mx-auto h-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>
         </main>
 
         <nav
@@ -257,11 +264,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Link key={item.href} href={item.href} className="min-w-0 flex-1">
                 <div
                   className={cn(
-                    "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium",
+                    "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
                     active ? "text-primary" : "text-muted-foreground",
                   )}
                 >
-                  <item.icon className={cn("h-5 w-5", active && "stroke-[2.25]")} />
+                  <item.icon className={cn("h-5 w-5", active && "stroke-[2]")} />
                   <span className="truncate px-0.5">{item.label}</span>
                 </div>
               </Link>
