@@ -26,7 +26,7 @@ import { formatDistanceToNow } from "date-fns";
 
 function ScoreBar({ score, label, compareScore }: { score: number; label: string; compareScore?: number }) {
   const color =
-    score >= 80 ? "bg-gradient-to-r from-green-500 to-green-600" : score >= 60 ? "bg-gradient-to-r from-yellow-500 to-yellow-600" : "bg-gradient-to-r from-red-500 to-red-600";
+    score >= 80 ? "bg-green-500" : score >= 60 ? "bg-yellow-500" : "bg-red-500";
   const diff = compareScore !== undefined ? score - compareScore : null;
   return (
     <div className="space-y-2">
@@ -96,14 +96,14 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
         </p>
       </div>
 
-      <Card variant="elevated" className="border-2">
+      <Card className="border-2">
         <CardContent className="pt-6 space-y-4">
           <ScoreBar score={data.fitScore} label="Fit Score" compareScore={compareData?.fitScore} />
           <ScoreBar score={data.atsScore} label="ATS Score" compareScore={compareData?.atsScore} />
         </CardContent>
       </Card>
 
-      <Card variant="elevated" hover="lift" className="border-2">
+      <Card className="border-2">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <div className="rounded-lg bg-green-100 dark:bg-green-900/30 p-1.5">
@@ -129,7 +129,7 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
         </CardContent>
       </Card>
 
-      <Card variant="elevated" hover="lift" className="border-2">
+      <Card className="border-2">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <div className="rounded-lg bg-red-100 dark:bg-red-900/30 p-1.5">
@@ -155,7 +155,7 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
         </CardContent>
       </Card>
 
-      <Card variant="elevated" hover="lift" className="border-2">
+      <Card className="border-2">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <div className="rounded-lg bg-primary/10 p-1.5">
@@ -209,10 +209,10 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
       </Card>
 
       {data.fitRationale && (
-        <Card variant="elevated" className="border-2 bg-gradient-to-br from-card to-muted/20">
+        <Card className="border-2">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <div className="rounded-lg bg-primary/10 p-1.5">
+              <div className="rounded-lg bg-muted p-1.5">
                 <Sparkles className="w-4 h-4 text-primary" />
               </div>
               Fit Summary
@@ -250,7 +250,7 @@ export function Compare() {
         </Button>
         <div className="space-y-2">
           <h1 className="text-4xl font-bold tracking-tight flex items-center gap-3">
-            <div className="rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 p-3">
+            <div className="rounded-xl bg-muted p-3">
               <GitCompareArrows className="w-8 h-8 text-primary" />
             </div>
             Compare Analyses
@@ -263,11 +263,11 @@ export function Compare() {
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Skeleton className="h-14 rounded-xl shimmer" />
-          <Skeleton className="h-14 rounded-xl shimmer" />
+          <Skeleton className="h-14 rounded-lg" />
+          <Skeleton className="h-14 rounded-lg" />
         </div>
       ) : options.length < 2 ? (
-        <Card variant="elevated" className="border-2 border-dashed">
+        <Card className="border-2 border-dashed">
           <CardContent className="text-center py-16">
             <div className="rounded-full bg-muted p-4 w-fit mx-auto mb-4">
               <Sparkles className="w-10 h-10 text-muted-foreground/50" />

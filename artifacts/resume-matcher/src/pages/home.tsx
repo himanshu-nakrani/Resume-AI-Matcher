@@ -24,7 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScoreCircle } from "@/components/score-circle";
-import { ArrowRight, BriefcaseBusiness, FileText, LayoutGrid, Link2, Search, Sparkles, Upload, UserRound, Wand2, X, ExternalLink } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, FileText, LayoutGrid, Link2, Search, Upload, UserRound, X, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -511,43 +511,17 @@ export function Home() {
   const recent = analyses?.slice(0, 4) ?? [];
 
   return (
-    <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-pink-500/10 dark:from-indigo-500/20 dark:via-purple-500/10 dark:to-pink-500/20 px-6 py-12 sm:px-12 sm:py-14">
-        {/* Decorative gradient orbs */}
-        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-gradient-to-br from-indigo-400/20 to-purple-400/20 blur-3xl" />
-        <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-gradient-to-br from-purple-400/15 to-pink-400/15 blur-3xl" />
-
-        <div className="relative max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 px-3 py-1 text-xs font-medium text-primary mb-6">
-            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
-            OptiMatch AI
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl mb-4">
-            Upload once. <span className="text-gradient-primary">Tailor every resume</span> for the role.
-          </h1>
-          <p className="mt-4 max-w-2xl mx-auto text-base text-muted-foreground sm:text-lg leading-relaxed">
-            AI-powered resume optimization with ATS scoring, job tracking, and intelligent matching.
-          </p>
-          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <span>Powered by DeepSeek AI</span>
-            <span>•</span>
-            <span>ATS Compatible</span>
-            <span>•</span>
-            <span>PDF Export</span>
-          </div>
-        </div>
-      </section>
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-xl font-semibold tracking-tight">New Analysis</h1>
+        <p className="text-sm text-muted-foreground">Upload your resume and job description to get an AI-powered fit analysis.</p>
+      </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" data-testid="form-analysis">
           <Card className="border">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">1</span>
                 <UserRound className="h-4 w-4 text-muted-foreground" /> User Information
               </CardTitle>
             </CardHeader>
@@ -572,7 +546,6 @@ export function Home() {
           <Card className="border">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">2</span>
                 <BriefcaseBusiness className="h-4 w-4 text-muted-foreground" /> Target Job
               </CardTitle>
             </CardHeader>
@@ -626,7 +599,6 @@ export function Home() {
           <Card className="border">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">3</span>
                 <Search className="h-4 w-4 text-muted-foreground" /> Job search (Exa)
               </CardTitle>
             </CardHeader>
@@ -839,7 +811,6 @@ export function Home() {
           <Card className="border">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">4</span>
                 <FileText className="h-4 w-4 text-muted-foreground" /> Resume Upload
               </CardTitle>
               <CardDescription className="text-sm">
@@ -935,22 +906,9 @@ export function Home() {
             </CardContent>
           </Card>
 
-          <div className="rounded-xl bg-gradient-to-r from-primary/5 via-transparent to-primary/5 border border-primary/10 p-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground font-medium">Ready to optimize?</p>
-            <Button 
-              type="submit" 
-              variant="gradient" 
-              size="default" 
-              disabled={createAnalysis.isPending} 
-              loading={createAnalysis.isPending}
-              data-testid="button-analyze"
-            >
-              {!createAnalysis.isPending && (
-                <>
-                  <Wand2 className="h-4 w-4" />
-                  Optimize Resume with AI
-                </>
-              )}
+          <div className="flex items-center justify-end pt-2">
+            <Button type="submit" disabled={createAnalysis.isPending} loading={createAnalysis.isPending} data-testid="button-analyze">
+              Analyze
             </Button>
           </div>
         </form>
@@ -971,14 +929,14 @@ export function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="space-y-3">
-                <Skeleton variant="shimmer" className="h-32 rounded-2xl" />
+                <Skeleton className="h-32 rounded-lg" />
               </div>
             ))}
           </div>
         ) : recent.length === 0 ? (
-          <Card variant="premium" className="text-center py-12">
+          <Card className="text-center py-12">
             <div className="flex flex-col items-center gap-3">
-              <div className="rounded-lg bg-gradient-to-br from-primary/10 to-purple-500/10 p-4">
+              <div className="rounded-lg bg-muted p-4">
                 <svg className="w-8 h-8 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2L2 7l10 5 10-5-10-5z" />
                   <path d="M2 17l10 5 10-5" />
@@ -989,8 +947,7 @@ export function Home() {
                 <p className="text-sm font-medium">No optimized resumes yet</p>
                 <p className="text-xs text-muted-foreground mt-1">Upload your resume and run your first optimization above.</p>
               </div>
-              <Button variant="gradient" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-2">
-                <Wand2 className="w-3.5 h-3.5" />
+              <Button variant="default" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-2">
                 Get Started
               </Button>
             </div>
@@ -1000,13 +957,12 @@ export function Home() {
             {recent.map((a) => (
               <Card 
                 key={a.id} 
-                className="group cursor-pointer border hover:border-primary/50 transition-all duration-200"
+                className="group cursor-pointer border transition-all duration-200"
                 onClick={() => setLocation(`/analysis/${a.id}`)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <div className="relative">
-                      <div className={`absolute inset-0 rounded-full blur-md scale-110 ${a.atsScore >= 70 ? 'bg-green-500/10' : 'bg-primary/10'}`} />
                       <ScoreCircle score={a.atsScore} size="sm" />
                     </div>
                     <div className="min-w-0 flex-1 space-y-1.5">

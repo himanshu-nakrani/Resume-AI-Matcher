@@ -213,10 +213,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const navLinkClass = (active: boolean) =>
     cn(
-      "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",
+      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
       active
-        ? "bg-primary/5 dark:bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-[3px] before:rounded-full before:bg-primary"
-        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+        ? "bg-muted font-medium text-foreground"
+        : "text-sidebar-foreground/70 hover:bg-muted hover:text-foreground",
     );
 
   return (
@@ -224,10 +224,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <CommandPalette />
       <ShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
-      <aside className="sticky top-0 z-20 hidden h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-gradient-to-b from-sidebar via-sidebar to-primary/[0.02] text-sidebar-foreground md:flex">
+      <aside className="sticky top-0 z-20 hidden h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
         <div className="border-b border-sidebar-border px-6 py-5">
-          <Link href="/" className="group flex items-center gap-3 outline-none ring-sidebar-ring focus-visible:ring-2 rounded-md transition-all">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-primary/20">
+          <Link href="/" className="group flex items-center gap-3 outline-none ring-sidebar-ring focus-visible:ring-2 rounded-md transition-colors">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2L2 7l10 5 10-5-10-5z" />
                 <path d="M2 17l10 5 10-5" />
@@ -269,19 +269,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="relative px-3 py-3 space-y-2">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sidebar-border to-transparent" />
+        <div className="border-t border-sidebar-border px-3 py-3 space-y-2">
           <div className="flex items-center justify-between px-2 mb-2">
             <span className="text-[11px] font-medium uppercase tracking-wide text-sidebar-foreground/50">
               Settings
             </span>
-            <NotificationsPanel triggerClassName="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
+            <NotificationsPanel triggerClassName="text-sidebar-foreground hover:bg-muted hover:text-foreground" />
           </div>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors"
+            className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-muted transition-colors"
             onClick={toggle}
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
           >
@@ -291,7 +290,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => setShowShortcuts(true)}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-sidebar-foreground/60 transition-colors hover:bg-muted hover:text-sidebar-foreground"
           >
             <Keyboard className="h-3.5 w-3.5 shrink-0" />
             <span>Shortcuts &middot; ⌘K &middot; ⌘?</span>
@@ -300,9 +299,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b-0 shadow-sm bg-background/95 px-4 py-3 backdrop-blur-md md:hidden">
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-4 py-3 md:hidden">
           <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
-            <svg className="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
               <path d="M2 17l10 5 10-5" />
               <path d="M2 12l10 5 10-5" />
@@ -324,7 +323,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </main>
 
         <nav
-          className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+          className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
           aria-label="Mobile"
         >
           {mobileNavItems.map((item) => {
@@ -333,15 +332,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Link key={item.href} href={item.href} className="min-w-0 flex-1">
                 <div
                   className={cn(
-                    "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-all duration-150 active:scale-90",
-                    active ? "text-primary scale-100" : "text-muted-foreground scale-95",
+                    "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+                    active ? "text-foreground font-semibold" : "text-muted-foreground",
                   )}
                 >
-                  <item.icon className={cn("h-5 w-5", active && "stroke-[2]")} />
+                  <item.icon className="h-5 w-5" />
                   <span className="truncate px-0.5">{item.label}</span>
-                  {active && (
-                    <span className="w-1 h-1 rounded-full bg-primary" />
-                  )}
                 </div>
               </Link>
             );
@@ -351,17 +347,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <button type="button" className="min-w-0 flex-1">
                 <div
                   className={cn(
-                    "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-all duration-150 active:scale-90",
+                    "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
                     mobileMoreItems.some((item) => isActive(location, item.href))
-                      ? "text-primary scale-100"
-                      : "text-muted-foreground scale-95",
+                      ? "text-foreground font-semibold"
+                      : "text-muted-foreground",
                   )}
                 >
-                  <MoreHorizontal className={cn("h-5 w-5", mobileMoreItems.some((item) => isActive(location, item.href)) && "stroke-[2]")} />
+                  <MoreHorizontal className="h-5 w-5" />
                   <span className="truncate px-0.5">More</span>
-                  {mobileMoreItems.some((item) => isActive(location, item.href)) && (
-                    <span className="w-1 h-1 rounded-full bg-primary" />
-                  )}
                 </div>
               </button>
             </SheetTrigger>
@@ -375,7 +368,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   return (
                     <Link key={item.href} href={item.href} className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                      active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
+                      active ? "bg-muted text-foreground" : "text-foreground hover:bg-muted",
                     )}>
                       <item.icon className="h-5 w-5 shrink-0" />
                       {item.label}

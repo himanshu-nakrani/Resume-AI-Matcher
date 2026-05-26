@@ -17,42 +17,42 @@ import { Filter, X, MapPin, DollarSign, Tag, CalendarClock, SlidersHorizontal } 
 
 type Status = "not_applied" | "applied" | "got_interview" | "got_online_exam" | "selected" | "rejected";
 
-const STATUS_CONFIG: Record<Status, { label: string; className: string; headerColor: string; accentGradient: string }> = {
+const STATUS_CONFIG: Record<Status, { label: string; className: string; headerColor: string; borderColor: string }> = {
   not_applied: { 
     label: "Not Applied", 
     className: "bg-muted text-muted-foreground border-muted-foreground/20",
     headerColor: "bg-muted/50",
-    accentGradient: "from-slate-400 to-slate-500"
+    borderColor: "border-muted-foreground/30"
   },
   applied: { 
     label: "Applied", 
     className: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
     headerColor: "bg-blue-500/10",
-    accentGradient: "from-blue-400 to-blue-600"
+    borderColor: "border-blue-400"
   },
   got_interview: { 
     label: "Got Interview", 
     className: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800",
     headerColor: "bg-yellow-500/10",
-    accentGradient: "from-yellow-400 to-amber-500"
+    borderColor: "border-yellow-400"
   },
   got_online_exam: { 
     label: "Got Online Exam", 
-    className: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
-    headerColor: "bg-purple-500/10",
-    accentGradient: "from-purple-400 to-purple-600"
+    className: "bg-secondary text-secondary-foreground border-border dark:bg-secondary dark:text-secondary-foreground dark:border-border",
+    headerColor: "bg-secondary/50",
+    borderColor: "border-muted-foreground/40"
   },
   selected: { 
     label: "Selected", 
     className: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
     headerColor: "bg-green-500/10",
-    accentGradient: "from-green-400 to-emerald-500"
+    borderColor: "border-green-400"
   },
   rejected: { 
     label: "Rejected", 
     className: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
     headerColor: "bg-red-500/10",
-    accentGradient: "from-red-400 to-red-600"
+    borderColor: "border-red-400"
   },
 };
 
@@ -167,7 +167,7 @@ export function Board() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">
             Application Tracker
           </h1>
           <p className="text-muted-foreground text-base">
@@ -180,9 +180,9 @@ export function Board() {
           </p>
         </div>
         <Button
-          variant={showFilters ? "gradient" : "outline"}
+          variant={showFilters ? "default" : "outline"}
           size="lg"
-          className="gap-2 shrink-0 shadow-md"
+          className="gap-2 shrink-0"
           onClick={() => setShowFilters((p) => !p)}
         >
           <SlidersHorizontal className="w-4 h-4" />
@@ -197,7 +197,7 @@ export function Board() {
 
       {/* Filter Bar */}
       {showFilters && (
-        <div className="rounded-2xl border border-border bg-gradient-to-br from-muted/50 to-muted/30 p-6 space-y-4 shadow-lg backdrop-blur-sm animate-slide-in-bottom">
+        <div className="rounded-lg border border-border bg-muted p-4 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-base font-bold flex items-center gap-2">
               <div className="rounded-lg bg-primary/10 p-2">
@@ -328,7 +328,7 @@ export function Board() {
             <div
               className={`sticky top-0 z-10 flex flex-col rounded-t-xl border-b border-border backdrop-blur-sm ${STATUS_CONFIG[status].headerColor}`}
             >
-              <div className={`h-[3px] w-full rounded-full bg-gradient-to-r ${STATUS_CONFIG[status].accentGradient}`} />
+              <div className={`h-[2px] w-full ${STATUS_CONFIG[status].borderColor} border-t-2`} />
               <div className="flex items-center justify-between px-4 py-4">
               <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">
                 {STATUS_CONFIG[status].label}
@@ -349,8 +349,6 @@ export function Board() {
                     key={a.id}
                     draggable
                     onDragStart={(e) => onDragStart(e, a.id)}
-                    variant="elevated"
-                    hover="lift"
                     className="group cursor-grab active:cursor-grabbing active:opacity-50 active:rotate-2 transition-all duration-200"
                     onClick={() => setLocation(`/analysis/${a.id}`)}
                   >
@@ -380,7 +378,7 @@ export function Board() {
                           {format(new Date(a.createdAt), "MMM d")}
                         </span>
                         {aVersion && (
-                          <Badge variant="secondary" className="text-[10px] h-5 bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800">
+                          <Badge variant="secondary" className="text-[10px] h-5">
                             {aVersion}
                           </Badge>
                         )}
@@ -433,9 +431,9 @@ export function Board() {
                 );
               })}
               {columns[status]?.length === 0 && (
-                <div className="py-12 text-center border-2 border-dashed rounded-2xl border-muted-foreground/20 bg-muted/20 transition-all duration-300 hover:border-primary/40 hover:bg-primary/5 hover:shadow-[0_0_15px_-3px] hover:shadow-primary/20">
+                <div className="py-12 text-center border-2 border-dashed rounded-2xl border-muted-foreground/20 bg-muted/20 transition-all duration-300 hover:border-primary/40 hover:bg-primary/5">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="rounded-full bg-gradient-to-br from-muted to-muted/50 p-3">
+                    <div className="rounded-full bg-muted p-3">
                       <svg className="w-6 h-6 text-muted-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                       </svg>
