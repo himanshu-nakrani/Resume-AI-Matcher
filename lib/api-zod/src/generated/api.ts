@@ -940,6 +940,52 @@ export const SearchJobsResponse = zod.object({
 });
 
 /**
+ * Server-side crawl of a job posting URL via Exa `POST /contents` with a JSON-schema summary for structured field extraction. Cached for 10 minutes.
+
+ * @summary Fetch and structure a single job posting via Exa /contents
+ */
+export const enrichJobContentBodyTitleMax = 500;
+
+export const EnrichJobContentBody = zod.object({
+  url: zod
+    .string()
+    .url()
+    .describe("The job posting URL to crawl via Exa \/contents."),
+  title: zod
+    .string()
+    .max(enrichJobContentBodyTitleMax)
+    .optional()
+    .describe("Optional title hint to help the structured extractor."),
+});
+
+export const EnrichJobContentResponse = zod.object({
+  url: zod.string(),
+  fullDescription: zod
+    .string()
+    .nullish()
+    .describe("Full markdown text of the job posting page."),
+  summary: zod
+    .string()
+    .nullish()
+    .describe("Two-sentence overview of the role."),
+  location: zod.string().nullish(),
+  employmentType: zod
+    .string()
+    .nullish()
+    .describe("e.g. full-time, contract, part-time, internship, freelance."),
+  postedDate: zod.string().nullish().describe("ISO date if detected."),
+  compensation: zod
+    .string()
+    .nullish()
+    .describe("Salary range or pay band if mentioned."),
+  requirements: zod.array(zod.string()),
+  responsibilities: zod.array(zod.string()),
+  cached: zod
+    .boolean()
+    .describe("True when the response was served from the in-memory cache."),
+});
+
+/**
  * @summary Get aggregate stats across all analyses
  */
 export const GetAnalysisStatsResponse = zod.object({

@@ -18,6 +18,8 @@ export * from "./companyResearch";
 export * from "./companyResearchResponse";
 export * from "./createAnalysisBody";
 export * from "./createAnalysisBodyOriginalFileType";
+export * from "./enrichJobBody";
+export * from "./enrichJobResponse";
 export * from "./errorResponse";
 export * from "./fetchJobBody";
 export * from "./fetchJobResponse";

@@ -490,6 +490,35 @@ export interface JobSearchResponse {
   nextOffset?: number;
 }
 
+export interface EnrichJobBody {
+  /** The job posting URL to crawl via Exa /contents. */
+  url: string;
+  /**
+   * Optional title hint to help the structured extractor.
+   * @maxLength 500
+   */
+  title?: string;
+}
+
+export interface EnrichJobResponse {
+  url: string;
+  /** Full markdown text of the job posting page. */
+  fullDescription?: string | null;
+  /** Two-sentence overview of the role. */
+  summary?: string | null;
+  location?: string | null;
+  /** e.g. full-time, contract, part-time, internship, freelance. */
+  employmentType?: string | null;
+  /** ISO date if detected. */
+  postedDate?: string | null;
+  /** Salary range or pay band if mentioned. */
+  compensation?: string | null;
+  requirements: string[];
+  responsibilities: string[];
+  /** True when the response was served from the in-memory cache. */
+  cached: boolean;
+}
+
 export interface InterviewQuestionsResponse {
   questions: string[];
 }
