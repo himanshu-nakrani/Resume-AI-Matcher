@@ -1,0 +1,20 @@
+{
+  "id": "FEAT-004",
+  "title": "Fix code review issues from 2025-01-20-120000-review.md",
+  "status": "completed",
+  "description": "Address 5 issues identified in the code review: (1) Mobile nav unreachable items - add More button with sheet, (2) PageTransition remounts pages - simplify to mount-only animation, (3) Score animation replays - verify hasAnimated ref works correctly, (4) Inline style in not-found.tsx - move to index.css, (5) Zero-score glow - gate on score > 0.",
+  "steps": [
+    "Add More button to mobile nav that opens a Sheet with remaining nav items",
+    "Simplify PageTransition to mount-only animation without AnimatePresence",
+    "Verify score-circle hasAnimated ref logic is correct",
+    "Move float keyframe from not-found.tsx inline style to index.css",
+    "Gate glow div in score-circle on score > 0"
+  ],
+  "acceptance_criteria": [
+    "Mobile nav shows 4 items + More button that opens sheet with remaining items",
+    "PageTransition does not use AnimatePresence or key-based remounting",
+    "ScoreCircle only shows glow when score > 0",
+    "not-found.tsx uses className instead of inline style for float animation",
+    "Build passes cleanly"
+  ]
+}
