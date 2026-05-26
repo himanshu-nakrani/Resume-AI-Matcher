@@ -89,7 +89,7 @@ export function MockInterview({ analysisId, jobTitle, companyName }: Props) {
     <Card className="border shadow-sm">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle className="text-base flex items-center gap-2">
-          <MessageSquareMore className="w-4 h-4 text-indigo-500" />
+          <MessageSquareMore className="w-4 h-4 text-muted-foreground" />
           AI Mock Interview
           {messages.length > 0 && (
             <Badge variant="secondary" className="text-xs">
@@ -124,7 +124,7 @@ export function MockInterview({ analysisId, jobTitle, companyName }: Props) {
           <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1 mb-4">
             {messages.map((msg, i) => (
               <div key={i} className={"flex gap-2 " + (msg.role === "user" ? "flex-row-reverse" : "")}>
-                <div className={"w-7 h-7 rounded-full shrink-0 flex items-center justify-center " + (msg.role === "assistant" ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400" : "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400")}>
+                <div className={"w-7 h-7 rounded-full shrink-0 flex items-center justify-center " + (msg.role === "assistant" ? "bg-muted text-foreground" : "bg-muted text-foreground")}>
                   {msg.role === "assistant" ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
                 </div>
                 <div className={"max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed " + (msg.role === "assistant" ? "bg-muted/60 rounded-tl-sm" : "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-tr-sm text-right")}>
@@ -135,7 +135,7 @@ export function MockInterview({ analysisId, jobTitle, companyName }: Props) {
 
             {conductInterview.isPending && (
               <div className="flex gap-2">
-                <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600">
+                <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center bg-muted text-foreground">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div className="bg-muted/60 rounded-2xl rounded-tl-sm px-4 py-3 space-y-1.5">

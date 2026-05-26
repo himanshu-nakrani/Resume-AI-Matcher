@@ -263,8 +263,8 @@ export function Compare() {
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Skeleton className="h-14 rounded-xl shimmer" />
-          <Skeleton className="h-14 rounded-xl shimmer" />
+          <Skeleton className="h-14 rounded-lg" />
+          <Skeleton className="h-14 rounded-lg" />
         </div>
       ) : options.length < 2 ? (
         <Card className="border-2 border-dashed">

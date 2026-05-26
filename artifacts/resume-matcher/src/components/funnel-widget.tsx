@@ -11,7 +11,7 @@ interface Props {
 
 const STAGES = [
   { key: "applied", label: "Applied", color: "bg-blue-500" },
-  { key: "interview", label: "Interview", color: "bg-violet-500" },
+  { key: "interview", label: "Interview", color: "bg-amber-500" },
   { key: "selected", label: "Selected", color: "bg-emerald-500" },
 ] as const;
 

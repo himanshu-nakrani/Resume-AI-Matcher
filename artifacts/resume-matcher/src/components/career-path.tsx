@@ -24,7 +24,7 @@ export function CareerPathSection({ analysisId, existing }: {
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-base flex items-center gap-2">
-            <GitPullRequest className="w-4 h-4 text-indigo-500" /> Career Path Planner
+            <GitPullRequest className="w-4 h-4 text-muted-foreground" /> Career Path Planner
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-0.5">
             AI-generated growth trajectory based on this role.
@@ -62,19 +62,19 @@ export function CareerPathSection({ analysisId, existing }: {
           </div>
         ) : path ? (
           <div className="space-y-6">
-            <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800">
-              <Target className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg border border-border">
+              <Target className="w-4 h-4 text-foreground" />
               <p className="text-sm font-medium">
-                Current Focus: <span className="text-indigo-700 dark:text-indigo-300 font-bold">{path.currentRoleInference}</span>
+                Current Focus: <span className="text-foreground font-bold">{path.currentRoleInference}</span>
               </p>
             </div>
 
             <div className="space-y-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Growth Trajectory</p>
-              <div className="relative space-y-4 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-indigo-500 before:via-purple-500 before:to-transparent">
+              <div className="relative space-y-4 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-border">
                 {path.nextSteps.map((step: any, i: number) => (
                   <div key={i} className="relative flex items-start gap-4 pl-10">
-                    <div className="absolute left-0 flex h-10 w-10 items-center justify-center rounded-full bg-background border-2 border-indigo-500 text-indigo-500 shadow-sm">
+                    <div className="absolute left-0 flex h-10 w-10 items-center justify-center rounded-full bg-background border border-border text-foreground">
                       <ArrowRight className="h-5 w-5" />
                     </div>
                     <div className="flex-1 pt-1">
@@ -109,7 +109,7 @@ export function CareerPathSection({ analysisId, existing }: {
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {path.skillsToDevelop.map((skill: string) => (
-                  <Badge key={skill} variant="outline" className="text-xs border-indigo-200 dark:border-indigo-800">
+                  <Badge key={skill} variant="outline" className="text-xs">
                     {skill}
                   </Badge>
                 ))}

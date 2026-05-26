@@ -411,7 +411,6 @@ export function Stats() {
             </Card>
           )}
 
-          {/* Gradient divider */}
           <div className="border-t" />
 
           {/* T004: Keyword Trends and Time-in-Stage */}

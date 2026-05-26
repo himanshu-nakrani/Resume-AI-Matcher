@@ -378,7 +378,7 @@ export function Board() {
                           {format(new Date(a.createdAt), "MMM d")}
                         </span>
                         {aVersion && (
-                          <Badge variant="secondary" className="text-[10px] h-5 bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800">
+                          <Badge variant="secondary" className="text-[10px] h-5">
                             {aVersion}
                           </Badge>
                         )}

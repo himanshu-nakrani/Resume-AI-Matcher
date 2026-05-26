@@ -69,7 +69,7 @@ export function PredictiveAnalytics({ analysisId, fitScore }: Props) {
     <Card className="border shadow-sm">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle className="text-base flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-violet-500" />
+          <TrendingUp className="w-4 h-4 text-muted-foreground" />
           Offer Predictor
           <span className="text-xs font-normal text-muted-foreground">(AI estimate)</span>
         </CardTitle>

@@ -1391,7 +1391,7 @@ function NegotiationSimulator({ analysisId, jobTitle, companyName }: {
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-base flex items-center gap-2">
-            <Bot className="w-4 h-4 text-violet-500" /> Negotiation Simulator
+            <Bot className="w-4 h-4 text-muted-foreground" /> Negotiation Simulator
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-0.5">
             Practice salary negotiation with an AI recruiter for this role.
@@ -1411,8 +1411,8 @@ function NegotiationSimulator({ analysisId, jobTitle, companyName }: {
       <CardContent>
         {!started ? (
           <div className="text-center py-6 space-y-4">
-            <div className="w-12 h-12 bg-violet-100 dark:bg-violet-900/30 rounded-full flex items-center justify-center mx-auto">
-              <Bot className="w-6 h-6 text-violet-600 dark:text-violet-400" />
+            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto">
+              <Bot className="w-6 h-6 text-foreground" />
             </div>
             <div>
               <p className="font-semibold text-sm">{jobTitle}{companyName ? " at " + companyName : ""}</p>
