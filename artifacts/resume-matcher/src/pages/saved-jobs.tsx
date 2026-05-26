@@ -99,7 +99,7 @@ export function SavedJobsPage() {
     <div className="container max-w-6xl mx-auto px-4 py-8 space-y-8">
       <div className="space-y-3">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 p-3">
+          <div className="rounded-xl bg-muted p-3">
             <Bookmark className="w-8 h-8 text-primary" />
           </div>
           <div>

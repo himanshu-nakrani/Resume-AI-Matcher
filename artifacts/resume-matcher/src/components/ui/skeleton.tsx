@@ -1,24 +1,9 @@
 import { cn } from "@/lib/utils"
 
-export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "shimmer" | "pulse" | "wave"
-}
-
-function Skeleton({ className, variant = "shimmer", ...props }: SkeletonProps) {
-  const variantClasses = {
-    default: "bg-muted",
-    shimmer: "shimmer bg-muted",
-    pulse: "animate-pulse bg-muted",
-    wave: "shimmer bg-gradient-to-r from-muted via-muted/50 to-muted",
-  }
-
+function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn(
-        "rounded-md",
-        variantClasses[variant],
-        className
-      )}
+      className={cn("animate-pulse rounded-md bg-muted", className)}
       {...props}
     />
   )

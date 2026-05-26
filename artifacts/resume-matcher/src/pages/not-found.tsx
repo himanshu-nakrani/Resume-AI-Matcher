@@ -5,10 +5,10 @@ import { FileQuestion, Home, ArrowLeft, History } from "lucide-react";
 export default function NotFound() {
   const [, setLocation] = useLocation();
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-purple-500/5 p-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
       <div className="text-center space-y-6 max-w-md">
         <div
-          className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center mx-auto animate-float"
+          className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto"
         >
           <FileQuestion className="w-10 h-10 text-primary" />
         </div>
@@ -20,7 +20,7 @@ export default function NotFound() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button variant="gradient" onClick={() => setLocation("/")}>
+          <Button variant="default" onClick={() => setLocation("/")}>
             <Home className="w-4 h-4 mr-2" />
             Go home
           </Button>

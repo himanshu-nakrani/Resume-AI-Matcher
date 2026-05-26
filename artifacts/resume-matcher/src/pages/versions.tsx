@@ -29,7 +29,7 @@ function statusColor(status: string) {
   switch (status) {
     case "selected": return "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400";
     case "got_interview": return "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400";
-    case "got_online_exam": return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400";
+    case "got_online_exam": return "bg-secondary text-secondary-foreground border-border dark:bg-secondary dark:text-secondary-foreground";
     case "applied": return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400";
     case "rejected": return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400";
     default: return "bg-muted text-muted-foreground";
@@ -79,7 +79,7 @@ export function Versions() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <GitBranch className="w-7 h-7 text-violet-500" />
+          <GitBranch className="w-7 h-7 text-muted-foreground" />
           Resume Versions
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -99,12 +99,12 @@ export function Versions() {
       {multiGroups.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <GitBranch className="w-4 h-4 text-violet-500" />
+            <GitBranch className="w-4 h-4 text-muted-foreground" />
             Multiple Versions ({multiGroups.length} roles)
           </h2>
           {multiGroups.map((group) => (
             <Card key={group.jobTitle + group.companyName} className="border shadow-sm overflow-hidden">
-              <CardHeader className="pb-2 bg-violet-50 dark:bg-violet-900/20 border-b border-violet-100 dark:border-violet-800/40">
+              <CardHeader className="pb-2 bg-muted border-b">
                 <CardTitle className="text-base flex items-center justify-between">
                   <div>
                     <span>{group.jobTitle}</span>
@@ -112,7 +112,7 @@ export function Versions() {
                       <span className="text-muted-foreground font-normal ml-2 text-sm">@ {group.companyName}</span>
                     )}
                   </div>
-                  <Badge variant="outline" className="bg-violet-100 text-violet-700 border-violet-300 dark:bg-violet-900/40 dark:text-violet-400">
+                  <Badge variant="outline" className="text-xs">
                     {group.items.length} versions
                   </Badge>
                 </CardTitle>
@@ -130,20 +130,20 @@ export function Versions() {
                     >
                       {/* Timeline indicator */}
                       <div className="flex flex-col items-center gap-1 shrink-0">
-                        <div className={"w-2.5 h-2.5 rounded-full border-2 " + (isLatest ? "bg-violet-500 border-violet-500" : "bg-muted border-muted-foreground/30")} />
+                        <div className={"w-2.5 h-2.5 rounded-full border-2 " + (isLatest ? "bg-foreground border-foreground" : "bg-muted border-muted-foreground/30")} />
                         {idx < group.items.length - 1 && <div className="w-0.5 h-4 bg-muted-foreground/20" />}
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           {vLabel ? (
-                            <span className="text-sm font-semibold text-violet-700 dark:text-violet-400 flex items-center gap-1">
+                            <span className="text-sm font-semibold text-foreground flex items-center gap-1">
                               <Tag className="w-3 h-3" />{vLabel}
                             </span>
                           ) : (
                             <span className="text-sm font-medium text-muted-foreground">Version {group.items.length - idx}</span>
                           )}
-                          {isLatest && <Badge variant="outline" className="text-[10px] h-4 bg-violet-50 text-violet-700 border-violet-200">Latest</Badge>}
+                          {isLatest && <Badge variant="outline" className="text-[10px] h-4">Latest</Badge>}
                           <span className="text-xs text-muted-foreground">{format(new Date(item.createdAt), "MMM d, yyyy")}</span>
                         </div>
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
@@ -203,7 +203,7 @@ export function Versions() {
                       <Badge variant="outline" className={"text-[10px] h-4 " + statusColor(item.status)}>
                         {statusLabel(item.status)}
                       </Badge>
-                      {vLabel && <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium">{vLabel}</span>}
+                      {vLabel && <span className="text-[10px] text-muted-foreground font-medium">{vLabel}</span>}
                       {loc && <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{loc}</span>}
                     </div>
                   </div>
