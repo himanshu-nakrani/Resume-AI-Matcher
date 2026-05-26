@@ -59,10 +59,12 @@ export function ScoreCircle({ score, size = "md", label }: ScoreCircleProps) {
     <div className="flex flex-col items-center gap-2">
       <div className={`relative ${container} flex items-center justify-center`}>
         {/* Glow effect */}
-        <div
-          className="absolute inset-0 rounded-full blur-lg opacity-20 transition-opacity duration-500"
-          style={{ background: glowColor }}
-        />
+        {score > 0 && (
+          <div
+            className="absolute inset-0 rounded-full blur-lg opacity-20 transition-opacity duration-500"
+            style={{ background: glowColor }}
+          />
+        )}
         <svg height="100%" width="100%" className="absolute inset-0 transform -rotate-90">
           <circle
             stroke="currentColor"

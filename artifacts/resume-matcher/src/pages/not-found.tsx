@@ -8,8 +8,7 @@ export default function NotFound() {
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-purple-500/5 p-4">
       <div className="text-center space-y-6 max-w-md">
         <div
-          className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center mx-auto"
-          style={{ animation: "float 3s ease-in-out infinite" }}
+          className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center mx-auto animate-float"
         >
           <FileQuestion className="w-10 h-10 text-primary" />
         </div>
@@ -35,12 +34,7 @@ export default function NotFound() {
           </Button>
         </div>
       </div>
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-        }
-      `}</style>
+
     </div>
   );
 }

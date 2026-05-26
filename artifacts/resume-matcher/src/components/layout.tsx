@@ -16,12 +16,20 @@ import {
   UserRound,
   Bookmark,
   Bell,
+  MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 import { CommandPalette } from "@/components/command-palette";
 import { NotificationsPanel } from "@/components/notifications-panel";
 import { PageTransition } from "@/components/page-transition";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -69,6 +77,15 @@ const mobileNavItems: NavItem[] = [
   { href: "/tracker", label: "Tracker", icon: LayoutGrid },
   { href: "/user", label: "Profile", icon: UserRound },
   { href: "/history", label: "History", icon: History },
+];
+
+const mobileMoreItems: NavItem[] = [
+  { href: "/compare", label: "Compare", icon: GitCompareArrows },
+  { href: "/skills", label: "Skills", icon: GraduationCap },
+  { href: "/brand", label: "Brand", icon: Fingerprint },
+  { href: "/versions", label: "Versions", icon: GitBranch },
+  { href: "/saved-jobs", label: "Saved Jobs", icon: Bookmark },
+  { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/stats", label: "Stats", icon: BarChart2 },
 ];
 
@@ -329,6 +346,45 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          <Sheet>
+            <SheetTrigger asChild>
+              <button type="button" className="min-w-0 flex-1">
+                <div
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-all duration-150 active:scale-90",
+                    mobileMoreItems.some((item) => isActive(location, item.href))
+                      ? "text-primary scale-100"
+                      : "text-muted-foreground scale-95",
+                  )}
+                >
+                  <MoreHorizontal className={cn("h-5 w-5", mobileMoreItems.some((item) => isActive(location, item.href)) && "stroke-[2]")} />
+                  <span className="truncate px-0.5">More</span>
+                  {mobileMoreItems.some((item) => isActive(location, item.href)) && (
+                    <span className="w-1 h-1 rounded-full bg-primary" />
+                  )}
+                </div>
+              </button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="rounded-t-xl">
+              <SheetHeader>
+                <SheetTitle>Navigation</SheetTitle>
+              </SheetHeader>
+              <nav className="grid gap-1 py-4">
+                {mobileMoreItems.map((item) => {
+                  const active = isActive(location, item.href);
+                  return (
+                    <Link key={item.href} href={item.href} className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                      active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
+                    )}>
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </SheetContent>
+          </Sheet>
         </nav>
       </div>
     </div>
