@@ -20,7 +20,7 @@ export default function NotFound() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button variant="gradient" onClick={() => setLocation("/")}>
+          <Button variant="default" onClick={() => setLocation("/")}>
             <Home className="w-4 h-4 mr-2" />
             Go home
           </Button>

@@ -939,7 +939,7 @@ export function Home() {
             <p className="text-sm text-muted-foreground font-medium">Ready to optimize?</p>
             <Button 
               type="submit" 
-              variant="gradient" 
+              variant="default" 
               size="default" 
               disabled={createAnalysis.isPending} 
               loading={createAnalysis.isPending}
@@ -971,12 +971,12 @@ export function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="space-y-3">
-                <Skeleton variant="shimmer" className="h-32 rounded-2xl" />
+                <Skeleton className="h-32 rounded-lg" />
               </div>
             ))}
           </div>
         ) : recent.length === 0 ? (
-          <Card variant="premium" className="text-center py-12">
+          <Card className="text-center py-12">
             <div className="flex flex-col items-center gap-3">
               <div className="rounded-lg bg-gradient-to-br from-primary/10 to-purple-500/10 p-4">
                 <svg className="w-8 h-8 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -989,7 +989,7 @@ export function Home() {
                 <p className="text-sm font-medium">No optimized resumes yet</p>
                 <p className="text-xs text-muted-foreground mt-1">Upload your resume and run your first optimization above.</p>
               </div>
-              <Button variant="gradient" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-2">
+              <Button variant="default" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-2">
                 <Wand2 className="w-3.5 h-3.5" />
                 Get Started
               </Button>

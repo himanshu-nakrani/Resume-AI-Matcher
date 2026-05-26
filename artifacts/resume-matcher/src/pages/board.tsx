@@ -180,9 +180,9 @@ export function Board() {
           </p>
         </div>
         <Button
-          variant={showFilters ? "gradient" : "outline"}
+          variant={showFilters ? "default" : "outline"}
           size="lg"
-          className="gap-2 shrink-0 shadow-md"
+          className="gap-2 shrink-0"
           onClick={() => setShowFilters((p) => !p)}
         >
           <SlidersHorizontal className="w-4 h-4" />
@@ -349,8 +349,6 @@ export function Board() {
                     key={a.id}
                     draggable
                     onDragStart={(e) => onDragStart(e, a.id)}
-                    variant="elevated"
-                    hover="lift"
                     className="group cursor-grab active:cursor-grabbing active:opacity-50 active:rotate-2 transition-all duration-200"
                     onClick={() => setLocation(`/analysis/${a.id}`)}
                   >

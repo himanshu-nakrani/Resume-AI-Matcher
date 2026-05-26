@@ -96,14 +96,14 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
         </p>
       </div>
 
-      <Card variant="elevated" className="border-2">
+      <Card className="border-2">
         <CardContent className="pt-6 space-y-4">
           <ScoreBar score={data.fitScore} label="Fit Score" compareScore={compareData?.fitScore} />
           <ScoreBar score={data.atsScore} label="ATS Score" compareScore={compareData?.atsScore} />
         </CardContent>
       </Card>
 
-      <Card variant="elevated" hover="lift" className="border-2">
+      <Card className="border-2">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <div className="rounded-lg bg-green-100 dark:bg-green-900/30 p-1.5">
@@ -129,7 +129,7 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
         </CardContent>
       </Card>
 
-      <Card variant="elevated" hover="lift" className="border-2">
+      <Card className="border-2">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <div className="rounded-lg bg-red-100 dark:bg-red-900/30 p-1.5">
@@ -155,7 +155,7 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
         </CardContent>
       </Card>
 
-      <Card variant="elevated" hover="lift" className="border-2">
+      <Card className="border-2">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <div className="rounded-lg bg-primary/10 p-1.5">
@@ -209,7 +209,7 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
       </Card>
 
       {data.fitRationale && (
-        <Card variant="elevated" className="border-2 bg-gradient-to-br from-card to-muted/20">
+        <Card className="border-2 bg-gradient-to-br from-card to-muted/20">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <div className="rounded-lg bg-primary/10 p-1.5">
@@ -267,7 +267,7 @@ export function Compare() {
           <Skeleton className="h-14 rounded-xl shimmer" />
         </div>
       ) : options.length < 2 ? (
-        <Card variant="elevated" className="border-2 border-dashed">
+        <Card className="border-2 border-dashed">
           <CardContent className="text-center py-16">
             <div className="rounded-full bg-muted p-4 w-fit mx-auto mb-4">
               <Sparkles className="w-10 h-10 text-muted-foreground/50" />
