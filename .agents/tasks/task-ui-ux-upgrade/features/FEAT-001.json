@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Design system overhaul - upgrade the color palette, typography, shadows, and global CSS to a premium modern SaaS aesthetic with vibrant gradients, refined spacing, and polished dark mode",
+  "status": "in_progress",
+  "steps": [
+    "Update artifacts/resume-matcher/index.html to load Inter (variable weight 300-800) alongside DM Sans, and add Inter Display or Plus Jakarta Sans as a display font alternative for headings",
+    "Overhaul artifacts/resume-matcher/src/index.css: (a) Replace the muted gray-blue primary palette with a vibrant indigo-violet primary (e.g., 245 82% 67% for primary) that signals modern SaaS energy, (b) Add an accent gradient from indigo to purple/pink for CTAs and highlights, (c) Upgrade shadows to use layered shadow stacks with color for depth (e.g., shadow-lg with primary-tinted layers), (d) Refine dark mode to use richer contrast with slightly elevated card surfaces and subtle border glow, (e) Add CSS custom properties for gradient backgrounds: --gradient-primary, --gradient-hero, --gradient-surface, (f) Add utility classes: .text-gradient-primary (indigo to violet bg-clip), .surface-elevated (subtle gradient bg for card surfaces), .border-glow (border with subtle glow in dark mode), .animate-gradient (animated gradient background), (g) Improve typography scale: heading letter-spacing, line-height fine-tuning, body text optimized for readability at 15-16px",
+    "Update artifacts/resume-matcher/src/components/ui/button.tsx: (a) Upgrade the 'default' variant to use the new vibrant primary, (b) Make 'gradient' variant use the new indigo-to-violet gradient with a subtle shimmer on hover, (c) Add ring animation on focus that pulses briefly, (d) Ensure all buttons have smooth 150ms transitions for scale/shadow",
+    "Update artifacts/resume-matcher/src/components/ui/card.tsx: (a) Add a 'premium' variant with subtle gradient border (1px gradient border effect), (b) Upgrade 'elevated' to have layered shadows and slight background gradient, (c) Add subtle hover border-color transition to all cards, (d) Make glass variant more refined with stronger blur and softer opacity",
+    "Update artifacts/resume-matcher/src/components/ui/badge.tsx: Add a 'subtle' variant with very light background tint and matching text color (useful for status indicators), ensure the gradient badge uses the new vibrant gradient"
+  ],
+  "acceptance_criteria": [
+    "Build passes with pnpm --filter @workspace/resume-matcher run build",
+    "Typecheck passes with pnpm --filter @workspace/resume-matcher run typecheck",
+    "The CSS file contains new gradient variables, upgraded shadow system, and vibrant color palette",
+    "Button, Card, and Badge components have new variants and improved styling"
+  ],
+  "verification": [
+    "pnpm --filter @workspace/resume-matcher run build",
+    "pnpm --filter @workspace/resume-matcher run typecheck"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
