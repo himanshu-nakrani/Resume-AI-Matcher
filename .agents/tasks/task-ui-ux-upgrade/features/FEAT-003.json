@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Home page and core pages polish - transform the home page hero, form sections, and key pages (board, stats, history) into a production-grade premium experience",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Upgrade artifacts/resume-matcher/src/pages/home.tsx hero section: (a) Replace the plain bordered card with a full-width hero using an animated gradient background (subtle mesh gradient or animated gradient orbs), (b) Add floating decorative elements (blurred gradient circles) behind the text for depth, (c) Upgrade the badge pill to use the new gradient style, (d) Improve the CTA area with a prominent gradient button and supporting text, (e) Add subtle particle or dot grid pattern overlay for texture",
     "Upgrade home.tsx form cards: (a) Add section numbers or step indicators (Step 1, Step 2, Step 3) to give the form a guided flow feel, (b) Improve the file upload drop zone with animated dashed border on drag, gradient icon treatment, and smoother states, (c) Add subtle entrance animations (stagger) as the user scrolls to each card section, (d) Improve the submit button area with a glass/gradient card wrapper to make it stand out",
@@ -26,5 +26,5 @@
     "pnpm --filter @workspace/resume-matcher run typecheck"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Build passes successfully. Typecheck has same pre-existing errors as FEAT-001/FEAT-002 (api-client-react not built, implicit any in pages). No new type errors introduced. Implemented: (1) Hero section with gradient orbs, gradient badge pill, gradient text on h1, rounded-2xl container. (2) Step number badges (1-4) on all form cards, submit area wrapped in gradient card with 'Ready to optimize?' text and gradient button. (3) Score circle glow in recent optimizations cards (green for >=70, primary otherwise), empty state upgraded with premium card variant and gradient icon. (4) Board column headers with colored accent lines matching status color, empty column placeholder with gradient hover glow. (5) Stats StatCard with gradient icon background, highlight variant with gradient border/bg, gradient divider before chart section. (6) Not-found page with gradient background, floating animation on icon, gradient CTA button. (7) ScoreCircle with colored glow effect and count-up animation from 0 to score over 800ms."
 }
