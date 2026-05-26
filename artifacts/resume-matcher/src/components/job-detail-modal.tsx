@@ -3,8 +3,22 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExternalLink, BriefcaseBusiness, MapPin, DollarSign, MousePointerClick, FileText } from "lucide-react";
-import type { JobSearchResponse } from "@workspace/api-client-react";
+import {
+  ExternalLink,
+  BriefcaseBusiness,
+  MapPin,
+  DollarSign,
+  MousePointerClick,
+  FileText,
+  Briefcase,
+  Clock,
+  ListChecks,
+} from "lucide-react";
+import {
+  useEnrichJobContent,
+  type EnrichJobResponse,
+  type JobSearchResponse,
+} from "@workspace/api-client-react";
 
 type JobSearchHit = JobSearchResponse["results"][number];
 
@@ -21,53 +35,36 @@ function getHostname(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return "job source"; }
 }
 
-export function JobDetailModal({ open, onOpenChange, hit, onImport, matchScore, matchLoading }: JobDetailModalProps) {
-  const [jdText, setJdText] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+export function JobDetailModal({ open, onOpenChange, hit, onImport, matchScore }: JobDetailModalProps) {
+  const [enriched, setEnriched] = useState<EnrichJobResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { mutate: enrich, isPending } = useEnrichJobContent();
 
   useEffect(() => {
-    if (open && hit) {
-      setJdText(null);
-      setError(null);
-      setLoading(true);
-      fetch(`/api/job-search/pre-screen`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobUrl: hit.url, resumeText: "" }),
-      })
-        .then(async (r) => {
-          if (!r.ok) throw new Error("Failed");
-          // Fetch the actual job description
-          return fetch(hit.url, { signal: AbortSignal.timeout(10000) })
-            .then((htmlR) => htmlR.text())
-            .then((html) => {
-              const text = html
-                .replace(/<script[\s\S]*?<\/script>/gi, " ")
-                .replace(/<style[\s\S]*?<\/style>/gi, " ")
-                .replace(/<[^>]+>/g, " ")
-                .replace(/&nbsp;/g, " ")
-                .replace(/&amp;/g, "&")
-                .replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">")
-                .replace(/&quot;/g, '"')
-                .replace(/&#39;/g, "'")
-                .replace(/\s{3,}/g, "\n\n")
-                .trim()
-                .slice(0, 8000);
-              setJdText(text || null);
-              if (!text) setError("Could not extract content from this page.");
-            });
-        })
-        .catch(() => setError("Could not load job details. The page may block automated access."))
-        .finally(() => setLoading(false));
-    }
-  }, [open, hit]);
+    if (!open || !hit) return;
+    setEnriched(null);
+    setError(null);
+    enrich(
+      { data: { url: hit.url, title: hit.title } },
+      {
+        onSuccess: (data) => setEnriched(data),
+        onError: () => setError("Could not load job details. The page may block automated access."),
+      },
+    );
+  }, [open, hit, enrich]);
 
   if (!hit) return null;
 
   const source = getHostname(hit.url);
   const displayTitle = hit.title;
+  const hasStructured =
+    enriched &&
+    (enriched.employmentType ||
+      enriched.location ||
+      enriched.postedDate ||
+      enriched.compensation);
+  const hasRequirements = enriched && enriched.requirements.length > 0;
+  const hasResponsibilities = enriched && enriched.responsibilities.length > 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -117,6 +114,12 @@ export function JobDetailModal({ open, onOpenChange, hit, onImport, matchScore, 
             )}
           </div>
 
+          {enriched?.summary && (
+            <p className="text-sm text-foreground/90 leading-relaxed italic border-l-2 border-primary/40 pl-3">
+              {enriched.summary}
+            </p>
+          )}
+
           {hit.highlights && hit.highlights.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-sm font-semibold">Highlights</h4>
@@ -128,9 +131,63 @@ export function JobDetailModal({ open, onOpenChange, hit, onImport, matchScore, 
             </div>
           )}
 
+          {hasStructured && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold">Job details</h4>
+              <div className="flex flex-wrap gap-2">
+                {enriched!.employmentType && (
+                  <Badge variant="outline" className="font-normal">
+                    <Briefcase className="w-3 h-3 mr-1" /> {enriched!.employmentType}
+                  </Badge>
+                )}
+                {enriched!.location && (
+                  <Badge variant="outline" className="font-normal">
+                    <MapPin className="w-3 h-3 mr-1" /> {enriched!.location}
+                  </Badge>
+                )}
+                {enriched!.postedDate && (
+                  <Badge variant="outline" className="font-normal">
+                    <Clock className="w-3 h-3 mr-1" /> {enriched!.postedDate}
+                  </Badge>
+                )}
+                {enriched!.compensation && (
+                  <Badge variant="outline" className="font-normal">
+                    <DollarSign className="w-3 h-3 mr-1" /> {enriched!.compensation}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+
+          {hasRequirements && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold flex items-center gap-1.5">
+                <ListChecks className="w-4 h-4" /> Requirements
+              </h4>
+              <ul className="list-disc pl-5 space-y-1">
+                {enriched!.requirements.map((r, i) => (
+                  <li key={i} className="text-sm text-muted-foreground leading-relaxed">{r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {hasResponsibilities && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold flex items-center gap-1.5">
+                <ListChecks className="w-4 h-4" /> Responsibilities
+              </h4>
+              <ul className="list-disc pl-5 space-y-1">
+                {enriched!.responsibilities.map((r, i) => (
+                  <li key={i} className="text-sm text-muted-foreground leading-relaxed">{r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Full Job Description</h4>
-            {loading ? (
+            {isPending ? (
               <div className="space-y-2">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-5/6" />
@@ -140,9 +197,9 @@ export function JobDetailModal({ open, onOpenChange, hit, onImport, matchScore, 
               </div>
             ) : error ? (
               <p className="text-sm text-muted-foreground">{error}</p>
-            ) : jdText ? (
+            ) : enriched?.fullDescription ? (
               <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line max-h-[60vh] overflow-y-auto border rounded-md p-4 bg-muted/20">
-                {jdText}
+                {enriched.fullDescription}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No content extracted.</p>

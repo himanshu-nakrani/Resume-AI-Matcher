@@ -22,6 +22,8 @@ import type {
   CareerPathResponse,
   CompanyResearchResponse,
   CreateAnalysisBody,
+  EnrichJobBody,
+  EnrichJobResponse,
   ErrorResponse,
   FetchJobBody,
   FetchJobResponse,
@@ -1927,6 +1929,94 @@ export const useSearchJobs = <
   TContext
 > => {
   return useMutation(getSearchJobsMutationOptions(options));
+};
+
+/**
+ * Server-side crawl of a job posting URL via Exa `POST /contents` with a JSON-schema summary for structured field extraction. Cached for 10 minutes.
+
+ * @summary Fetch and structure a single job posting via Exa /contents
+ */
+export const getEnrichJobContentUrl = () => {
+  return `/api/job-search/enrich`;
+};
+
+export const enrichJobContent = async (
+  enrichJobBody: EnrichJobBody,
+  options?: RequestInit,
+): Promise<EnrichJobResponse> => {
+  return customFetch<EnrichJobResponse>(getEnrichJobContentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(enrichJobBody),
+  });
+};
+
+export const getEnrichJobContentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof enrichJobContent>>,
+    TError,
+    { data: BodyType<EnrichJobBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof enrichJobContent>>,
+  TError,
+  { data: BodyType<EnrichJobBody> },
+  TContext
+> => {
+  const mutationKey = ["enrichJobContent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof enrichJobContent>>,
+    { data: BodyType<EnrichJobBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return enrichJobContent(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EnrichJobContentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof enrichJobContent>>
+>;
+export type EnrichJobContentMutationBody = BodyType<EnrichJobBody>;
+export type EnrichJobContentMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Fetch and structure a single job posting via Exa /contents
+ */
+export const useEnrichJobContent = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof enrichJobContent>>,
+    TError,
+    { data: BodyType<EnrichJobBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof enrichJobContent>>,
+  TError,
+  { data: BodyType<EnrichJobBody> },
+  TContext
+> => {
+  return useMutation(getEnrichJobContentMutationOptions(options));
 };
 
 /**

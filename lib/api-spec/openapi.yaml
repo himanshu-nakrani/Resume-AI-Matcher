@@ -568,6 +568,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /job-search/enrich:
+    post:
+      operationId: enrichJobContent
+      tags: [analyses]
+      summary: Fetch and structure a single job posting via Exa /contents
+      description: >
+        Server-side crawl of a job posting URL via Exa `POST /contents` with a
+        JSON-schema summary for structured field extraction. Cached for 10 minutes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrichJobBody"
+      responses:
+        "200":
+          description: Enriched job content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrichJobResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Exa fetch failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Exa not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /analyses/stats:
     get:
       operationId: getAnalysisStats
@@ -1445,6 +1485,65 @@ components:
           type: integer
         cachedResult:
           type: boolean
+
+    EnrichJobBody:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: The job posting URL to crawl via Exa /contents.
+        title:
+          type: string
+          maxLength: 500
+          description: Optional title hint to help the structured extractor.
+
+    EnrichJobResponse:
+      type: object
+      required:
+        - url
+        - cached
+        - requirements
+        - responsibilities
+      properties:
+        url:
+          type: string
+        fullDescription:
+          type: string
+          nullable: true
+          description: Full markdown text of the job posting page.
+        summary:
+          type: string
+          nullable: true
+          description: Two-sentence overview of the role.
+        location:
+          type: string
+          nullable: true
+        employmentType:
+          type: string
+          nullable: true
+          description: e.g. full-time, contract, part-time, internship, freelance.
+        postedDate:
+          type: string
+          nullable: true
+          description: ISO date if detected.
+        compensation:
+          type: string
+          nullable: true
+          description: Salary range or pay band if mentioned.
+        requirements:
+          type: array
+          items:
+            type: string
+        responsibilities:
+          type: array
+          items:
+            type: string
+        cached:
+          type: boolean
+          description: True when the response was served from the in-memory cache.
 
     InterviewQuestionsResponse:
       type: object

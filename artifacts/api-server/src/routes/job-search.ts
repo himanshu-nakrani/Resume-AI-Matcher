@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
+import { z } from "zod";
 import { SearchJobsBody } from "@workspace/api-zod";
 import { runExaJobSearch } from "../lib/exa-job-search";
+import { enrichJobContent } from "../lib/exa-job-contents";
 import { logger } from "../lib/logger";
 import { getAiFromRequest } from "../lib/ai-from-request";
 import { parseAiJson } from "../lib/parse-ai-json";
@@ -117,6 +119,36 @@ router.post("/job-search/pre-screen", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "Pre-screen failed");
     res.status(500).json({ error: "Pre-screen failed" });
+  }
+});
+
+const EnrichJobBody = z.object({
+  url: z.string().url(),
+  title: z.string().max(500).optional(),
+});
+
+router.post("/job-search/enrich", async (req, res): Promise<void> => {
+  const parsed = EnrichJobBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const apiKey = process.env.EXA_API_KEY?.trim();
+  if (!apiKey) {
+    res.status(503).json({
+      error: "Job enrichment is not configured. Set EXA_API_KEY on the API server.",
+    });
+    return;
+  }
+
+  try {
+    const data = await enrichJobContent(apiKey, parsed.data.url, { title: parsed.data.title });
+    res.json(data);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Job enrichment failed";
+    logger.warn({ err, url: parsed.data.url }, "Exa enrich error");
+    res.status(502).json({ error: message });
   }
 });
 
