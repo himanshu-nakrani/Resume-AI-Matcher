@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Home page and core pages polish - transform the home page hero, form sections, and key pages (board, stats, history) into a production-grade premium experience",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "Upgrade artifacts/resume-matcher/src/pages/home.tsx hero section: (a) Replace the plain bordered card with a full-width hero using an animated gradient background (subtle mesh gradient or animated gradient orbs), (b) Add floating decorative elements (blurred gradient circles) behind the text for depth, (c) Upgrade the badge pill to use the new gradient style, (d) Improve the CTA area with a prominent gradient button and supporting text, (e) Add subtle particle or dot grid pattern overlay for texture",
     "Upgrade home.tsx form cards: (a) Add section numbers or step indicators (Step 1, Step 2, Step 3) to give the form a guided flow feel, (b) Improve the file upload drop zone with animated dashed border on drag, gradient icon treatment, and smoother states, (c) Add subtle entrance animations (stagger) as the user scrolls to each card section, (d) Improve the submit button area with a glass/gradient card wrapper to make it stand out",
