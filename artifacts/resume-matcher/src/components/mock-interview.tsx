@@ -135,7 +135,7 @@ export function MockInterview({ analysisId, jobTitle, companyName }: Props) {
 
             {conductInterview.isPending && (
               <div className="flex gap-2">
-                <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center bg-muted text-foreground">
+                <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center bg-foreground text-background">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div className="bg-muted/60 rounded-2xl rounded-tl-sm px-4 py-3 space-y-1.5">
