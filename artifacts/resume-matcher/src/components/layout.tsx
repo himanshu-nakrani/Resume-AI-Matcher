@@ -21,25 +21,60 @@ import { Button } from "@/components/ui/button";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 import { CommandPalette } from "@/components/command-palette";
 import { NotificationsPanel } from "@/components/notifications-panel";
+import { PageTransition } from "@/components/page-transition";
 import { cn } from "@/lib/utils";
 
-const navItems = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: typeof PlusCircle;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
+  {
+    label: "Core",
+    items: [
+      { href: "/", label: "Optimize", icon: PlusCircle },
+      { href: "/tracker", label: "Tracker", icon: LayoutGrid },
+      { href: "/user", label: "Profile", icon: UserRound },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [
+      { href: "/history", label: "History", icon: History },
+      { href: "/stats", label: "Stats", icon: BarChart2 },
+      { href: "/compare", label: "Compare", icon: GitCompareArrows },
+      { href: "/skills", label: "Skills", icon: GraduationCap },
+      { href: "/brand", label: "Brand", icon: Fingerprint },
+    ],
+  },
+  {
+    label: "Jobs",
+    items: [
+      { href: "/versions", label: "Versions", icon: GitBranch },
+      { href: "/saved-jobs", label: "Saved Jobs", icon: Bookmark },
+      { href: "/alerts", label: "Alerts", icon: Bell },
+    ],
+  },
+];
+
+const mobileNavItems: NavItem[] = [
   { href: "/", label: "Optimize", icon: PlusCircle },
   { href: "/tracker", label: "Tracker", icon: LayoutGrid },
   { href: "/user", label: "Profile", icon: UserRound },
-  { href: "/versions", label: "Versions", icon: GitBranch },
   { href: "/history", label: "History", icon: History },
-  { href: "/brand", label: "Brand", icon: Fingerprint },
   { href: "/stats", label: "Stats", icon: BarChart2 },
-  { href: "/compare", label: "Compare", icon: GitCompareArrows },
-  { href: "/skills", label: "Skills", icon: GraduationCap },
-  { href: "/saved-jobs", label: "Saved Jobs", icon: Bookmark },
-  { href: "/alerts", label: "Alerts", icon: Bell },
 ];
 
 const SHORTCUTS = [
-  { keys: ["⌘", "K"], description: "Open command palette" },
-  { keys: ["⌘", "?"], description: "Show keyboard shortcuts" },
+  { keys: ["\u2318", "K"], description: "Open command palette" },
+  { keys: ["\u2318", "?"], description: "Show keyboard shortcuts" },
   { keys: ["G", "H"], description: "Go to History" },
   { keys: ["G", "S"], description: "Go to Stats" },
   { keys: ["G", "C"], description: "Go to Compare" },
@@ -161,9 +196,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const navLinkClass = (active: boolean) =>
     cn(
-      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",
+      "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",
       active
-        ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+        ? "bg-primary/5 dark:bg-primary/10 text-primary font-semibold before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-[3px] before:rounded-full before:bg-primary"
         : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
     );
 
@@ -172,10 +207,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <CommandPalette />
       <ShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
-      <aside className="sticky top-0 z-20 hidden h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+      <aside className="sticky top-0 z-20 hidden h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-gradient-to-b from-sidebar via-sidebar to-primary/[0.02] text-sidebar-foreground md:flex">
         <div className="border-b border-sidebar-border px-6 py-5">
           <Link href="/" className="group flex items-center gap-3 outline-none ring-sidebar-ring focus-visible:ring-2 rounded-md transition-all">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-primary/20">
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2L2 7l10 5 10-5-10-5z" />
                 <path d="M2 17l10 5 10-5" />
@@ -191,19 +226,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4" aria-label="Main">
-          {navItems.map((item) => {
-            const active = isActive(location, item.href);
-            return (
-              <Link key={item.href} href={item.href} className={navLinkClass(active)}>
-                <item.icon className="h-4 w-4 shrink-0" aria-hidden />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex flex-1 flex-col overflow-y-auto px-3 py-4" aria-label="Main">
+          {navGroups.map((group, groupIdx) => (
+            <div key={group.label}>
+              <span
+                className={cn(
+                  "text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40 px-3 mb-1 mt-4",
+                  groupIdx === 0 && "mt-0",
+                )}
+              >
+                {group.label}
+              </span>
+              <div className="flex flex-col gap-0.5 mt-1">
+                {group.items.map((item) => {
+                  const active = isActive(location, item.href);
+                  return (
+                    <Link key={item.href} href={item.href} className={navLinkClass(active)}>
+                      <item.icon className="h-4 w-4 shrink-0" aria-hidden />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
-        <div className="border-t border-sidebar-border px-3 py-3 space-y-2">
+        <div className="relative px-3 py-3 space-y-2">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sidebar-border to-transparent" />
           <div className="flex items-center justify-between px-2 mb-2">
             <span className="text-[11px] font-medium uppercase tracking-wide text-sidebar-foreground/50">
               Settings
@@ -214,7 +264,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             type="button"
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent"
+            className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors"
             onClick={toggle}
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
           >
@@ -227,13 +277,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
           >
             <Keyboard className="h-3.5 w-3.5 shrink-0" />
-            <span>Shortcuts · ⌘K · ⌘?</span>
+            <span>Shortcuts &middot; ⌘K &middot; ⌘?</span>
           </button>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur-md md:hidden">
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b-0 shadow-sm bg-background/95 px-4 py-3 backdrop-blur-md md:hidden">
           <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
             <svg className="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -251,25 +301,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="flex-1 pb-20 md:pb-0">
-          <div className="mx-auto h-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>
+          <div className="mx-auto h-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+            <PageTransition>{children}</PageTransition>
+          </div>
         </main>
 
         <nav
           className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
           aria-label="Mobile"
         >
-          {navItems.slice(0, 5).map((item) => {
+          {mobileNavItems.map((item) => {
             const active = isActive(location, item.href);
             return (
               <Link key={item.href} href={item.href} className="min-w-0 flex-1">
                 <div
                   className={cn(
-                    "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
-                    active ? "text-primary" : "text-muted-foreground",
+                    "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-all duration-150 active:scale-90",
+                    active ? "text-primary scale-100" : "text-muted-foreground scale-95",
                   )}
                 >
                   <item.icon className={cn("h-5 w-5", active && "stroke-[2]")} />
                   <span className="truncate px-0.5">{item.label}</span>
+                  {active && (
+                    <span className="w-1 h-1 rounded-full bg-primary" />
+                  )}
                 </div>
               </Link>
             );

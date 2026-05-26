@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Home page and core pages polish - transform the home page hero, form sections, and key pages (board, stats, history) into a production-grade premium experience",
+  "status": "pending",
+  "steps": [
+    "Upgrade artifacts/resume-matcher/src/pages/home.tsx hero section: (a) Replace the plain bordered card with a full-width hero using an animated gradient background (subtle mesh gradient or animated gradient orbs), (b) Add floating decorative elements (blurred gradient circles) behind the text for depth, (c) Upgrade the badge pill to use the new gradient style, (d) Improve the CTA area with a prominent gradient button and supporting text, (e) Add subtle particle or dot grid pattern overlay for texture",
+    "Upgrade home.tsx form cards: (a) Add section numbers or step indicators (Step 1, Step 2, Step 3) to give the form a guided flow feel, (b) Improve the file upload drop zone with animated dashed border on drag, gradient icon treatment, and smoother states, (c) Add subtle entrance animations (stagger) as the user scrolls to each card section, (d) Improve the submit button area with a glass/gradient card wrapper to make it stand out",
+    "Upgrade home.tsx recent optimizations grid: (a) Add hover card expansion with slightly more info revealed on hover, (b) Improve empty state with a more engaging illustration-style design (use gradient shapes), (c) Make score circles in cards have subtle glow matching their color",
+    "Upgrade artifacts/resume-matcher/src/pages/board.tsx: (a) Improve Kanban column headers with gradient accent lines and better typography, (b) Add smooth drag placeholder animation, (c) Upgrade empty column states with more engaging designs, (d) Add a subtle column count animation on card move",
+    "Upgrade artifacts/resume-matcher/src/pages/stats.tsx: (a) Improve stat cards with gradient icon backgrounds and subtle hover animations, (b) Add gradient section dividers between chart groups, (c) Polish chart tooltips with better styling and subtle shadow",
+    "Upgrade artifacts/resume-matcher/src/pages/not-found.tsx: (a) Add animated gradient background, (b) Add a subtle floating animation to the icon, (c) Improve button styling with primary gradient CTA",
+    "Upgrade artifacts/resume-matcher/src/components/score-circle.tsx: (a) Add a subtle glow/shadow effect matching the score color, (b) Add smooth counting animation when the score appears (animate from 0 to final value), (c) Add a subtle track gradient or secondary ring for visual richness"
+  ],
+  "acceptance_criteria": [
+    "Build passes with pnpm --filter @workspace/resume-matcher run build",
+    "Typecheck passes with pnpm --filter @workspace/resume-matcher run typecheck",
+    "Home page hero uses animated gradient background with modern visual treatment",
+    "Form sections have step indicators and improved upload UX",
+    "Board page has polished columns and empty states",
+    "Stats page has upgraded visual hierarchy",
+    "ScoreCircle has glow and animation effects"
+  ],
+  "verification": [
+    "pnpm --filter @workspace/resume-matcher run build",
+    "pnpm --filter @workspace/resume-matcher run typecheck"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
