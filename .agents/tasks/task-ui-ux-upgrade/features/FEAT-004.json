@@ -1,7 +1,7 @@
 {
   "id": "FEAT-004",
   "title": "Fix code review issues from 2025-01-20-120000-review.md",
-  "status": "in_progress",
+  "status": "completed",
   "description": "Address 5 issues identified in the code review: (1) Mobile nav unreachable items - add More button with sheet, (2) PageTransition remounts pages - simplify to mount-only animation, (3) Score animation replays - verify hasAnimated ref works correctly, (4) Inline style in not-found.tsx - move to index.css, (5) Zero-score glow - gate on score > 0.",
   "steps": [
     "Add More button to mobile nav that opens a Sheet with remaining nav items",
