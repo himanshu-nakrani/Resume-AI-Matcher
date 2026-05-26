@@ -59,7 +59,7 @@ export default defineConfig(async () => ({
     },
     proxy: {
       "/api": {
-        target: process.env.API_ORIGIN ?? "http://127.0.0.1:8080",
+        target: process.env.API_ORIGIN ?? "http://127.0.0.1:3000",
         changeOrigin: true,
       },
     },
