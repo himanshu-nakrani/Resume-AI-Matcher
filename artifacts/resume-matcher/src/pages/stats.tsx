@@ -49,7 +49,7 @@ function StatCard({
   highlight?: boolean;
 }) {
   return (
-    <Card className={`border shadow-sm ${highlight ? "border-primary/20 bg-gradient-to-br from-primary/5 to-transparent" : ""}`} data-testid={`stat-card-${title.toLowerCase().replace(/\s+/g, "-")}`}>
+    <Card className={`border shadow-sm ${highlight ? "border-foreground/20" : ""}`} data-testid={`stat-card-${title.toLowerCase().replace(/\s+/g, "-")}`}>
       <CardContent className="pt-6 pb-5">
         <div className="flex items-start justify-between">
           <div>
@@ -57,7 +57,7 @@ function StatCard({
             <p className="text-3xl font-bold mt-1 tabular-nums">{value}</p>
             {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
           </div>
-          <div className={`p-2.5 rounded-xl bg-gradient-to-br ${highlight ? "from-primary/20 to-primary/10" : "from-primary/10 to-primary/5"}`}>
+          <div className="p-2.5 rounded-xl bg-muted">
             <Icon className="w-5 h-5 text-primary" />
           </div>
         </div>
@@ -412,7 +412,7 @@ export function Stats() {
           )}
 
           {/* Gradient divider */}
-          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+          <div className="border-t" />
 
           {/* T004: Keyword Trends and Time-in-Stage */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -625,7 +625,7 @@ function SalaryGuideSection({ analysisId, existing }: {
               </div>
               <div className="relative h-3 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="absolute inset-y-0 rounded-full bg-gradient-to-r from-yellow-400 via-green-500 to-green-600"
+                  className="absolute inset-y-0 rounded-full bg-green-500"
                   style={{ left: "0%", right: "0%" }}
                 />
                 <div

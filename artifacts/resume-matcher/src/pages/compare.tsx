@@ -26,7 +26,7 @@ import { formatDistanceToNow } from "date-fns";
 
 function ScoreBar({ score, label, compareScore }: { score: number; label: string; compareScore?: number }) {
   const color =
-    score >= 80 ? "bg-gradient-to-r from-green-500 to-green-600" : score >= 60 ? "bg-gradient-to-r from-yellow-500 to-yellow-600" : "bg-gradient-to-r from-red-500 to-red-600";
+    score >= 80 ? "bg-green-500" : score >= 60 ? "bg-yellow-500" : "bg-red-500";
   const diff = compareScore !== undefined ? score - compareScore : null;
   return (
     <div className="space-y-2">
@@ -209,10 +209,10 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
       </Card>
 
       {data.fitRationale && (
-        <Card className="border-2 bg-gradient-to-br from-card to-muted/20">
+        <Card className="border-2">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <div className="rounded-lg bg-primary/10 p-1.5">
+              <div className="rounded-lg bg-muted p-1.5">
                 <Sparkles className="w-4 h-4 text-primary" />
               </div>
               Fit Summary
@@ -250,7 +250,7 @@ export function Compare() {
         </Button>
         <div className="space-y-2">
           <h1 className="text-4xl font-bold tracking-tight flex items-center gap-3">
-            <div className="rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 p-3">
+            <div className="rounded-xl bg-muted p-3">
               <GitCompareArrows className="w-8 h-8 text-primary" />
             </div>
             Compare Analyses
