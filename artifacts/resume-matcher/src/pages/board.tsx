@@ -17,36 +17,42 @@ import { Filter, X, MapPin, DollarSign, Tag, CalendarClock, SlidersHorizontal } 
 
 type Status = "not_applied" | "applied" | "got_interview" | "got_online_exam" | "selected" | "rejected";
 
-const STATUS_CONFIG: Record<Status, { label: string; className: string; headerColor: string }> = {
+const STATUS_CONFIG: Record<Status, { label: string; className: string; headerColor: string; accentGradient: string }> = {
   not_applied: { 
     label: "Not Applied", 
     className: "bg-muted text-muted-foreground border-muted-foreground/20",
-    headerColor: "bg-muted/50"
+    headerColor: "bg-muted/50",
+    accentGradient: "from-slate-400 to-slate-500"
   },
   applied: { 
     label: "Applied", 
     className: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
-    headerColor: "bg-blue-500/10"
+    headerColor: "bg-blue-500/10",
+    accentGradient: "from-blue-400 to-blue-600"
   },
   got_interview: { 
     label: "Got Interview", 
     className: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800",
-    headerColor: "bg-yellow-500/10"
+    headerColor: "bg-yellow-500/10",
+    accentGradient: "from-yellow-400 to-amber-500"
   },
   got_online_exam: { 
     label: "Got Online Exam", 
     className: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
-    headerColor: "bg-purple-500/10"
+    headerColor: "bg-purple-500/10",
+    accentGradient: "from-purple-400 to-purple-600"
   },
   selected: { 
     label: "Selected", 
     className: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
-    headerColor: "bg-green-500/10"
+    headerColor: "bg-green-500/10",
+    accentGradient: "from-green-400 to-emerald-500"
   },
   rejected: { 
     label: "Rejected", 
     className: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
-    headerColor: "bg-red-500/10"
+    headerColor: "bg-red-500/10",
+    accentGradient: "from-red-400 to-red-600"
   },
 };
 
@@ -320,14 +326,17 @@ export function Board() {
             onDrop={(e) => onDrop(e, status)}
           >
             <div
-              className={`sticky top-0 z-10 flex items-center justify-between rounded-t-xl border-b border-border px-4 py-4 backdrop-blur-sm ${STATUS_CONFIG[status].headerColor}`}
+              className={`sticky top-0 z-10 flex flex-col rounded-t-xl border-b border-border backdrop-blur-sm ${STATUS_CONFIG[status].headerColor}`}
             >
+              <div className={`h-[3px] w-full rounded-full bg-gradient-to-r ${STATUS_CONFIG[status].accentGradient}`} />
+              <div className="flex items-center justify-between px-4 py-4">
               <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">
                 {STATUS_CONFIG[status].label}
               </h3>
               <Badge variant="secondary" className="h-7 min-w-7 justify-center rounded-lg px-2 text-xs font-bold tabular-nums shadow-sm">
                 {columns[status]?.length || 0}
               </Badge>
+              </div>
             </div>
 
             <div className="p-4 space-y-4 overflow-y-auto flex-1">
@@ -424,9 +433,9 @@ export function Board() {
                 );
               })}
               {columns[status]?.length === 0 && (
-                <div className="py-12 text-center border-2 border-dashed rounded-2xl border-muted-foreground/20 bg-muted/20 transition-all hover:border-primary/30 hover:bg-primary/5">
+                <div className="py-12 text-center border-2 border-dashed rounded-2xl border-muted-foreground/20 bg-muted/20 transition-all duration-300 hover:border-primary/40 hover:bg-primary/5 hover:shadow-[0_0_15px_-3px] hover:shadow-primary/20">
                   <div className="flex flex-col items-center gap-3">
-                    <div className="rounded-full bg-muted p-3">
+                    <div className="rounded-full bg-gradient-to-br from-muted to-muted/50 p-3">
                       <svg className="w-6 h-6 text-muted-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                       </svg>

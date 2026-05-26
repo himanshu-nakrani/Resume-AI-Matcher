@@ -76,63 +76,63 @@
 }
 
 :root {
-  /* Minimal Design System - Professional & Clean */
+  /* Premium Design System - Vibrant Indigo-Violet */
   --button-outline: rgba(15, 23, 42, 0.08);
   --badge-outline: rgba(15, 23, 42, 0.04);
   --opaque-button-border-intensity: -6;
   --elevate-1: rgba(15, 23, 42, 0.02);
   --elevate-2: rgba(15, 23, 42, 0.04);
 
-  /* Refined Primary Color Scale - More Muted */
-  --primary-50: 220 14% 96%;
-  --primary-100: 220 13% 91%;
-  --primary-200: 220 13% 82%;
-  --primary-300: 220 13% 69%;
-  --primary-400: 220 13% 56%;
-  --primary-500: 220 13% 46%;
-  --primary-600: 220 13% 38%;
-  --primary-700: 220 13% 30%;
-  --primary-800: 220 13% 22%;
-  --primary-900: 220 13% 14%;
+  /* Vibrant Primary Color Scale - Indigo-Violet */
+  --primary-50: 245 80% 97%;
+  --primary-100: 245 80% 93%;
+  --primary-200: 245 80% 85%;
+  --primary-300: 245 82% 76%;
+  --primary-400: 245 82% 72%;
+  --primary-500: 245 82% 67%;
+  --primary-600: 245 75% 57%;
+  --primary-700: 245 70% 47%;
+  --primary-800: 245 65% 37%;
+  --primary-900: 245 60% 27%;
 
-  /* Base Colors - Softer, More Neutral */
+  /* Base Colors - Clean & Modern */
   --background: 0 0% 100%;
-  --foreground: 220 13% 15%;
+  --foreground: 224 20% 12%;
   --border: 220 13% 91%;
   --card: 0 0% 100%;
-  --card-foreground: 220 13% 15%;
+  --card-foreground: 224 20% 12%;
   --card-border: 220 13% 91%;
 
   /* Sidebar - Clean & Professional */
   --sidebar: 220 13% 98%;
-  --sidebar-foreground: 220 13% 15%;
+  --sidebar-foreground: 224 20% 12%;
   --sidebar-border: 220 13% 91%;
-  --sidebar-primary: 220 13% 46%;
+  --sidebar-primary: 245 82% 67%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 220 13% 94%;
-  --sidebar-accent-foreground: 220 13% 15%;
-  --sidebar-ring: 220 13% 46%;
+  --sidebar-accent: 245 80% 97%;
+  --sidebar-accent-foreground: 224 20% 12%;
+  --sidebar-ring: 245 82% 67%;
 
   /* Popover */
   --popover: 0 0% 100%;
-  --popover-foreground: 220 13% 15%;
+  --popover-foreground: 224 20% 12%;
   --popover-border: 220 13% 91%;
 
-  /* Primary - Muted Professional Blue */
-  --primary: 220 13% 46%;
+  /* Primary - Vibrant Indigo */
+  --primary: 245 82% 67%;
   --primary-foreground: 0 0% 100%;
 
   /* Secondary */
-  --secondary: 220 13% 94%;
-  --secondary-foreground: 220 13% 15%;
+  --secondary: 245 30% 95%;
+  --secondary-foreground: 245 50% 30%;
 
   /* Muted */
-  --muted: 220 13% 96%;
+  --muted: 220 14% 96%;
   --muted-foreground: 220 9% 46%;
 
   /* Accent */
-  --accent: 220 13% 96%;
-  --accent-foreground: 220 13% 15%;
+  --accent: 245 30% 96%;
+  --accent-foreground: 245 50% 30%;
 
   /* Destructive */
   --destructive: 0 65% 51%;
@@ -152,40 +152,45 @@
 
   /* Input & Ring */
   --input: 220 13% 91%;
-  --ring: 220 13% 46%;
+  --ring: 245 82% 67%;
 
-  /* Chart Colors - Muted */
-  --chart-1: 220 13% 46%;
-  --chart-2: 262 52% 47%;
+  /* Chart Colors */
+  --chart-1: 245 82% 67%;
+  --chart-2: 280 68% 55%;
   --chart-3: 173 39% 39%;
   --chart-4: 43 74% 49%;
-  --chart-5: 27 70% 50%;
+  --chart-5: 320 70% 55%;
 
-  /* Typography - Professional Fonts */
+  /* Typography - Premium Fonts */
   --app-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --app-font-serif: "Georgia", serif;
   --app-font-mono: "JetBrains Mono", "Fira Code", Consolas, monospace;
 
-  /* Border Radius - Subtle */
+  /* Border Radius */
   --radius: 0.5rem;
 
-  /* Shadows - Minimal & Subtle */
+  /* Gradient Custom Properties */
+  --gradient-primary: linear-gradient(135deg, hsl(245, 82%, 67%), hsl(280, 80%, 60%));
+  --gradient-hero: linear-gradient(135deg, hsl(245, 82%, 67%) 0%, hsl(280, 80%, 55%) 50%, hsl(320, 70%, 60%) 100%);
+  --gradient-surface: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
+
+  /* Shadows - Layered with Primary Color Tint */
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
   --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 2px 4px 0 rgb(0 0 0 / 0.06);
-  --shadow-lg: 0 4px 6px -1px rgb(0 0 0 / 0.08);
-  --shadow-xl: 0 8px 10px -2px rgb(0 0 0 / 0.1);
-  --shadow-2xl: 0 12px 16px -4px rgb(0 0 0 / 0.12);
+  --shadow-lg: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 20px 25px -5px hsl(245 82% 67% / 0.04);
+  --shadow-xl: 0 8px 10px -2px rgb(0 0 0 / 0.08), 0 20px 25px -5px rgb(0 0 0 / 0.06), 0 25px 50px -12px hsl(245 82% 67% / 0.08);
+  --shadow-2xl: 0 12px 16px -4px rgb(0 0 0 / 0.12), 0 25px 50px -12px hsl(245 82% 67% / 0.1);
   --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.04);
 
-  /* Colored Shadows - Subtle */
-  --shadow-primary: 0 4px 12px -2px rgb(59 130 246 / 0.15);
+  /* Colored Shadows */
+  --shadow-primary: 0 4px 14px -2px hsl(245 82% 67% / 0.25);
   --shadow-success: 0 4px 12px -2px rgb(34 197 94 / 0.15);
   --shadow-warning: 0 4px 12px -2px rgb(251 146 60 / 0.15);
   --shadow-error: 0 4px 12px -2px rgb(239 68 68 / 0.15);
 
-  /* Animation Durations - Faster, More Subtle */
+  /* Animation Durations */
   --duration-75: 75ms;
   --duration-100: 100ms;
   --duration-150: 150ms;
@@ -208,47 +213,47 @@
   --elevate-2: rgba(248, 250, 252, 0.04);
 
   /* Primary Color Scale - Dark Mode */
-  --primary-50: 220 13% 12%;
-  --primary-500: 220 13% 56%;
+  --primary-50: 245 60% 12%;
+  --primary-500: 245 82% 72%;
 
-  /* Base Colors - Dark Mode */
-  --background: 220 13% 9%;
-  --foreground: 220 13% 98%;
-  --border: 220 13% 15%;
-  --card: 220 13% 11%;
-  --card-foreground: 220 13% 98%;
-  --card-border: 220 13% 15%;
+  /* Base Colors - Rich Dark Mode */
+  --background: 230 20% 8%;
+  --foreground: 220 14% 96%;
+  --border: 230 15% 18%;
+  --card: 230 20% 12%;
+  --card-foreground: 220 14% 96%;
+  --card-border: 230 15% 18%;
 
   /* Sidebar - Dark Mode */
-  --sidebar: 220 13% 10%;
-  --sidebar-foreground: 220 13% 98%;
-  --sidebar-border: 220 13% 15%;
-  --sidebar-primary: 220 13% 56%;
-  --sidebar-primary-foreground: 220 13% 9%;
-  --sidebar-accent: 220 13% 14%;
-  --sidebar-accent-foreground: 220 13% 98%;
-  --sidebar-ring: 220 13% 56%;
+  --sidebar: 230 20% 10%;
+  --sidebar-foreground: 220 14% 96%;
+  --sidebar-border: 230 15% 18%;
+  --sidebar-primary: 245 82% 72%;
+  --sidebar-primary-foreground: 230 20% 8%;
+  --sidebar-accent: 230 20% 14%;
+  --sidebar-accent-foreground: 220 14% 96%;
+  --sidebar-ring: 245 82% 72%;
 
   /* Popover - Dark Mode */
-  --popover: 220 13% 11%;
-  --popover-foreground: 220 13% 98%;
-  --popover-border: 220 13% 15%;
+  --popover: 230 20% 12%;
+  --popover-foreground: 220 14% 96%;
+  --popover-border: 230 15% 18%;
 
-  /* Primary - Dark Mode */
-  --primary: 220 13% 56%;
-  --primary-foreground: 220 13% 9%;
+  /* Primary - Dark Mode (brighter for contrast) */
+  --primary: 245 82% 72%;
+  --primary-foreground: 230 20% 8%;
 
   /* Secondary - Dark Mode */
-  --secondary: 220 13% 15%;
-  --secondary-foreground: 220 13% 98%;
+  --secondary: 230 20% 16%;
+  --secondary-foreground: 220 14% 96%;
 
   /* Muted - Dark Mode */
-  --muted: 220 13% 13%;
-  --muted-foreground: 220 9% 63%;
+  --muted: 230 18% 14%;
+  --muted-foreground: 220 12% 68%;
 
   /* Accent - Dark Mode */
-  --accent: 220 13% 14%;
-  --accent-foreground: 220 13% 98%;
+  --accent: 230 20% 15%;
+  --accent-foreground: 220 14% 96%;
 
   /* Destructive - Dark Mode */
   --destructive: 0 63% 45%;
@@ -267,15 +272,20 @@
   --info-foreground: 0 0% 100%;
 
   /* Input & Ring - Dark Mode */
-  --input: 220 13% 15%;
-  --ring: 220 13% 56%;
+  --input: 230 15% 18%;
+  --ring: 245 82% 72%;
 
   /* Chart Colors - Dark Mode */
-  --chart-1: 220 13% 56%;
-  --chart-2: 263 52% 57%;
+  --chart-1: 245 82% 72%;
+  --chart-2: 280 68% 62%;
   --chart-3: 173 39% 48%;
   --chart-4: 43 74% 56%;
-  --chart-5: 27 70% 55%;
+  --chart-5: 320 70% 60%;
+
+  /* Gradient Custom Properties - Dark Mode */
+  --gradient-primary: linear-gradient(135deg, hsl(245, 82%, 72%), hsl(280, 80%, 65%));
+  --gradient-hero: linear-gradient(135deg, hsl(245, 82%, 72%) 0%, hsl(280, 80%, 60%) 50%, hsl(320, 70%, 65%) 100%);
+  --gradient-surface: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
 }
 
 @layer base {
@@ -337,7 +347,7 @@
   }
 }
 
-/* Utility Classes - Minimal & Professional */
+/* Utility Classes */
 @layer utilities {
   /* Subtle Glassmorphism */
   .glass-card {
@@ -353,12 +363,62 @@
     box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.2);
   }
 
-  /* Minimal Gradient Text */
+  /* Vibrant Gradient Text */
   .gradient-text {
-    background: linear-gradient(135deg, hsl(220, 13%, 46%), hsl(220, 13%, 30%));
+    background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  /* Primary Gradient Text Utility */
+  .text-gradient-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Elevated Surface */
+  .surface-elevated {
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.5) 100%);
+  }
+
+  /* Border Glow */
+  .border-glow {
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.1), 0 0 12px -2px hsl(var(--primary) / 0.15);
+  }
+
+  .dark .border-glow {
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2), 0 0 20px -4px hsl(var(--primary) / 0.2);
+  }
+
+  /* Animated Gradient */
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
+  }
+
+  @keyframes gradient-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  /* Float Animation */
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
   }
 
   /* Subtle Hover Elevate */
@@ -430,7 +490,7 @@
     }
   }
 
-  /* Shimmer - Minimal */
+  /* Shimmer */
   .shimmer {
     background: linear-gradient(
       90deg,
@@ -451,7 +511,7 @@
     }
   }
 
-  /* Backdrop Blur - Subtle */
+  /* Backdrop Blur */
   .backdrop-blur-glass {
     backdrop-filter: blur(8px) saturate(150%);
     -webkit-backdrop-filter: blur(8px) saturate(150%);

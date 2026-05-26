@@ -1,0 +1,24 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Layout and navigation upgrade - transform the sidebar and page shell into a premium, polished navigation experience with animated transitions, improved hierarchy, and modern patterns",
+  "status": "completed",
+  "steps": [
+    "Upgrade artifacts/resume-matcher/src/components/layout.tsx sidebar: (a) Add a subtle gradient or premium surface treatment to the sidebar background (dark: slightly lighter than bg, light: soft off-white with hint of primary), (b) Improve the brand section with a gradient icon background and refined typography, (c) Add section groupings to nav items with labels (e.g., 'Core', 'Insights', 'Jobs') for better visual hierarchy, (d) Improve active state with a left accent bar (2-3px rounded indicator) plus subtle background, (e) Add smooth framer-motion transitions for active indicator, (f) Polish the footer settings section with cleaner spacing and hover states, (g) Add a subtle separator/divider pattern between nav groups",
+    "Upgrade mobile header and bottom nav in layout.tsx: (a) Make the mobile header use a frosted glass effect with better padding and visual weight, (b) Upgrade bottom nav icons with an active dot indicator below active icon, (c) Add subtle haptic-style scale animation on tap for mobile nav items",
+    "Create a new page transition wrapper: Add a simple fade + slight translateY animation (via framer-motion AnimatePresence) when navigating between pages. Add this in App.tsx or layout.tsx wrapping the page content area. Keep it subtle (200-300ms, 8px translateY)"
+  ],
+  "acceptance_criteria": [
+    "Build passes with pnpm --filter @workspace/resume-matcher run build",
+    "Typecheck passes with pnpm --filter @workspace/resume-matcher run typecheck",
+    "Sidebar has grouped navigation, active accent indicator, and premium styling",
+    "Page transitions animate smoothly on route change",
+    "Mobile nav has improved styling"
+  ],
+  "verification": [
+    "pnpm --filter @workspace/resume-matcher run build",
+    "pnpm --filter @workspace/resume-matcher run typecheck"
+  ],
+  "blocked_reason": null,
+  "findings": "Build passes successfully. Typecheck has same pre-existing errors as FEAT-001 (api-client-react not built, implicit any in pages). No new type errors introduced by this feature. Created page-transition.tsx component with framer-motion AnimatePresence, upgraded layout.tsx with grouped nav items (Core/Insights/Jobs sections), left accent bar active indicator, gradient sidebar background, gradient logo container, gradient separator in footer, mobile header with shadow-sm, mobile bottom nav with active dot and scale animations."
+}

@@ -512,9 +512,13 @@ export function Home() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-lg border border-border bg-card px-6 py-12 sm:px-12 sm:py-14">
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-pink-500/10 dark:from-indigo-500/20 dark:via-purple-500/10 dark:to-pink-500/20 px-6 py-12 sm:px-12 sm:py-14">
+        {/* Decorative gradient orbs */}
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-gradient-to-br from-indigo-400/20 to-purple-400/20 blur-3xl" />
+        <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-gradient-to-br from-purple-400/15 to-pink-400/15 blur-3xl" />
+
         <div className="relative max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground mb-6">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 px-3 py-1 text-xs font-medium text-primary mb-6">
             <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
               <path d="M2 17l10 5 10-5" />
@@ -523,7 +527,7 @@ export function Home() {
             OptiMatch AI
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl mb-4">
-            Upload once. Tailor every resume for the role.
+            Upload once. <span className="text-gradient-primary">Tailor every resume</span> for the role.
           </h1>
           <p className="mt-4 max-w-2xl mx-auto text-base text-muted-foreground sm:text-lg leading-relaxed">
             AI-powered resume optimization with ATS scoring, job tracking, and intelligent matching.
@@ -543,6 +547,7 @@ export function Home() {
           <Card className="border">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">1</span>
                 <UserRound className="h-4 w-4 text-muted-foreground" /> User Information
               </CardTitle>
             </CardHeader>
@@ -567,6 +572,7 @@ export function Home() {
           <Card className="border">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">2</span>
                 <BriefcaseBusiness className="h-4 w-4 text-muted-foreground" /> Target Job
               </CardTitle>
             </CardHeader>
@@ -620,6 +626,7 @@ export function Home() {
           <Card className="border">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">3</span>
                 <Search className="h-4 w-4 text-muted-foreground" /> Job search (Exa)
               </CardTitle>
             </CardHeader>
@@ -832,6 +839,7 @@ export function Home() {
           <Card className="border">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">4</span>
                 <FileText className="h-4 w-4 text-muted-foreground" /> Resume Upload
               </CardTitle>
               <CardDescription className="text-sm">
@@ -927,10 +935,11 @@ export function Home() {
             </CardContent>
           </Card>
 
-          <div className="flex justify-end">
+          <div className="rounded-xl bg-gradient-to-r from-primary/5 via-transparent to-primary/5 border border-primary/10 p-4 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground font-medium">Ready to optimize?</p>
             <Button 
               type="submit" 
-              variant="default" 
+              variant="gradient" 
               size="default" 
               disabled={createAnalysis.isPending} 
               loading={createAnalysis.isPending}
@@ -967,10 +976,10 @@ export function Home() {
             ))}
           </div>
         ) : recent.length === 0 ? (
-          <Card className="text-center py-12 border border-dashed">
+          <Card variant="premium" className="text-center py-12">
             <div className="flex flex-col items-center gap-3">
-              <div className="rounded-lg bg-muted p-4">
-                <svg className="w-8 h-8 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div className="rounded-lg bg-gradient-to-br from-primary/10 to-purple-500/10 p-4">
+                <svg className="w-8 h-8 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2L2 7l10 5 10-5-10-5z" />
                   <path d="M2 17l10 5 10-5" />
                   <path d="M2 12l10 5 10-5" />
@@ -980,7 +989,7 @@ export function Home() {
                 <p className="text-sm font-medium">No optimized resumes yet</p>
                 <p className="text-xs text-muted-foreground mt-1">Upload your resume and run your first optimization above.</p>
               </div>
-              <Button variant="default" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-2">
+              <Button variant="gradient" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-2">
                 <Wand2 className="w-3.5 h-3.5" />
                 Get Started
               </Button>
@@ -997,6 +1006,7 @@ export function Home() {
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <div className="relative">
+                      <div className={`absolute inset-0 rounded-full blur-md scale-110 ${a.atsScore >= 70 ? 'bg-green-500/10' : 'bg-primary/10'}`} />
                       <ScoreCircle score={a.atsScore} size="sm" />
                     </div>
                     <div className="min-w-0 flex-1 space-y-1.5">

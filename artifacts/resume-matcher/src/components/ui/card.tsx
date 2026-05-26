@@ -3,17 +3,18 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "elevated" | "glass" | "gradient-border"
-  hover?: "none" | "lift" | "glow" | "scale"
+  variant?: "default" | "elevated" | "glass" | "gradient-border" | "premium"
+  hover?: "none" | "lift" | "glow" | "scale" | "glow-lift"
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant = "default", hover = "none", ...props }, ref) => {
     const variantClasses = {
       default: "bg-card text-card-foreground border border-card-border shadow-sm",
-      elevated: "bg-card text-card-foreground border border-card-border shadow-md",
+      elevated: "bg-card text-card-foreground border border-card-border shadow-lg",
       glass: "glass-card text-card-foreground",
       "gradient-border": "gradient-border text-card-foreground shadow-sm",
+      premium: "bg-card text-card-foreground shadow-lg border border-primary/10 dark:border-primary/20",
     }
 
     const hoverClasses = {
@@ -21,6 +22,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
       lift: "hover:shadow-lg hover:-translate-y-1 transition-all duration-200",
       glow: "hover:shadow-primary hover:border-primary/50 transition-all duration-200",
       scale: "hover:scale-[1.02] transition-transform duration-200",
+      "glow-lift": "hover:shadow-xl hover:-translate-y-1 border-glow transition-all duration-200",
     }
 
     return (
