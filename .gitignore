@@ -43,6 +43,11 @@ Thumbs.db
 
 # Local SQLite (default @workspace/db dev database)
 resume-matcher.sqlite
+resume-matcher.sqlite-shm
+resume-matcher.sqlite-wal
+
+# Bob agent runtime notes
+.bob/
 
 # Environment variables
 .env
