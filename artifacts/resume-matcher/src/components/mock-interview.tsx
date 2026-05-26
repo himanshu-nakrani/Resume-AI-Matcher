@@ -124,10 +124,10 @@ export function MockInterview({ analysisId, jobTitle, companyName }: Props) {
           <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1 mb-4">
             {messages.map((msg, i) => (
               <div key={i} className={"flex gap-2 " + (msg.role === "user" ? "flex-row-reverse" : "")}>
-                <div className={"w-7 h-7 rounded-full shrink-0 flex items-center justify-center " + (msg.role === "assistant" ? "bg-muted text-foreground" : "bg-muted text-foreground")}>
+                <div className={"w-7 h-7 rounded-full shrink-0 flex items-center justify-center " + (msg.role === "assistant" ? "bg-foreground text-background" : "bg-muted text-foreground border border-border")}>
                   {msg.role === "assistant" ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
                 </div>
-                <div className={"max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed " + (msg.role === "assistant" ? "bg-muted/60 rounded-tl-sm" : "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-tr-sm text-right")}>
+                <div className={"max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed " + (msg.role === "assistant" ? "bg-muted/60 rounded-tl-sm" : "bg-secondary border border-border rounded-tr-sm text-right")}>
                   {msg.content}
                 </div>
               </div>

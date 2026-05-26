@@ -38,9 +38,9 @@ const STATUS_CONFIG: Record<Status, { label: string; className: string; headerCo
   },
   got_online_exam: { 
     label: "Got Online Exam", 
-    className: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
-    headerColor: "bg-purple-500/10",
-    borderColor: "border-purple-400"
+    className: "bg-secondary text-secondary-foreground border-border dark:bg-secondary dark:text-secondary-foreground dark:border-border",
+    headerColor: "bg-secondary/50",
+    borderColor: "border-muted-foreground/40"
   },
   selected: { 
     label: "Selected", 

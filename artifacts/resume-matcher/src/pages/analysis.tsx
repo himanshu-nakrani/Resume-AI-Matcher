@@ -697,7 +697,7 @@ function BulletRewriter({ analysisId }: { analysisId: number }) {
     <Card className="border shadow-sm print-break-inside-avoid">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <Wand2 className="w-4 h-4 text-purple-500" /> AI Bullet Rewriter
+          <Wand2 className="w-4 h-4 text-muted-foreground" /> AI Bullet Rewriter
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-0.5">
           Paste any resume bullet to make it stronger and more ATS-friendly.
@@ -1045,16 +1045,16 @@ function ShareSection({ analysisId, isPublic, shareToken }: { analysisId: number
   if (isPublic && shareToken) {
     const url = buildShareUrl();
     return (
-      <div className="flex items-center gap-2 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 no-print">
-        <Link2 className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+      <div className="flex items-center gap-2 p-3 rounded-lg bg-muted border border-border no-print">
+        <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-purple-700 dark:text-purple-400">Shared publicly</p>
+          <p className="text-xs font-semibold text-foreground">Shared publicly</p>
           <p className="text-xs text-muted-foreground truncate">{url}</p>
         </div>
         <Button
           variant="outline"
           size="sm"
-          className="shrink-0 border-purple-300 dark:border-purple-700"
+          className="shrink-0"
           onClick={() => copy(url, "Link copied!")}
         >
           {isCopied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}

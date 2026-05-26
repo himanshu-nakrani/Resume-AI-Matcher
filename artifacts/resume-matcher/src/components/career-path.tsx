@@ -91,7 +91,7 @@ export function CareerPathSection({ analysisId, existing }: {
 
                 {path.stretchGoals.map((goal: string, i: number) => (
                   <div key={i} className="relative flex items-start gap-4 pl-10">
-                    <div className="absolute left-0 flex h-10 w-10 items-center justify-center rounded-full bg-background border-2 border-purple-500 text-purple-500 shadow-sm">
+                    <div className="absolute left-0 flex h-10 w-10 items-center justify-center rounded-full bg-background border-2 border-muted-foreground/40 text-muted-foreground shadow-sm">
                       <Star className="h-5 w-5" />
                     </div>
                     <div className="flex-1 pt-1">

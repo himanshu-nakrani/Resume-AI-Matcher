@@ -48,7 +48,7 @@ const STATUS_CONFIG: Record<Status, { label: string; className: string; icon?: s
   not_applied: { label: "Not Applied", className: "bg-muted text-muted-foreground border-muted-foreground/30 hover:bg-muted/80 transition-colors" },
   applied: { label: "Applied", className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800 transition-colors" },
   got_interview: { label: "Got Interview", className: "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800 transition-colors" },
-  got_online_exam: { label: "Got Online Exam", className: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-400 dark:border-purple-800 transition-colors" },
+  got_online_exam: { label: "Got Online Exam", className: "bg-secondary text-secondary-foreground border-border dark:bg-secondary dark:text-secondary-foreground dark:border-border transition-colors" },
   selected: { label: "Selected", className: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800 transition-colors" },
   rejected: { label: "Rejected", className: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800 transition-colors" },
 };
@@ -568,7 +568,7 @@ export function History() {
                       </Badge>
                     )}
                     {a.isPublic && (
-                      <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                      <Badge variant="secondary" className="text-xs">
                         Shared
                       </Badge>
                     )}

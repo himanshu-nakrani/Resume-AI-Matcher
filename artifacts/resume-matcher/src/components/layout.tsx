@@ -333,7 +333,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <div
                   className={cn(
                     "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
-                    active ? "text-foreground" : "text-muted-foreground",
+                    active ? "text-foreground font-semibold" : "text-muted-foreground",
                   )}
                 >
                   <item.icon className="h-5 w-5" />
@@ -349,7 +349,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   className={cn(
                     "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
                     mobileMoreItems.some((item) => isActive(location, item.href))
-                      ? "text-foreground"
+                      ? "text-foreground font-semibold"
                       : "text-muted-foreground",
                   )}
                 >
