@@ -34,86 +34,6 @@ export const AnalysisStatus = {
   rejected: "rejected",
 } as const;
 
-export type LearningPlanItemPriority =
-  (typeof LearningPlanItemPriority)[keyof typeof LearningPlanItemPriority];
-
-export const LearningPlanItemPriority = {
-  high: "high",
-  medium: "medium",
-  low: "low",
-} as const;
-
-export type LearningResourceType =
-  (typeof LearningResourceType)[keyof typeof LearningResourceType];
-
-export const LearningResourceType = {
-  course: "course",
-  certification: "certification",
-  project: "project",
-  book: "book",
-  article: "article",
-} as const;
-
-export interface LearningResource {
-  title: string;
-  type: LearningResourceType;
-  description: string;
-  /** @nullable */
-  platform?: string | null;
-}
-
-export interface LearningPlanItem {
-  skill: string;
-  why: string;
-  priority: LearningPlanItemPriority;
-  resources: LearningResource[];
-}
-
-export type SalaryRangePeriod =
-  (typeof SalaryRangePeriod)[keyof typeof SalaryRangePeriod];
-
-export const SalaryRangePeriod = {
-  year: "year",
-  month: "month",
-  hour: "hour",
-} as const;
-
-export interface SalaryRange {
-  low: number;
-  mid: number;
-  high: number;
-  currency: string;
-  period: SalaryRangePeriod;
-  context: string;
-  factors: string[];
-  negotiationTips: string[];
-}
-
-export interface CompanyResearch {
-  overview: string;
-  culture: string;
-  interviewProcess: string;
-  recentNews: string[];
-  glassdoorRating: string;
-  tips: string[];
-}
-
-export type RedFlagSeverity =
-  (typeof RedFlagSeverity)[keyof typeof RedFlagSeverity];
-
-export const RedFlagSeverity = {
-  high: "high",
-  medium: "medium",
-  low: "low",
-} as const;
-
-export interface RedFlag {
-  severity: RedFlagSeverity;
-  title: string;
-  description: string;
-  quote: string;
-}
-
 export interface Analysis {
   id: number;
   jobTitle: string;
@@ -141,8 +61,6 @@ export interface Analysis {
   /** @nullable */
   linkedinPost: string | null;
   status: AnalysisStatus;
-  interviewQuestions: string[];
-  learningPlan: LearningPlanItem[];
   isFavorite: boolean;
   /** @nullable */
   notes: string | null;
@@ -157,10 +75,7 @@ export interface Analysis {
   contactEmail: string | null;
   /** @nullable */
   followUpDate: string | null;
-  salaryGuide?: SalaryRange | null;
   tags: string[];
-  companyResearch?: CompanyResearch | null;
-  redFlags?: RedFlag[] | null;
   portfolioLinks?: string[];
   /** @nullable */
   versionLabel?: string | null;
@@ -216,85 +131,6 @@ export interface UpdateAnalysisBody {
   versionLabel?: string;
   location?: string;
   salaryExpectation?: string;
-}
-
-export type SalaryGuideResponsePeriod =
-  (typeof SalaryGuideResponsePeriod)[keyof typeof SalaryGuideResponsePeriod];
-
-export const SalaryGuideResponsePeriod = {
-  year: "year",
-  month: "month",
-  hour: "hour",
-} as const;
-
-export interface SalaryGuideResponse {
-  low: number;
-  mid: number;
-  high: number;
-  currency: string;
-  period: SalaryGuideResponsePeriod;
-  context: string;
-  factors: string[];
-  negotiationTips: string[];
-}
-
-export interface CompanyResearchResponse {
-  overview: string;
-  culture: string;
-  interviewProcess: string;
-  recentNews: string[];
-  glassdoorRating: string;
-  tips: string[];
-}
-
-export type RedFlagsResponseOverallRisk =
-  (typeof RedFlagsResponseOverallRisk)[keyof typeof RedFlagsResponseOverallRisk];
-
-export const RedFlagsResponseOverallRisk = {
-  low: "low",
-  medium: "medium",
-  high: "high",
-} as const;
-
-export interface RedFlagsResponse {
-  flags: RedFlag[];
-  summary: string;
-  overallRisk: RedFlagsResponseOverallRisk;
-}
-
-export type ChatMessageRole =
-  (typeof ChatMessageRole)[keyof typeof ChatMessageRole];
-
-export const ChatMessageRole = {
-  user: "user",
-  assistant: "assistant",
-} as const;
-
-export interface ChatMessage {
-  role: ChatMessageRole;
-  content: string;
-}
-
-export interface NegotiateBody {
-  messages: ChatMessage[];
-}
-
-export interface NegotiateResponse {
-  message: string;
-  tip?: string;
-}
-
-export interface StarAnswerBody {
-  question: string;
-  situation?: string;
-  task?: string;
-  action?: string;
-  result?: string;
-}
-
-export interface StarAnswerResponse {
-  answer: string;
-  tips: string[];
 }
 
 export interface ShareResponse {
@@ -519,10 +355,6 @@ export interface EnrichJobResponse {
   cached: boolean;
 }
 
-export interface InterviewQuestionsResponse {
-  questions: string[];
-}
-
 export interface GenerateCoverLetterBody {
   tone?: string;
 }
@@ -538,10 +370,6 @@ export interface RewriteBulletResponse {
 
 export interface GeneratedContent {
   content: string;
-}
-
-export interface LearningPlanResponse {
-  items: LearningPlanItem[];
 }
 
 export interface AnalysisStats {
@@ -573,115 +401,4 @@ export interface Notification {
 
 export interface MarkNotificationReadParams {
   id: number;
-}
-
-export type MarketInsightsResponseDemandLevel =
-  (typeof MarketInsightsResponseDemandLevel)[keyof typeof MarketInsightsResponseDemandLevel];
-
-export const MarketInsightsResponseDemandLevel = {
-  high: "high",
-  medium: "medium",
-  low: "low",
-} as const;
-
-export type MarketInsightsResponseSalaryPeriod =
-  (typeof MarketInsightsResponseSalaryPeriod)[keyof typeof MarketInsightsResponseSalaryPeriod];
-
-export const MarketInsightsResponseSalaryPeriod = {
-  year: "year",
-  month: "month",
-  hour: "hour",
-} as const;
-
-export interface MarketInsightsResponse {
-  demandLevel: MarketInsightsResponseDemandLevel;
-  salaryMin: number;
-  salaryMax: number;
-  salaryCurrency: string;
-  salaryPeriod: MarketInsightsResponseSalaryPeriod;
-  topSkills: string[];
-  marketContext: string;
-  hiringTrend: string;
-  remoteOutlook: string;
-}
-
-export interface CareerPathStep {
-  title: string;
-  description: string;
-  timeframe: string;
-  keySkills: string[];
-  isStretch: boolean;
-}
-
-export interface CareerPathResponse {
-  currentRoleInference: string;
-  nextSteps: CareerPathStep[];
-  stretchRoles: CareerPathStep[];
-  overallTimeline: string;
-  keyThemes: string[];
-}
-
-export type FollowUpEmailBodyEmailType =
-  (typeof FollowUpEmailBodyEmailType)[keyof typeof FollowUpEmailBodyEmailType];
-
-export const FollowUpEmailBodyEmailType = {
-  after_apply: "after_apply",
-  after_interview: "after_interview",
-  thank_you: "thank_you",
-} as const;
-
-export interface FollowUpEmailBody {
-  emailType: FollowUpEmailBodyEmailType;
-}
-
-export interface FollowUpEmailResponse {
-  subject: string;
-  body: string;
-  tips: string[];
-}
-
-export interface PracticeFeedbackBody {
-  question: string;
-  answer: string;
-  timeUsed: number;
-}
-
-export interface PracticeFeedbackResponse {
-  score: number;
-  feedback: string;
-  strengths: string[];
-  improvements: string[];
-  modelAnswer: string;
-}
-
-export type PredictOfferResponseRating =
-  (typeof PredictOfferResponseRating)[keyof typeof PredictOfferResponseRating];
-
-export const PredictOfferResponseRating = {
-  strong: "strong",
-  good: "good",
-  fair: "fair",
-  weak: "weak",
-} as const;
-
-export interface PredictOfferResponse {
-  probability: number;
-  rating: PredictOfferResponseRating;
-  strengthFactors: string[];
-  riskFactors: string[];
-  actionItems: string[];
-  summary: string;
-}
-
-export interface MockInterviewBody {
-  messages: ChatMessage[];
-}
-
-export interface MockInterviewResponse {
-  question: string;
-  /** @nullable */
-  feedback?: string | null;
-  isComplete: boolean;
-  /** @nullable */
-  overallNotes?: string | null;
 }

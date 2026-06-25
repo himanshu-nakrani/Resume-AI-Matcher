@@ -7,10 +7,6 @@
  */
 import type { AnalysisOriginalFileType } from "./analysisOriginalFileType";
 import type { AnalysisStatus } from "./analysisStatus";
-import type { CompanyResearch } from "./companyResearch";
-import type { LearningPlanItem } from "./learningPlanItem";
-import type { RedFlag } from "./redFlag";
-import type { SalaryRange } from "./salaryRange";
 
 export interface Analysis {
   id: number;
@@ -39,8 +35,6 @@ export interface Analysis {
   /** @nullable */
   linkedinPost: string | null;
   status: AnalysisStatus;
-  interviewQuestions: string[];
-  learningPlan: LearningPlanItem[];
   isFavorite: boolean;
   /** @nullable */
   notes: string | null;
@@ -55,10 +49,7 @@ export interface Analysis {
   contactEmail: string | null;
   /** @nullable */
   followUpDate: string | null;
-  salaryGuide?: SalaryRange | null;
   tags: string[];
-  companyResearch?: CompanyResearch | null;
-  redFlags?: RedFlag[] | null;
   portfolioLinks?: string[];
   /** @nullable */
   versionLabel?: string | null;
