@@ -1,6 +1,5 @@
 import { useParams } from "wouter";
 import { useGetSharedAnalysis } from "@workspace/api-client-react";
-import type { LearningPlanItem, LearningResource } from "@workspace/api-client-react";
 import { ScoreCircle } from "@/components/score-circle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,32 +9,10 @@ import {
   XCircle,
   Lightbulb,
   ChevronRight,
-  BookOpen,
-  Award,
-  Hammer,
-  BookMarked,
   FileText,
-  GraduationCap,
-  MessageSquare,
   Sparkles,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-
-function resourceTypeIcon(type: LearningResource["type"]) {
-  switch (type) {
-    case "course": return <BookOpen className="w-3.5 h-3.5" />;
-    case "certification": return <Award className="w-3.5 h-3.5" />;
-    case "project": return <Hammer className="w-3.5 h-3.5" />;
-    case "book": return <BookMarked className="w-3.5 h-3.5" />;
-    default: return <BookOpen className="w-3.5 h-3.5" />;
-  }
-}
-
-const PRIORITY_CONFIG = {
-  high: { label: "High Priority", className: "bg-red-100 text-red-700 border-red-200" },
-  medium: { label: "Medium", className: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-  low: { label: "Low", className: "bg-muted text-muted-foreground" },
-};
 
 export function SharedAnalysis() {
   const params = useParams<{ token: string }>();
@@ -76,8 +53,6 @@ export function SharedAnalysis() {
   const improvements = (analysis.improvements as string[]) ?? [];
   const atsMatched = (analysis.atsKeywordsMatched as string[]) ?? [];
   const atsMissing = (analysis.atsKeywordsMissing as string[]) ?? [];
-  const interviewQuestions = (analysis.interviewQuestions as string[]) ?? [];
-  const learningPlan = (analysis.learningPlan as LearningPlanItem[]) ?? [];
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -207,76 +182,6 @@ export function SharedAnalysis() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Interview Questions (if any) */}
-        {interviewQuestions.length > 0 && (
-          <Card className="border shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-orange-500" /> Interview Questions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {interviewQuestions.map((q, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/40">
-                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-orange-100 text-orange-600 text-xs font-bold shrink-0 mt-0.5">
-                      {i + 1}
-                    </span>
-                    <p className="text-sm">{q}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Learning Plan (if any) */}
-        {learningPlan.length > 0 && (
-          <Card className="border shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <GraduationCap className="w-4 h-4 text-blue-500" /> Learning Plan
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {learningPlan.map((item, i) => {
-                  const priority = PRIORITY_CONFIG[item.priority as keyof typeof PRIORITY_CONFIG] ?? PRIORITY_CONFIG.medium;
-                  return (
-                    <div key={i} className="rounded-lg border p-4 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-sm">{item.skill}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{item.why}</p>
-                        </div>
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0 ${priority.className}`}>
-                          {priority.label}
-                        </span>
-                      </div>
-                      <div className="space-y-2">
-                        {item.resources.map((res, j) => (
-                          <div key={j} className="flex items-start gap-2.5 bg-muted/40 rounded-lg px-3 py-2">
-                            <span className="mt-0.5 text-muted-foreground shrink-0">
-                              {resourceTypeIcon(res.type as LearningResource["type"])}
-                            </span>
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="text-xs font-semibold">{res.title}</p>
-                                {res.platform && <span className="text-xs text-muted-foreground">· {res.platform}</span>}
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">{res.description}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Cover Letter */}
         {analysis.coverLetter && (
