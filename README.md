@@ -15,23 +15,6 @@ An intelligent AI-powered platform that analyzes resumes against job description
 - **AI Bullet Rewriter** — Paste any resume bullet and get a stronger, impact-driven version
 - **Job URL Import** — Paste a job listing URL to automatically extract the job description, title, and company
 
-### Interview Preparation
-- **Interview Questions** — AI-generated likely interview questions based on the role and your resume gaps
-- **STAR Answer Helper** — Generate or polish STAR-method interview answers for each question
-- **Interview Practice Mode** — Timed 2-minute STAR answer practice with local scoring and session history
-- **Company Research** — AI-generated company overview, culture notes, red flags, and interview tips
-- **Red Flags Detector** — AI scans job descriptions for warning signs before you apply
-
-### Career Development
-- **Learning Plan** — Personalized study plans with specific courses, certifications, and projects
-- **AI Salary Guide** — AI-estimated salary range (low/mid/high) with market context and negotiation tips
-- **Market Insights** — Role demand level, salary trends, top in-demand skills, and hiring outlook
-- **Career Path Planner** — Infers your current role and suggests next-step and stretch roles with timelines
-- **Negotiation Simulator** — Multi-turn AI salary negotiation chat with offer/counter-offer scripts
-- **Negotiation Calculator** — Offer/target/floor salary calculator with gap analysis and script templates
-- **Skills Tracker** — Tracks most common matched/missing keywords across all your analyses
-- **Follow-up Email Generator** — Generates follow-up emails for after applying, after interviews, or thank-you notes
-
 ### Job Application Management
 - **Application Status Tracking** — Track each analysis through: Not Applied → Applied → Interview → Offer → Rejected
 - **Kanban Job Board** — Visual drag-and-drop board to manage your job pipeline by status

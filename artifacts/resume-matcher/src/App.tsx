@@ -15,7 +15,6 @@ import { Stats } from "@/pages/stats";
 import { Brand } from "@/pages/brand";
 import { SharedAnalysis } from "@/pages/shared";
 import { Compare } from "@/pages/compare";
-import { Skills } from "@/pages/skills";
 import { Versions } from "@/pages/versions";
 import { UserPage } from "@/pages/user";
 import { SavedJobsPage } from "@/pages/saved-jobs";
@@ -51,7 +50,6 @@ function Router() {
               <Route path="/stats" component={Stats} />
               <Route path="/brand" component={Brand} />
               <Route path="/compare" component={Compare} />
-              <Route path="/skills" component={Skills} />
               <Route path="/versions" component={Versions} />
               <Route path="/saved-jobs" component={SavedJobsPage} />
               <Route path="/alerts" component={SearchAlertsPage} />

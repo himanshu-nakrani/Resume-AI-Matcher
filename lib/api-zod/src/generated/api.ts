@@ -46,28 +46,6 @@ export const ListAnalysesResponseItem = zod.object({
     "selected",
     "rejected",
   ]),
-  interviewQuestions: zod.array(zod.string()),
-  learningPlan: zod.array(
-    zod.object({
-      skill: zod.string(),
-      why: zod.string(),
-      priority: zod.enum(["high", "medium", "low"]),
-      resources: zod.array(
-        zod.object({
-          title: zod.string(),
-          type: zod.enum([
-            "course",
-            "certification",
-            "project",
-            "book",
-            "article",
-          ]),
-          description: zod.string(),
-          platform: zod.string().nullish(),
-        }),
-      ),
-    }),
-  ),
   isFavorite: zod.boolean(),
   notes: zod.string().nullable(),
   shareToken: zod.string().nullable(),
@@ -76,39 +54,7 @@ export const ListAnalysesResponseItem = zod.object({
   contactName: zod.string().nullable(),
   contactEmail: zod.string().nullable(),
   followUpDate: zod.string().nullable(),
-  salaryGuide: zod
-    .object({
-      low: zod.number(),
-      mid: zod.number(),
-      high: zod.number(),
-      currency: zod.string(),
-      period: zod.enum(["year", "month", "hour"]),
-      context: zod.string(),
-      factors: zod.array(zod.string()),
-      negotiationTips: zod.array(zod.string()),
-    })
-    .nullish(),
   tags: zod.array(zod.string()),
-  companyResearch: zod
-    .object({
-      overview: zod.string(),
-      culture: zod.string(),
-      interviewProcess: zod.string(),
-      recentNews: zod.array(zod.string()),
-      glassdoorRating: zod.string(),
-      tips: zod.array(zod.string()),
-    })
-    .nullish(),
-  redFlags: zod
-    .array(
-      zod.object({
-        severity: zod.enum(["high", "medium", "low"]),
-        title: zod.string(),
-        description: zod.string(),
-        quote: zod.string(),
-      }),
-    )
-    .nullish(),
   portfolioLinks: zod.array(zod.string()).optional(),
   versionLabel: zod.string().nullish(),
   location: zod.string().nullish(),
@@ -166,28 +112,6 @@ export const GetAnalysisResponse = zod.object({
     "selected",
     "rejected",
   ]),
-  interviewQuestions: zod.array(zod.string()),
-  learningPlan: zod.array(
-    zod.object({
-      skill: zod.string(),
-      why: zod.string(),
-      priority: zod.enum(["high", "medium", "low"]),
-      resources: zod.array(
-        zod.object({
-          title: zod.string(),
-          type: zod.enum([
-            "course",
-            "certification",
-            "project",
-            "book",
-            "article",
-          ]),
-          description: zod.string(),
-          platform: zod.string().nullish(),
-        }),
-      ),
-    }),
-  ),
   isFavorite: zod.boolean(),
   notes: zod.string().nullable(),
   shareToken: zod.string().nullable(),
@@ -196,39 +120,7 @@ export const GetAnalysisResponse = zod.object({
   contactName: zod.string().nullable(),
   contactEmail: zod.string().nullable(),
   followUpDate: zod.string().nullable(),
-  salaryGuide: zod
-    .object({
-      low: zod.number(),
-      mid: zod.number(),
-      high: zod.number(),
-      currency: zod.string(),
-      period: zod.enum(["year", "month", "hour"]),
-      context: zod.string(),
-      factors: zod.array(zod.string()),
-      negotiationTips: zod.array(zod.string()),
-    })
-    .nullish(),
   tags: zod.array(zod.string()),
-  companyResearch: zod
-    .object({
-      overview: zod.string(),
-      culture: zod.string(),
-      interviewProcess: zod.string(),
-      recentNews: zod.array(zod.string()),
-      glassdoorRating: zod.string(),
-      tips: zod.array(zod.string()),
-    })
-    .nullish(),
-  redFlags: zod
-    .array(
-      zod.object({
-        severity: zod.enum(["high", "medium", "low"]),
-        title: zod.string(),
-        description: zod.string(),
-        quote: zod.string(),
-      }),
-    )
-    .nullish(),
   portfolioLinks: zod.array(zod.string()).optional(),
   versionLabel: zod.string().nullish(),
   location: zod.string().nullish(),
@@ -302,28 +194,6 @@ export const UpdateAnalysisResponse = zod.object({
     "selected",
     "rejected",
   ]),
-  interviewQuestions: zod.array(zod.string()),
-  learningPlan: zod.array(
-    zod.object({
-      skill: zod.string(),
-      why: zod.string(),
-      priority: zod.enum(["high", "medium", "low"]),
-      resources: zod.array(
-        zod.object({
-          title: zod.string(),
-          type: zod.enum([
-            "course",
-            "certification",
-            "project",
-            "book",
-            "article",
-          ]),
-          description: zod.string(),
-          platform: zod.string().nullish(),
-        }),
-      ),
-    }),
-  ),
   isFavorite: zod.boolean(),
   notes: zod.string().nullable(),
   shareToken: zod.string().nullable(),
@@ -332,39 +202,7 @@ export const UpdateAnalysisResponse = zod.object({
   contactName: zod.string().nullable(),
   contactEmail: zod.string().nullable(),
   followUpDate: zod.string().nullable(),
-  salaryGuide: zod
-    .object({
-      low: zod.number(),
-      mid: zod.number(),
-      high: zod.number(),
-      currency: zod.string(),
-      period: zod.enum(["year", "month", "hour"]),
-      context: zod.string(),
-      factors: zod.array(zod.string()),
-      negotiationTips: zod.array(zod.string()),
-    })
-    .nullish(),
   tags: zod.array(zod.string()),
-  companyResearch: zod
-    .object({
-      overview: zod.string(),
-      culture: zod.string(),
-      interviewProcess: zod.string(),
-      recentNews: zod.array(zod.string()),
-      glassdoorRating: zod.string(),
-      tips: zod.array(zod.string()),
-    })
-    .nullish(),
-  redFlags: zod
-    .array(
-      zod.object({
-        severity: zod.enum(["high", "medium", "low"]),
-        title: zod.string(),
-        description: zod.string(),
-        quote: zod.string(),
-      }),
-    )
-    .nullish(),
   portfolioLinks: zod.array(zod.string()).optional(),
   versionLabel: zod.string().nullish(),
   location: zod.string().nullish(),
@@ -380,101 +218,6 @@ export const DuplicateAnalysisParams = zod.object({
 });
 
 /**
- * @summary Generate AI salary range estimate for this role
- */
-export const GenerateSalaryGuideParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const GenerateSalaryGuideResponse = zod.object({
-  low: zod.number(),
-  mid: zod.number(),
-  high: zod.number(),
-  currency: zod.string(),
-  period: zod.enum(["year", "month", "hour"]),
-  context: zod.string(),
-  factors: zod.array(zod.string()),
-  negotiationTips: zod.array(zod.string()),
-});
-
-/**
- * @summary Generate AI-powered company research brief
- */
-export const GenerateCompanyResearchParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const GenerateCompanyResearchResponse = zod.object({
-  overview: zod.string(),
-  culture: zod.string(),
-  interviewProcess: zod.string(),
-  recentNews: zod.array(zod.string()),
-  glassdoorRating: zod.string(),
-  tips: zod.array(zod.string()),
-});
-
-/**
- * @summary Detect potential red flags in the job description
- */
-export const DetectRedFlagsParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const DetectRedFlagsResponse = zod.object({
-  flags: zod.array(
-    zod.object({
-      severity: zod.enum(["high", "medium", "low"]),
-      title: zod.string(),
-      description: zod.string(),
-      quote: zod.string(),
-    }),
-  ),
-  summary: zod.string(),
-  overallRisk: zod.enum(["low", "medium", "high"]),
-});
-
-/**
- * @summary Run a salary negotiation simulation turn (AI plays recruiter)
- */
-export const SimulateNegotiationParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const SimulateNegotiationBody = zod.object({
-  messages: zod.array(
-    zod.object({
-      role: zod.enum(["user", "assistant"]),
-      content: zod.string(),
-    }),
-  ),
-});
-
-export const SimulateNegotiationResponse = zod.object({
-  message: zod.string(),
-  tip: zod.string().optional(),
-});
-
-/**
- * @summary Generate a polished STAR-method answer for an interview question
- */
-export const GenerateStarAnswerParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const GenerateStarAnswerBody = zod.object({
-  question: zod.string(),
-  situation: zod.string().optional(),
-  task: zod.string().optional(),
-  action: zod.string().optional(),
-  result: zod.string().optional(),
-});
-
-export const GenerateStarAnswerResponse = zod.object({
-  answer: zod.string(),
-  tips: zod.array(zod.string()),
-});
-
-/**
  * @summary Generate a tailored cover letter
  */
 export const GenerateCoverLetterParams = zod.object({
@@ -487,48 +230,6 @@ export const GenerateCoverLetterBody = zod.object({
 
 export const GenerateCoverLetterResponse = zod.object({
   content: zod.string(),
-});
-
-/**
- * @summary Generate a personalized learning plan to close skill gaps
- */
-export const GenerateLearningPlanParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const GenerateLearningPlanResponse = zod.object({
-  items: zod.array(
-    zod.object({
-      skill: zod.string(),
-      why: zod.string(),
-      priority: zod.enum(["high", "medium", "low"]),
-      resources: zod.array(
-        zod.object({
-          title: zod.string(),
-          type: zod.enum([
-            "course",
-            "certification",
-            "project",
-            "book",
-            "article",
-          ]),
-          description: zod.string(),
-          platform: zod.string().nullish(),
-        }),
-      ),
-    }),
-  ),
-});
-
-/**
- * @summary Generate likely interview questions for this role
- */
-export const GenerateInterviewQuestionsParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const GenerateInterviewQuestionsResponse = zod.object({
-  questions: zod.array(zod.string()),
 });
 
 /**
@@ -605,28 +306,6 @@ export const UnshareAnalysisResponse = zod.object({
     "selected",
     "rejected",
   ]),
-  interviewQuestions: zod.array(zod.string()),
-  learningPlan: zod.array(
-    zod.object({
-      skill: zod.string(),
-      why: zod.string(),
-      priority: zod.enum(["high", "medium", "low"]),
-      resources: zod.array(
-        zod.object({
-          title: zod.string(),
-          type: zod.enum([
-            "course",
-            "certification",
-            "project",
-            "book",
-            "article",
-          ]),
-          description: zod.string(),
-          platform: zod.string().nullish(),
-        }),
-      ),
-    }),
-  ),
   isFavorite: zod.boolean(),
   notes: zod.string().nullable(),
   shareToken: zod.string().nullable(),
@@ -635,39 +314,7 @@ export const UnshareAnalysisResponse = zod.object({
   contactName: zod.string().nullable(),
   contactEmail: zod.string().nullable(),
   followUpDate: zod.string().nullable(),
-  salaryGuide: zod
-    .object({
-      low: zod.number(),
-      mid: zod.number(),
-      high: zod.number(),
-      currency: zod.string(),
-      period: zod.enum(["year", "month", "hour"]),
-      context: zod.string(),
-      factors: zod.array(zod.string()),
-      negotiationTips: zod.array(zod.string()),
-    })
-    .nullish(),
   tags: zod.array(zod.string()),
-  companyResearch: zod
-    .object({
-      overview: zod.string(),
-      culture: zod.string(),
-      interviewProcess: zod.string(),
-      recentNews: zod.array(zod.string()),
-      glassdoorRating: zod.string(),
-      tips: zod.array(zod.string()),
-    })
-    .nullish(),
-  redFlags: zod
-    .array(
-      zod.object({
-        severity: zod.enum(["high", "medium", "low"]),
-        title: zod.string(),
-        description: zod.string(),
-        quote: zod.string(),
-      }),
-    )
-    .nullish(),
   portfolioLinks: zod.array(zod.string()).optional(),
   versionLabel: zod.string().nullish(),
   location: zod.string().nullish(),
@@ -710,28 +357,6 @@ export const GetSharedAnalysisResponse = zod.object({
     "selected",
     "rejected",
   ]),
-  interviewQuestions: zod.array(zod.string()),
-  learningPlan: zod.array(
-    zod.object({
-      skill: zod.string(),
-      why: zod.string(),
-      priority: zod.enum(["high", "medium", "low"]),
-      resources: zod.array(
-        zod.object({
-          title: zod.string(),
-          type: zod.enum([
-            "course",
-            "certification",
-            "project",
-            "book",
-            "article",
-          ]),
-          description: zod.string(),
-          platform: zod.string().nullish(),
-        }),
-      ),
-    }),
-  ),
   isFavorite: zod.boolean(),
   notes: zod.string().nullable(),
   shareToken: zod.string().nullable(),
@@ -740,39 +365,7 @@ export const GetSharedAnalysisResponse = zod.object({
   contactName: zod.string().nullable(),
   contactEmail: zod.string().nullable(),
   followUpDate: zod.string().nullable(),
-  salaryGuide: zod
-    .object({
-      low: zod.number(),
-      mid: zod.number(),
-      high: zod.number(),
-      currency: zod.string(),
-      period: zod.enum(["year", "month", "hour"]),
-      context: zod.string(),
-      factors: zod.array(zod.string()),
-      negotiationTips: zod.array(zod.string()),
-    })
-    .nullish(),
   tags: zod.array(zod.string()),
-  companyResearch: zod
-    .object({
-      overview: zod.string(),
-      culture: zod.string(),
-      interviewProcess: zod.string(),
-      recentNews: zod.array(zod.string()),
-      glassdoorRating: zod.string(),
-      tips: zod.array(zod.string()),
-    })
-    .nullish(),
-  redFlags: zod
-    .array(
-      zod.object({
-        severity: zod.enum(["high", "medium", "low"]),
-        title: zod.string(),
-        description: zod.string(),
-        quote: zod.string(),
-      }),
-    )
-    .nullish(),
   portfolioLinks: zod.array(zod.string()).optional(),
   versionLabel: zod.string().nullish(),
   location: zod.string().nullish(),
@@ -1026,131 +619,4 @@ export const MarkNotificationReadResponse = zod.object({
   analysisId: zod.number().nullable(),
   read: zod.boolean(),
   createdAt: zod.string(),
-});
-
-/**
- * @summary Generate AI-powered job market insights for this role
- */
-export const GenerateMarketInsightsParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const GenerateMarketInsightsResponse = zod.object({
-  demandLevel: zod.enum(["high", "medium", "low"]),
-  salaryMin: zod.number(),
-  salaryMax: zod.number(),
-  salaryCurrency: zod.string(),
-  salaryPeriod: zod.enum(["year", "month", "hour"]),
-  topSkills: zod.array(zod.string()),
-  marketContext: zod.string(),
-  hiringTrend: zod.string(),
-  remoteOutlook: zod.string(),
-});
-
-/**
- * @summary Generate an AI-powered career path progression map
- */
-export const GenerateCareerPathParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const GenerateCareerPathResponse = zod.object({
-  currentRoleInference: zod.string(),
-  nextSteps: zod.array(
-    zod.object({
-      title: zod.string(),
-      description: zod.string(),
-      timeframe: zod.string(),
-      keySkills: zod.array(zod.string()),
-      isStretch: zod.boolean(),
-    }),
-  ),
-  stretchRoles: zod.array(
-    zod.object({
-      title: zod.string(),
-      description: zod.string(),
-      timeframe: zod.string(),
-      keySkills: zod.array(zod.string()),
-      isStretch: zod.boolean(),
-    }),
-  ),
-  overallTimeline: zod.string(),
-  keyThemes: zod.array(zod.string()),
-});
-
-/**
- * @summary Generate a smart follow-up email for this application
- */
-export const GenerateFollowUpEmailParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const GenerateFollowUpEmailBody = zod.object({
-  emailType: zod.enum(["after_apply", "after_interview", "thank_you"]),
-});
-
-export const GenerateFollowUpEmailResponse = zod.object({
-  subject: zod.string(),
-  body: zod.string(),
-  tips: zod.array(zod.string()),
-});
-
-/**
- * @summary Predict offer likelihood using AI analysis
- */
-export const PredictOfferParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const PredictOfferResponse = zod.object({
-  probability: zod.number(),
-  rating: zod.enum(["strong", "good", "fair", "weak"]),
-  strengthFactors: zod.array(zod.string()),
-  riskFactors: zod.array(zod.string()),
-  actionItems: zod.array(zod.string()),
-  summary: zod.string(),
-});
-
-/**
- * @summary Conduct one turn of an AI mock interview
- */
-export const ConductMockInterviewParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const ConductMockInterviewBody = zod.object({
-  messages: zod.array(
-    zod.object({
-      role: zod.enum(["user", "assistant"]),
-      content: zod.string(),
-    }),
-  ),
-});
-
-export const ConductMockInterviewResponse = zod.object({
-  question: zod.string(),
-  feedback: zod.string().nullish(),
-  isComplete: zod.boolean(),
-  overallNotes: zod.string().nullish(),
-});
-
-/**
- * @summary Score a timed STAR interview answer with AI feedback
- */
-export const GetPracticeFeedbackParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const GetPracticeFeedbackBody = zod.object({
-  question: zod.string(),
-  answer: zod.string(),
-  timeUsed: zod.number(),
-});
-
-export const GetPracticeFeedbackResponse = zod.object({
-  score: zod.number(),
-  feedback: zod.string(),
-  strengths: zod.array(zod.string()),
-  improvements: zod.array(zod.string()),
-  modelAnswer: zod.string(),
 });

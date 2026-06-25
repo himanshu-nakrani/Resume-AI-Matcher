@@ -19,7 +19,6 @@ import {
   CartesianGrid,
   LineChart,
   Line,
-  Legend,
 } from "recharts";
 import {
   TrendingUp,
@@ -29,7 +28,6 @@ import {
   GitBranch,
   CheckCircle2,
   GitCompareArrows,
-  DollarSign,
   Calendar,
   Trophy,
 } from "lucide-react";
@@ -82,11 +80,6 @@ const STATUS_COLORS: Record<string, string> = {
   selected: "#22c55e",
   rejected: "#ef4444",
 };
-
-function formatSalary(n: number) {
-  if (n >= 1000) return "$" + Math.round(n / 1000) + "k";
-  return "$" + n;
-}
 
 export function Stats() {
   const [, setLocation] = useLocation();
@@ -248,22 +241,6 @@ export function Stats() {
         status: a.status,
         id: a.id,
       }))
-    : [];
-
-  // Salary trend data
-  const salaryData = analyses
-    ? analyses
-        .filter((a) => a.salaryGuide != null)
-        .map((a) => {
-          const sg = a.salaryGuide as { low: number; mid: number; high: number };
-          return {
-            name: a.jobTitle.length > 12 ? a.jobTitle.slice(0, 12) + "…" : a.jobTitle,
-            low: sg.low,
-            mid: sg.mid,
-            high: sg.high,
-            label: a.jobTitle,
-          };
-        })
     : [];
 
   // Success rate by role (top job titles with >1 application)
@@ -579,37 +556,6 @@ export function Stats() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Salary Trends */}
-          {salaryData.length > 0 && (
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-green-500" /> Salary Estimates
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Salary range estimates from generated salary guides ({salaryData.length} {salaryData.length === 1 ? "analysis" : "analyses"}).
-                </p>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={salaryData} barGap={2}>
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={formatSalary} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={45} />
-                    <Tooltip
-                      formatter={(val: number, name: string) => [formatSalary(val), name === "mid" ? "Median" : name === "low" ? "Low" : "High"]}
-                      labelFormatter={(label, payload) => payload?.[0]?.payload?.label ?? label}
-                      contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                    />
-                    <Legend formatter={(v) => v === "mid" ? "Median" : v === "low" ? "Low" : "High"} wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="low" fill="#94a3b8" radius={[2, 2, 0, 0]} name="low" />
-                    <Bar dataKey="mid" fill="#3b82f6" radius={[2, 2, 0, 0]} name="mid" />
-                    <Bar dataKey="high" fill="#22c55e" radius={[2, 2, 0, 0]} name="high" />
-                  </BarChart>
-                </ResponsiveContainer>
               </CardContent>
             </Card>
           )}

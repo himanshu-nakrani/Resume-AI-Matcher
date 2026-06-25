@@ -8,7 +8,6 @@ import {
   Sun,
   GitCompareArrows,
   Keyboard,
-  GraduationCap,
   X,
   LayoutGrid,
   Fingerprint,
@@ -58,7 +57,6 @@ const navGroups: NavGroup[] = [
       { href: "/history", label: "History", icon: History },
       { href: "/stats", label: "Stats", icon: BarChart2 },
       { href: "/compare", label: "Compare", icon: GitCompareArrows },
-      { href: "/skills", label: "Skills", icon: GraduationCap },
       { href: "/brand", label: "Brand", icon: Fingerprint },
     ],
   },
@@ -81,7 +79,6 @@ const mobileNavItems: NavItem[] = [
 
 const mobileMoreItems: NavItem[] = [
   { href: "/compare", label: "Compare", icon: GitCompareArrows },
-  { href: "/skills", label: "Skills", icon: GraduationCap },
   { href: "/brand", label: "Brand", icon: Fingerprint },
   { href: "/versions", label: "Versions", icon: GitBranch },
   { href: "/saved-jobs", label: "Saved Jobs", icon: Bookmark },
@@ -95,7 +92,6 @@ const SHORTCUTS = [
   { keys: ["G", "H"], description: "Go to History" },
   { keys: ["G", "S"], description: "Go to Stats" },
   { keys: ["G", "C"], description: "Go to Compare" },
-  { keys: ["G", "L"], description: "Go to Skills" },
   { keys: ["Esc"], description: "Close dialogs" },
 ];
 
@@ -198,9 +194,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             break;
           case "c":
             setLocation("/compare");
-            break;
-          case "l":
-            setLocation("/skills");
             break;
           default:
             break;
