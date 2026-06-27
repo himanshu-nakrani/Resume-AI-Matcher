@@ -6,10 +6,11 @@ function getInitial(): boolean {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored !== null) return stored === "true";
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
   } catch {
-    return false;
+    /* SSR / storage disabled */
   }
+  // No stored preference — default to dark.
+  return true;
 }
 
 export function useDarkMode() {
@@ -24,7 +25,9 @@ export function useDarkMode() {
     }
     try {
       localStorage.setItem(STORAGE_KEY, String(isDark));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, [isDark]);
 
   return { isDark, toggle: () => setIsDark((d) => !d) };
