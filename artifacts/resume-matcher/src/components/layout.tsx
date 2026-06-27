@@ -139,31 +139,35 @@ function ShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <div className="relative z-10 w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-6">
+      <div
+        className="absolute inset-0 bg-background/80 backdrop-blur-md"
+        onClick={onClose}
+        aria-hidden
+      />
+      <div className="relative z-10 w-full max-w-md rounded-lg border border-border bg-surface-1 p-5 shadow-lg">
+        <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Keyboard className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Keyboard shortcuts</h2>
+            <Keyboard className="h-3.5 w-3.5 text-muted-foreground" />
+            <h2 className="text-[13px] font-semibold">Keyboard shortcuts</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
             aria-label="Close"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
-        <ul className="space-y-3">
+        <ul className="space-y-2">
           {SHORTCUTS.map((shortcut, i) => (
-            <li key={i} className="flex items-center justify-between gap-4 text-sm">
+            <li key={i} className="flex items-center justify-between gap-4 text-[12.5px]">
               <span className="text-muted-foreground">{shortcut.description}</span>
               <div className="flex shrink-0 items-center gap-1">
                 {shortcut.keys.map((key, j) => (
                   <kbd
                     key={j}
-                    className="rounded border border-border bg-muted px-2 py-0.5 text-[11px] font-mono font-medium text-muted-foreground"
+                    className="rounded border border-border-strong bg-surface-2 px-1.5 py-0.5 font-mono text-[10.5px] font-medium text-muted-foreground"
                   >
                     {key}
                   </kbd>
@@ -172,7 +176,9 @@ function ShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void 
             </li>
           ))}
         </ul>
-        <p className="mt-6 text-center text-xs text-muted-foreground">Press Esc or click outside to close</p>
+        <p className="mt-5 text-center text-[10.5px] text-subtle-foreground">
+          Press Esc or click outside to close
+        </p>
       </div>
     </div>
   );
