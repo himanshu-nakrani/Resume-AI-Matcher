@@ -31,6 +31,25 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
+function routeBreadcrumb(location: string): { group: string | null; label: string } {
+  const ROUTE_INDEX: Record<string, { group: string | null; label: string }> = {
+    "/": { group: "Core", label: "Optimize" },
+    "/tracker": { group: "Core", label: "Tracker" },
+    "/board": { group: "Core", label: "Tracker" },
+    "/user": { group: "Core", label: "Profile" },
+    "/history": { group: "Insights", label: "History" },
+    "/stats": { group: "Insights", label: "Stats" },
+    "/compare": { group: "Insights", label: "Compare" },
+    "/brand": { group: "Insights", label: "Brand" },
+    "/versions": { group: "Jobs", label: "Versions" },
+    "/saved-jobs": { group: "Jobs", label: "Saved Jobs" },
+    "/alerts": { group: "Jobs", label: "Alerts" },
+  };
+  if (ROUTE_INDEX[location]) return ROUTE_INDEX[location];
+  if (location.startsWith("/analysis/")) return { group: "Insights", label: "Analysis" };
+  return { group: null, label: "" };
+}
+
 interface NavItem {
   href: string;
   label: string;
@@ -341,6 +360,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
           </div>
+        </header>
+
+        <header className="sticky top-0 z-10 hidden h-12 items-center justify-between gap-3 border-b border-border bg-background/80 px-6 backdrop-blur-md md:flex">
+          <div className="flex min-w-0 items-center gap-2 text-[12.5px]">
+            {(() => {
+              const bc = routeBreadcrumb(location);
+              if (!bc.label) return null;
+              return (
+                <>
+                  {bc.group && (
+                    <>
+                      <span className="text-subtle-foreground">{bc.group}</span>
+                      <span className="text-subtle-foreground">/</span>
+                    </>
+                  )}
+                  <span className="truncate text-foreground">{bc.label}</span>
+                </>
+              );
+            })()}
+          </div>
+          <div className="flex items-center gap-2" id="topbar-actions" />
         </header>
 
         <main className="flex-1 pb-20 md:pb-0">
