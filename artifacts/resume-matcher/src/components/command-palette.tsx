@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useListAnalyses } from "@workspace/api-client-react";
-import { ScoreCircle } from "@/components/score-circle";
 import {
   CommandDialog,
   CommandEmpty,
@@ -11,6 +10,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import { useDarkMode } from "@/hooks/use-dark-mode";
 import {
   Sparkles,
   History,
@@ -18,12 +18,36 @@ import {
   GitCompareArrows,
   Heart,
   Plus,
+  LayoutGrid,
+  Fingerprint,
+  GitBranch,
+  Bookmark,
+  Bell,
+  UserRound,
+  Moon,
+  Sun,
 } from "lucide-react";
+
+type GoEntry = { label: string; path: string; icon: typeof Plus; kbd?: string };
+
+const PAGES: GoEntry[] = [
+  { label: "Optimize / New analysis", path: "/", icon: Plus, kbd: "⌘N" },
+  { label: "Tracker", path: "/tracker", icon: LayoutGrid, kbd: "⌘T" },
+  { label: "Profile", path: "/user", icon: UserRound },
+  { label: "History", path: "/history", icon: History, kbd: "G H" },
+  { label: "Stats", path: "/stats", icon: BarChart2, kbd: "G S" },
+  { label: "Compare", path: "/compare", icon: GitCompareArrows, kbd: "G C" },
+  { label: "Brand", path: "/brand", icon: Fingerprint, kbd: "G B" },
+  { label: "Versions", path: "/versions", icon: GitBranch },
+  { label: "Saved Jobs", path: "/saved-jobs", icon: Bookmark },
+  { label: "Search Alerts", path: "/alerts", icon: Bell },
+];
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { data: analyses } = useListAnalyses();
+  const { isDark, toggle } = useDarkMode();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -41,7 +65,7 @@ export function CommandPalette() {
       setOpen(false);
       setLocation(path);
     },
-    [setLocation]
+    [setLocation],
   );
 
   const favorites = analyses?.filter((a) => a.isFavorite) ?? [];
@@ -49,27 +73,26 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search analyses, navigate pages..." />
+      <CommandInput placeholder="Search analyses or navigate…" />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandEmpty>No results.</CommandEmpty>
 
         <CommandGroup heading="Pages">
-          <CommandItem onSelect={() => go("/")}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Analysis
-          </CommandItem>
-          <CommandItem onSelect={() => go("/history")}>
-            <History className="w-4 h-4 mr-2" />
-            History
-          </CommandItem>
-          <CommandItem onSelect={() => go("/stats")}>
-            <BarChart2 className="w-4 h-4 mr-2" />
-            Stats
-          </CommandItem>
-          <CommandItem onSelect={() => go("/compare")}>
-            <GitCompareArrows className="w-4 h-4 mr-2" />
-            Compare Analyses
-          </CommandItem>
+          {PAGES.map((p) => (
+            <CommandItem
+              key={p.path}
+              onSelect={() => go(p.path)}
+              className="group"
+            >
+              <p.icon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+              <span className="flex-1">{p.label}</span>
+              {p.kbd && (
+                <kbd className="ml-2 font-mono text-[10px] text-subtle-foreground">
+                  {p.kbd}
+                </kbd>
+              )}
+            </CommandItem>
+          ))}
         </CommandGroup>
 
         {favorites.length > 0 && (
@@ -77,15 +100,18 @@ export function CommandPalette() {
             <CommandSeparator />
             <CommandGroup heading="Favorites">
               {favorites.slice(0, 5).map((a) => (
-                <CommandItem key={a.id} onSelect={() => go(`/analysis/${a.id}`)}>
-                  <Heart className="w-4 h-4 mr-2 text-pink-500 fill-pink-500" />
+                <CommandItem
+                  key={a.id}
+                  onSelect={() => go(`/analysis/${a.id}`)}
+                >
+                  <Heart className="mr-2 h-3.5 w-3.5 fill-destructive text-destructive" />
                   <span className="flex-1 truncate">{a.jobTitle}</span>
                   {a.companyName && (
-                    <span className="text-xs text-muted-foreground ml-2 truncate">
+                    <span className="ml-2 truncate text-[11px] text-muted-foreground">
                       {a.companyName}
                     </span>
                   )}
-                  <span className="ml-2 text-xs font-semibold tabular-nums">
+                  <span className="ml-2 font-mono text-[11px] font-medium tabular-nums">
                     {a.fitScore}
                   </span>
                 </CommandItem>
@@ -97,17 +123,20 @@ export function CommandPalette() {
         {recent.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Recent Analyses">
+            <CommandGroup heading="Recent analyses">
               {recent.map((a) => (
-                <CommandItem key={a.id} onSelect={() => go(`/analysis/${a.id}`)}>
-                  <Sparkles className="w-4 h-4 mr-2 text-primary" />
+                <CommandItem
+                  key={a.id}
+                  onSelect={() => go(`/analysis/${a.id}`)}
+                >
+                  <Sparkles className="mr-2 h-3.5 w-3.5 text-accent" />
                   <span className="flex-1 truncate">{a.jobTitle}</span>
                   {a.companyName && (
-                    <span className="text-xs text-muted-foreground ml-2 truncate">
+                    <span className="ml-2 truncate text-[11px] text-muted-foreground">
                       {a.companyName}
                     </span>
                   )}
-                  <span className="ml-2 text-xs font-semibold tabular-nums">
+                  <span className="ml-2 font-mono text-[11px] font-medium tabular-nums">
                     {a.fitScore}
                   </span>
                 </CommandItem>
@@ -115,6 +144,15 @@ export function CommandPalette() {
             </CommandGroup>
           </>
         )}
+
+        <CommandSeparator />
+        <CommandGroup heading="Settings">
+          <CommandItem onSelect={() => { setOpen(false); toggle(); }} className="group">
+            {isDark ? <Sun className="mr-2 h-3.5 w-3.5" /> : <Moon className="mr-2 h-3.5 w-3.5" />}
+            <span className="flex-1">Toggle theme</span>
+            <kbd className="ml-2 font-mono text-[10px] text-subtle-foreground">T</kbd>
+          </CommandItem>
+        </CommandGroup>
       </CommandList>
     </CommandDialog>
   );
