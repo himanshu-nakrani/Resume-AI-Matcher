@@ -7,6 +7,12 @@
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
+  --color-surface-1: hsl(var(--surface-1));
+  --color-surface-2: hsl(var(--surface-2));
+  --color-surface-3: hsl(var(--surface-3));
+  --color-border-strong: hsl(var(--border-strong));
+  --color-subtle-foreground: hsl(var(--subtle-foreground));
+  --color-accent-soft: hsl(var(--accent-soft));
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
@@ -73,6 +79,11 @@
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
+
+  --duration-fast: var(--duration-fast);
+  --duration-default: var(--duration);
+  --duration-slow: var(--duration-slow);
+  --ease-out-expo: var(--ease);
 }
 
 :root {
