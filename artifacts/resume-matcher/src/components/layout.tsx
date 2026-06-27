@@ -345,7 +345,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-4 py-3 md:hidden">
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface-1 px-4 py-3 md:hidden">
           <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -390,7 +390,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </main>
 
         <nav
-          className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
+          className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-border bg-surface-1 pb-[env(safe-area-inset-bottom)] md:hidden"
           aria-label="Mobile"
         >
           {mobileNavItems.map((item) => {
