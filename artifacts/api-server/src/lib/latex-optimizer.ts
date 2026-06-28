@@ -10,7 +10,9 @@
  * 6. Correction - Fix any issues found
  */
 
-import type { ChatCompletionCreateParamsNonStreaming } from "openai/resources/chat/completions";
+import type { OpenAI } from "@workspace/integrations-openai-ai-server";
+
+type ChatCompletionCreateParamsNonStreaming = OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
 import { validateLatex, type ValidationResult } from "./latex-validator";
 import {
   createStructurePreservationMap,
@@ -53,7 +55,7 @@ export interface AIClient {
   chat: {
     completions: {
       create: (params: ChatCompletionCreateParamsNonStreaming) => Promise<{
-        choices: Array<{ message?: { content?: string } }>;
+        choices: Array<{ message?: { content?: string | null } }>;
         usage?: { total_tokens?: number };
       }>;
     };
