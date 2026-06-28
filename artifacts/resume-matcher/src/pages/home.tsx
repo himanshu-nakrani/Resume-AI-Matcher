@@ -712,27 +712,35 @@ export function Home() {
                 </div>
               )}
 
-              {exaResults?.metadata && (
-                <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs space-y-1">
-                  <p className="font-medium text-foreground">Search analytics</p>
-                  <p className="text-muted-foreground">
-                    Found {exaResults.metadata.totalFound} results · {exaResults.metadata.searchDurationMs < 1000 ? `${exaResults.metadata.searchDurationMs}ms` : `${(exaResults.metadata.searchDurationMs / 1000).toFixed(1)}s`}
-                    {exaResults.metadata.cachedResult ? " · cached" : ""}
-                  </p>
-                  <p className="text-muted-foreground">
-                    Quality: {exaResults.metadata.rankingStats.highQuality} high · {exaResults.metadata.rankingStats.mediumQuality} medium · {exaResults.metadata.rankingStats.filtered} filtered
-                  </p>
-                  <p className="text-muted-foreground">
-                    Apply: {exaResults.metadata.applyTypeBreakdown.ats} easy · {exaResults.metadata.applyTypeBreakdown.external} external · {exaResults.metadata.applyTypeBreakdown.unknown} unknown
-                  </p>
-                  {exaResults.metadata.cities.length > 0 && (
-                    <p className="text-muted-foreground">Cities: {exaResults.metadata.cities.join(", ")}</p>
-                  )}
-                  {exaResults.metadata.companies.length > 0 && (
-                    <p className="text-muted-foreground">Companies: {exaResults.metadata.companies.join(", ")}</p>
-                  )}
-                </div>
-              )}
+              {exaResults?.metadata && (() => {
+                const meta = exaResults.metadata;
+                const duration = meta.searchDurationMs ?? 0;
+                const ranking = meta.rankingStats ?? { highQuality: 0, mediumQuality: 0, filtered: 0 };
+                const apply = meta.applyTypeBreakdown ?? { ats: 0, external: 0, unknown: 0 };
+                const cities = meta.cities ?? [];
+                const companies = meta.companies ?? [];
+                return (
+                  <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs space-y-1">
+                    <p className="font-medium text-foreground">Search analytics</p>
+                    <p className="text-muted-foreground">
+                      Found {meta.totalFound} results · {duration < 1000 ? `${duration}ms` : `${(duration / 1000).toFixed(1)}s`}
+                      {meta.cachedResult ? " · cached" : ""}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Quality: {ranking.highQuality} high · {ranking.mediumQuality} medium · {ranking.filtered} filtered
+                    </p>
+                    <p className="text-muted-foreground">
+                      Apply: {apply.ats} easy · {apply.external} external · {apply.unknown} unknown
+                    </p>
+                    {cities.length > 0 && (
+                      <p className="text-muted-foreground">Cities: {cities.join(", ")}</p>
+                    )}
+                    {companies.length > 0 && (
+                      <p className="text-muted-foreground">Companies: {companies.join(", ")}</p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {exaResults && exaResults.results.length > 0 && (
                 <ul className="space-y-3 pt-2 border-t">
