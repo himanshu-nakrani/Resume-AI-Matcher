@@ -5,22 +5,22 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-foreground text-background hover:bg-foreground/90",
+          "bg-accent text-accent-foreground hover:bg-accent/90",
+        secondary:
+          "bg-surface-2 text-foreground hover:bg-surface-3",
+        ghost:
+          "text-foreground hover:bg-surface-2",
+        outline:
+          "border border-border bg-transparent text-foreground hover:bg-surface-2",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline:
-          "border border-border bg-transparent hover:bg-muted",
-        secondary:
-          "bg-muted text-foreground hover:bg-muted/80",
-        ghost:
-          "hover:bg-muted",
         link:
-          "text-primary underline-offset-4 hover:underline",
+          "text-accent underline-offset-4 hover:underline",
         success:
           "bg-success text-success-foreground hover:bg-success/90",
         warning:
@@ -29,12 +29,12 @@ const buttonVariants = cva(
           "bg-info text-info-foreground hover:bg-info/90",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-6",
-        icon: "h-9 w-9",
-        "icon-sm": "h-8 w-8",
-        "icon-lg": "h-11 w-11",
+        default: "h-8 px-3 text-[13px] [&_svg]:size-3.5",
+        sm: "h-7 px-2.5 text-[12px] [&_svg]:size-3",
+        lg: "h-10 px-5 text-[14px] [&_svg]:size-4",
+        icon: "h-8 w-8 [&_svg]:size-3.5",
+        "icon-sm": "h-7 w-7 [&_svg]:size-3",
+        "icon-lg": "h-10 w-10 [&_svg]:size-4",
       },
     },
     defaultVariants: {
@@ -52,22 +52,40 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, loading = false, children, disabled, ...props }, ref) => {
+  (
+    { className, variant, size, asChild = false, loading = false, children, disabled, ...props },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : "button"
+    // Slot requires a single child; the width-preserving spinner overlay adds a
+    // second child, so we suppress it when asChild is true. Practically: asChild
+    // is used to project the Button styles onto e.g. <Link/>, which has its own
+    // navigation lifecycle and doesn't need an inline loading state.
+    const showSpinner = loading && !asChild
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         disabled={disabled || loading}
+        aria-busy={loading || undefined}
         {...props}
       >
-        {loading ? (
-          <>
+        <span
+          className={cn(
+            "inline-flex items-center gap-2",
+            showSpinner && "invisible",
+          )}
+        >
+          {children}
+        </span>
+        {showSpinner && (
+          <span className="absolute inset-0 flex items-center justify-center">
             <svg
-              className="animate-spin h-4 w-4"
+              className="h-3.5 w-3.5 animate-spin"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
+              aria-hidden
             >
               <circle
                 className="opacity-25"
@@ -83,14 +101,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>
-            <span>Loading...</span>
-          </>
-        ) : (
-          children
+          </span>
         )}
       </Comp>
     )
-  }
+  },
 )
 Button.displayName = "Button"
 
