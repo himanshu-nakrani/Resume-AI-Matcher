@@ -68,7 +68,7 @@ function Badge({
         <button
           type="button"
           onClick={onRemove}
-          className="ml-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] transition-colors hover:bg-surface-2"
+          className="ml-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] transition-colors hover:bg-current/15"
           aria-label="Remove"
         >
           <svg

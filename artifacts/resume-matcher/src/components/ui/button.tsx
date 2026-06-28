@@ -57,6 +57,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const Comp = asChild ? Slot : "button"
+    // Slot requires a single child; the width-preserving spinner overlay adds a
+    // second child, so we suppress it when asChild is true. Practically: asChild
+    // is used to project the Button styles onto e.g. <Link/>, which has its own
+    // navigation lifecycle and doesn't need an inline loading state.
+    const showSpinner = loading && !asChild
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
@@ -68,12 +73,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         <span
           className={cn(
             "inline-flex items-center gap-2",
-            loading && "invisible",
+            showSpinner && "invisible",
           )}
         >
           {children}
         </span>
-        {loading && (
+        {showSpinner && (
           <span className="absolute inset-0 flex items-center justify-center">
             <svg
               className="h-3.5 w-3.5 animate-spin"
