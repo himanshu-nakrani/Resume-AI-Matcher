@@ -60,3 +60,6 @@ resume-matcher.sqlite-wal
 # Replit
 .cache/
 .local/
+
+# Superpowers brainstorming session content
+.superpowers/
