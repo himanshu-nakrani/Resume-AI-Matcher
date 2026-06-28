@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   useListAnalyses,
@@ -38,7 +38,17 @@ import {
   BookmarkCheck,
   Pencil,
   Check,
+  MoreHorizontal,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from "@/components/ui/empty";
 import { formatDistanceToNow, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -241,6 +251,17 @@ export function History() {
     });
   }, [analyses, search, statusFilter, favoritesOnly]);
 
+  useEffect(() => {
+    // Drop selections that are no longer visible after filter change.
+    setSelectedIds((prev) => {
+      const next = new Set<number>();
+      for (const id of prev) {
+        if (filtered.some((a) => a.id === id)) next.add(id);
+      }
+      return next.size === prev.size ? prev : next;
+    });
+  }, [filtered]);
+
   const statusCounts = analyses
     ? ALL_STATUSES.reduce((acc, s) => {
         acc[s] = analyses.filter((a) => a.status === s).length;
@@ -319,6 +340,15 @@ export function History() {
     });
   }, []);
 
+  const toggleId = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   const selectAll = useCallback(() => {
     setSelectedIds(new Set(filtered.map((a) => a.id)));
   }, [filtered]);
@@ -338,46 +368,47 @@ export function History() {
       .catch(() => toast({ title: "Some deletions failed", variant: "destructive" }));
   }, [selectedIds, deleteAnalysis, toast]);
 
-  const inSelectionMode = selectedIds.size > 0;
-
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-6">
+      {/* PAGE HEADER */}
+      <header className="flex items-baseline justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">History</h1>
-          <p className="text-muted-foreground mt-1">All your resume analyses, most recent first.</p>
+          <h1 className="text-2xl font-semibold tracking-[-0.02em]">
+            Analyses
+            {analyses && analyses.length > 0 && (
+              <Badge variant="default" size="sm" className="ml-3 align-middle">
+                {analyses.length}
+              </Badge>
+            )}
+          </h1>
+          <p className="text-[13px] text-muted-foreground mt-1">
+            All your resume analyses, most recent first.
+          </p>
         </div>
-        <div className="flex gap-2 shrink-0 flex-wrap justify-end">
-          {inSelectionMode && (
-            <>
-              <span className="text-sm text-muted-foreground self-center">{selectedIds.size} selected</span>
-              <Button variant="destructive" size="sm" className="gap-1.5" onClick={deleteSelected}>
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete {selectedIds.size}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={clearSelection}>
-                Clear
-              </Button>
-            </>
-          )}
-          {!inSelectionMode && savedSearches.length > 0 && (
+        <div className="flex items-center gap-2">
+          {savedSearches.length > 0 && (
             <DropdownMenu open={showSavedSearches} onOpenChange={setShowSavedSearches}>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  <BookmarkCheck className="w-3.5 h-3.5" />
+                <Button variant="ghost" size="sm">
+                  <BookmarkCheck className="w-3.5 h-3.5 mr-1.5" />
                   Saved
-                  <ChevronDown className="w-3 h-3" />
+                  <ChevronDown className="w-3 h-3 ml-1" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Saved Searches</DropdownMenuLabel>
+                <DropdownMenuLabel>Saved searches</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {savedSearches.map((s) => (
-                  <DropdownMenuItem key={s.id} className="flex items-center justify-between gap-2 cursor-pointer" onSelect={() => applySavedSearch(s)}>
+                  <DropdownMenuItem
+                    key={s.id}
+                    className="flex items-center justify-between gap-2 cursor-pointer"
+                    onSelect={() => applySavedSearch(s)}
+                  >
                     <span className="flex-1 truncate text-sm">{s.name}</span>
                     <button
                       className="shrink-0 text-muted-foreground hover:text-destructive p-0.5 rounded"
                       onClick={(e) => { e.stopPropagation(); deleteSavedSearch(s.id); }}
+                      aria-label="Delete saved search"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -386,242 +417,269 @@ export function History() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {!inSelectionMode && filtered.length > 0 && (
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
-              <Download className="w-3.5 h-3.5" />
+          {filtered.length > 0 && (
+            <Button variant="secondary" size="sm" onClick={exportCSV}>
+              <Download className="w-3.5 h-3.5 mr-1.5" />
               Export CSV
             </Button>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Pipeline summary */}
-      {statusCounts && analyses && analyses.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {ALL_STATUSES.filter((s) => s !== "not_applied").map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
-              className={`rounded-lg border px-3 py-2 text-center transition-all ${STATUS_CONFIG[s].className} ${statusFilter === s ? "ring-2 ring-offset-1 ring-current" : "hover:opacity-80"}`}
-            >
-              <p className="text-2xl font-bold tabular-nums">{statusCounts[s]}</p>
-              <p className="text-xs font-medium mt-0.5">{STATUS_CONFIG[s].label}</p>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Search + Filter bar */}
-      {analyses && analyses.length > 0 && (
-        <div className="flex flex-wrap gap-2 items-center">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search by title or company..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 text-sm"
-            />
+      {/* BULK SELECTION BAR */}
+      {selectedIds.size > 0 && (
+        <div className="sticky top-12 z-20 -mx-6 -my-2 flex items-center justify-between gap-3 border-b border-border bg-surface-1 px-6 py-2 backdrop-blur-md">
+          <span className="text-[13px] text-muted-foreground">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-2">
+            <Button variant="destructive" size="sm" onClick={deleteSelected}>
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              Delete {selectedIds.size}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={clearSelection}>Clear</Button>
           </div>
-          <Button
-            variant={favoritesOnly ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFavoritesOnly(!favoritesOnly)}
-            className="gap-1.5"
-          >
-            <Heart className={`w-3.5 h-3.5 ${favoritesOnly ? "fill-current" : ""}`} />
-            Favorites
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Filter className="w-3.5 h-3.5" />
-                {statusFilter === "all" ? "All statuses" : STATUS_CONFIG[statusFilter].label}
-                <ChevronDown className="w-3 h-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setStatusFilter("all")}>All statuses</DropdownMenuItem>
-              {ALL_STATUSES.map((s) => (
-                <DropdownMenuItem key={s} onSelect={() => setStatusFilter(s)}>
-                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border ${STATUS_CONFIG[s].className}`}>
-                    {STATUS_CONFIG[s].label}
-                  </span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {hasFilters && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setSearch(""); setStatusFilter("all"); setFavoritesOnly(false); }}
-                className="text-muted-foreground gap-1"
-              >
-                <X className="w-3.5 h-3.5" /> Clear
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={saveCurrentSearch}
-                className="text-muted-foreground gap-1"
-                title="Save this search"
-              >
-                <Bookmark className="w-3.5 h-3.5" /> Save
-              </Button>
-            </>
-          )}
         </div>
       )}
 
-      {isLoading ? (
+      {/* FILTER BAR */}
+      {analyses && analyses.length > 0 && (
+        <Card padding="sm">
+          <CardContent className="flex flex-wrap items-center gap-3 p-3">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search by title or company…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                onClick={() => setStatusFilter("all")}
+                className={cn(
+                  "h-7 rounded-[4px] px-2 text-[11px] font-medium tracking-[0.04em] transition-colors",
+                  statusFilter === "all"
+                    ? "bg-surface-2 text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface-2",
+                )}
+              >
+                All
+              </button>
+              {ALL_STATUSES.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
+                  className={cn(
+                    "h-7 rounded-[4px] px-2 text-[11px] font-medium tracking-[0.04em] transition-colors",
+                    statusFilter === s
+                      ? "bg-accent-soft text-accent"
+                      : "text-muted-foreground hover:text-foreground hover:bg-surface-2",
+                  )}
+                >
+                  {STATUS_CONFIG[s].label}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant={favoritesOnly ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setFavoritesOnly(!favoritesOnly)}
+            >
+              <Heart className={cn("w-3.5 h-3.5 mr-1.5", favoritesOnly && "fill-current")} />
+              Favorites
+            </Button>
+            {hasFilters && (
+              <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); setFavoritesOnly(false); }}>
+                <X className="w-3.5 h-3.5 mr-1.5" />Clear
+              </Button>
+            )}
+            {hasFilters && (
+              <Button variant="ghost" size="sm" onClick={saveCurrentSearch} title="Save this search">
+                <Bookmark className="w-3.5 h-3.5 mr-1.5" />Save
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* LOADING STATE */}
+      {isLoading && (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
+            <Skeleton key={i} className="h-10 rounded-md" />
           ))}
         </div>
-      ) : !analyses || analyses.length === 0 ? (
-        <div className="text-center py-20 text-muted-foreground border border-dashed rounded-xl">
-          <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No analyses yet</p>
-          <p className="text-sm mt-1">Run your first analysis to see it here.</p>
-          <Button className="mt-4" onClick={() => setLocation("/")} data-testid="button-new-analysis">
-            Start New Analysis
-          </Button>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground border border-dashed rounded-xl">
-          <Search className="w-6 h-6 mx-auto mb-2 opacity-30" />
-          <p className="font-medium">No matches</p>
-          <p className="text-sm mt-1">Try adjusting your search or filters.</p>
-          <Button variant="outline" size="sm" className="mt-3" onClick={() => { setSearch(""); setStatusFilter("all"); setFavoritesOnly(false); }}>
-            Clear filters
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-3" data-testid="analysis-list">
-          {/* Batch select header */}
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={inSelectionMode ? clearSelection : selectAll}
-              onKeyDown={(e) => e.key === "Enter" && (inSelectionMode ? clearSelection() : selectAll())}
-              className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer select-none"
-            >
-              <Checkbox
-                checked={selectedIds.size === filtered.length && filtered.length > 0}
-                onCheckedChange={(v) => v ? selectAll() : clearSelection()}
-                className="w-3.5 h-3.5"
-              />
-              {inSelectionMode ? `${selectedIds.size} selected` : `${filtered.length} ${filtered.length === 1 ? "analysis" : "analyses"}`}
-            </div>
-            {inSelectionMode && selectedIds.size < filtered.length && (
-              <button onClick={selectAll} className="hover:text-foreground transition-colors">Select all {filtered.length}</button>
-            )}
-          </div>
+      )}
 
-          {filtered.map((a) => (
-            <Card
-              key={a.id}
-              className={`group border shadow-sm hover:shadow-md transition-all cursor-pointer ${selectedIds.has(a.id) ? "ring-2 ring-primary border-primary" : ""}`}
-              onClick={() => !inSelectionMode && setLocation(`/analysis/${a.id}`)}
-              data-testid={`row-analysis-${a.id}`}
-            >
-              <CardContent className="p-4 flex items-center gap-3">
-                <div onClick={(e) => toggleSelect(a.id, e)} className="shrink-0">
-                  <Checkbox
+      {/* EMPTY: NO ANALYSES AT ALL */}
+      {!isLoading && analyses && analyses.length === 0 && (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Sparkles />
+            </EmptyMedia>
+            <EmptyTitle>No analyses yet</EmptyTitle>
+            <EmptyDescription>
+              Paste a resume and a job description on the home page to see your first analysis.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button onClick={() => setLocation("/")} data-testid="button-new-analysis">
+              Start a new analysis
+            </Button>
+          </EmptyContent>
+        </Empty>
+      )}
+
+      {/* EMPTY: NO MATCHES FOR CURRENT FILTERS */}
+      {!isLoading && analyses && analyses.length > 0 && filtered.length === 0 && (
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>No matches</EmptyTitle>
+            <EmptyDescription>No analyses match your filters.</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="secondary" onClick={() => { setSearch(""); setStatusFilter("all"); setFavoritesOnly(false); }}>
+              Clear filters
+            </Button>
+          </EmptyContent>
+        </Empty>
+      )}
+
+      {/* DESKTOP TABLE (md+) */}
+      {!isLoading && filtered.length > 0 && (
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="w-8 px-3 py-2"></th>
+                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Title</th>
+                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Company</th>
+                <th className="w-16 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Fit</th>
+                <th className="w-16 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">ATS</th>
+                <th className="w-32 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Status</th>
+                <th className="hidden lg:table-cell w-28 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Created</th>
+                <th className="w-12 px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((a) => {
+                const isSampled = (a.tags ?? []).includes("sample");
+                return (
+                  <tr
+                    key={a.id}
+                    className="border-b border-border hover:bg-surface-2 cursor-pointer group"
+                    onClick={() => setLocation(`/analysis/${a.id}`)}
+                    title={`Created ${format(new Date(a.createdAt), "PPp")}`}
+                  >
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded border-border"
+                        checked={selectedIds.has(a.id)}
+                        onChange={() => toggleId(a.id)}
+                        aria-label="Select row"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FavoriteButton analysisId={a.id} isFavorite={a.isFavorite} />
+                        <span className="text-[13px] font-medium truncate">{a.jobTitle}</span>
+                        {isSampled && <Badge variant="soft" size="sm">Sample</Badge>}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-[13px] text-muted-foreground truncate">{a.companyName ?? "—"}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[13px]" style={{ color: a.fitScore >= 80 ? "hsl(var(--success))" : a.fitScore >= 60 ? "hsl(var(--warning))" : "hsl(var(--destructive))" }}>
+                      {a.fitScore}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[13px] text-muted-foreground">{a.atsScore}</td>
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                      <StatusPicker analysisId={a.id} currentStatus={a.status} />
+                    </td>
+                    <td className="hidden lg:table-cell px-3 py-2 text-[12px] text-muted-foreground">
+                      {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
+                    </td>
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover:opacity-100">
+                            <MoreHorizontal className="w-3.5 h-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => setLocation(`/analysis/${a.id}`)}>
+                            Open
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => duplicateAnalysis.mutate({ id: a.id })}>
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onSelect={() => deleteAnalysis.mutate({ id: a.id })}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* MOBILE CARDS (below md) */}
+      {!isLoading && filtered.length > 0 && (
+        <div className="md:hidden space-y-3">
+          {filtered.map((a) => {
+            const isSampled = (a.tags ?? []).includes("sample");
+            return (
+              <Card
+                key={a.id}
+                padding="sm"
+                className="cursor-pointer hover:border-border-strong transition-colors"
+                onClick={() => setLocation(`/analysis/${a.id}`)}
+              >
+                <CardContent className="flex items-start gap-3 p-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-3.5 w-3.5 rounded border-border shrink-0"
                     checked={selectedIds.has(a.id)}
-                    onCheckedChange={() => setSelectedIds((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(a.id)) next.delete(a.id);
-                      else next.add(a.id);
-                      return next;
-                    })}
-                    className="w-4 h-4 opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
+                    onChange={(e) => { e.stopPropagation(); toggleId(a.id); }}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="Select row"
                   />
-                </div>
-                <ScoreCircle score={a.fitScore} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <InlineEdit
-                      value={a.jobTitle}
-                      onSave={(v) => updateAnalysis.mutate({ id: a.id, data: { status: a.status } })}
-                      className="font-semibold text-sm"
-                    />
-                    {a.companyName && (
-                      <span className="text-sm text-muted-foreground truncate">@ {a.companyName}</span>
-                    )}
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-[13px] font-medium truncate">{a.jobTitle}</p>
+                          {isSampled && <Badge variant="soft" size="sm">Sample</Badge>}
+                        </div>
+                        {a.companyName && <p className="text-[12px] text-muted-foreground truncate">{a.companyName}</p>}
+                      </div>
+                      <FavoriteButton analysisId={a.id} isFavorite={a.isFavorite} />
+                    </div>
+                    <div className="flex items-center gap-3 text-[12px]">
+                      <span className="font-mono tabular-nums" style={{ color: a.fitScore >= 80 ? "hsl(var(--success))" : a.fitScore >= 60 ? "hsl(var(--warning))" : "hsl(var(--destructive))" }}>
+                        Fit {a.fitScore}
+                      </span>
+                      <span className="font-mono tabular-nums text-muted-foreground">ATS {a.atsScore}</span>
+                      <span className="text-muted-foreground ml-auto">
+                        {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
+                      </span>
+                    </div>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <StatusPicker analysisId={a.id} currentStatus={a.status} />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    <StatusPicker analysisId={a.id} currentStatus={a.status} />
-                    <Badge variant="outline" className="text-xs">ATS {a.atsScore}</Badge>
-                    {a.deadline && (
-                      <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400">
-                        Due {format(new Date(a.deadline), "MMM d")}
-                      </Badge>
-                    )}
-                    {a.coverLetter && (
-                      <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                        Cover Letter
-                      </Badge>
-                    )}
-                    {a.isPublic && (
-                      <Badge variant="secondary" className="text-xs">
-                        Shared
-                      </Badge>
-                    )}
-                    {a.notes && (
-                      <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
-                        Note
-                      </Badge>
-                    )}
-                    {Array.isArray(a.tags) && a.tags.length > 0 && (
-                      <Badge variant="secondary" className="text-xs">
-                        {(a.tags as string[])[0]}
-                        {(a.tags as string[]).length > 1 && ` +${(a.tags as string[]).length - 1}`}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right shrink-0 hidden sm:block">
-                  <p className="text-sm font-medium text-muted-foreground">{format(new Date(a.createdAt), "MMM d, yyyy")}</p>
-                  <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <FavoriteButton analysisId={a.id} isFavorite={a.isFavorite} />
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-primary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        duplicateAnalysis.mutate({ id: a.id });
-                      }}
-                      title="Duplicate analysis"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteAnalysis.mutate({ id: a.id });
-                      }}
-                      data-testid={`button-delete-${a.id}`}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
