@@ -4,36 +4,40 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center gap-1 rounded-[4px] border font-medium tracking-[0.04em] transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background",
   {
     variants: {
       variant: {
         default:
-          "border-transparent bg-foreground text-background",
+          "border-border bg-surface-2 text-foreground",
+        outline:
+          "border-border bg-transparent text-foreground",
+        solid:
+          "border-transparent bg-accent text-accent-foreground",
+        soft:
+          "border-transparent bg-accent-soft text-accent",
         secondary:
           "border-transparent bg-secondary text-secondary-foreground",
         destructive:
           "border-transparent bg-destructive text-destructive-foreground",
-        outline:
-          "border-border text-foreground",
         success:
-          "border-transparent bg-success text-success-foreground",
+          "border-transparent bg-[hsl(var(--success)/0.12)] text-success",
         warning:
-          "border-transparent bg-warning text-warning-foreground",
+          "border-transparent bg-[hsl(var(--warning)/0.12)] text-warning",
         info:
-          "border-transparent bg-info text-info-foreground",
+          "border-transparent bg-[hsl(var(--info)/0.12)] text-info",
       },
       size: {
-        default: "px-2.5 py-0.5 text-xs",
-        sm: "px-2 py-0 text-[10px]",
-        lg: "px-3 py-1 text-sm",
+        sm: "h-4 px-1.5 text-[10px]",
+        default: "h-5 px-1.5 text-[10.5px]",
+        lg: "h-6 px-2 text-[11px]",
       },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
     },
-  }
+  },
 )
 
 export interface BadgeProps
@@ -54,6 +58,7 @@ function Badge({
 }: BadgeProps) {
   return (
     <div
+      data-slot="badge"
       className={cn(badgeVariants({ variant, size }), className)}
       {...props}
     >
@@ -63,7 +68,7 @@ function Badge({
         <button
           type="button"
           onClick={onRemove}
-          className="ml-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          className="ml-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] transition-colors hover:bg-surface-2"
           aria-label="Remove"
         >
           <svg
@@ -75,6 +80,7 @@ function Badge({
             strokeLinecap="round"
             strokeLinejoin="round"
             className="h-2.5 w-2.5"
+            aria-hidden
           >
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
