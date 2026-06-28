@@ -454,6 +454,11 @@
   .text-responsive-xl {
     font-size: clamp(1.25rem, 4vw, 1.5rem);
   }
+
+  @keyframes skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
 }
 
 /* Print Styles */
