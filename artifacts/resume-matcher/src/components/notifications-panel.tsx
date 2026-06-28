@@ -61,7 +61,7 @@ export function NotificationsPanel({ triggerClassName }: NotificationsPanelProps
       <Button
         variant="ghost"
         size="icon"
-        className={`relative h-9 w-9 ${triggerClassName ?? ""}`}
+        className={`relative ${triggerClassName ?? "h-9 w-9"}`}
         onClick={() => setOpen((v) => !v)}
         aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ""}`}
       >

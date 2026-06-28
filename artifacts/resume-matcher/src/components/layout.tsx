@@ -327,7 +327,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   </nav>
 
   <div className="flex items-center gap-1 border-t border-sidebar-border px-2 py-2">
-    <NotificationsPanel triggerClassName="text-muted-foreground hover:bg-surface-2 hover:text-foreground" />
+    <NotificationsPanel triggerClassName="h-7 w-7 text-muted-foreground hover:bg-surface-2 hover:text-foreground" />
     <Button
       type="button"
       variant="ghost"
