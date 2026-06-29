@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { useListAnalyses } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScoreCircle } from "@/components/score-circle";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
   BarChart,
   Bar,
@@ -22,6 +24,7 @@ import {
   Zap,
   Award,
   Briefcase,
+  Sparkles,
 } from "lucide-react";
 
 function StatCard({
@@ -38,16 +41,22 @@ function StatCard({
   highlight?: boolean;
 }) {
   return (
-    <Card className={`border shadow-sm ${highlight ? "border-primary/40 bg-primary/5" : ""}`}>
-      <CardContent className="pt-6 pb-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
-            <p className="text-3xl font-bold mt-1 tabular-nums">{value}</p>
-            {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+    <Card
+      padding="sm"
+      className={cn(
+        "transition-colors",
+        highlight && "border-accent/50",
+      )}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">{title}</p>
+            <p className="font-mono tabular-nums text-[24px] font-semibold mt-1.5 leading-none">{value}</p>
+            {sub && <p className="text-[11px] text-muted-foreground mt-1.5">{sub}</p>}
           </div>
-          <div className={`p-2.5 rounded-xl ${highlight ? "bg-primary/20" : "bg-primary/10"}`}>
-            <Icon className="w-5 h-5 text-primary" />
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-2">
+            <Icon className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
         </div>
       </CardContent>
@@ -57,6 +66,21 @@ function StatCard({
 
 export function Brand() {
   const { data: analyses, isLoading } = useListAnalyses();
+
+  const topKeywords = useMemo(() => {
+    if (!analyses) return [] as Array<{ name: string; count: number }>;
+    const counts = new Map<string, number>();
+    for (const a of analyses) {
+      for (const kw of (a.atsKeywordsMatched as string[] | undefined) ?? []) {
+        counts.set(kw, (counts.get(kw) ?? 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((x, y) => y.count - x.count);
+  }, [analyses]);
+
+  const maxKeywordCount = topKeywords[0]?.count ?? 0;
 
   if (isLoading) {
     return (
@@ -152,22 +176,16 @@ export function Brand() {
   });
   const mostAnalyzedRole = Object.entries(roleFreq).sort((a, b) => b[1] - a[1])[0][0];
 
-  // 5. Top Strengths word cloud (simplified as styled badges/text)
-  const strengths = keywordStrengthData.slice(0, 10);
-
   return (
     <div className="space-y-8 pb-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <header className="flex items-baseline justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Fingerprint className="w-8 h-8 text-primary" />
-            Brand Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl font-semibold tracking-[-0.02em]">Brand dashboard</h1>
+          <p className="text-[13px] text-muted-foreground mt-1">
             Your professional identity quantified across {totalAnalyses} analyses.
           </p>
         </div>
-      </div>
+      </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Analyses" value={totalAnalyses} icon={FileText} sub="Total applications" />
@@ -187,31 +205,31 @@ export function Brand() {
             <div className="h-[250px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                  <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
                   <XAxis 
                     dataKey="date" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fontSize: 10, fill: '#888' }}
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <YAxis 
                     domain={[0, 100]} 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fontSize: 10, fill: '#888' }}
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                     width={30}
                   />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                    labelStyle={{ fontWeight: 'bold' }}
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'hsl(var(--surface-3))', border: '1px solid hsl(var(--border-strong))', borderRadius: '6px', fontSize: '12px', color: 'hsl(var(--foreground))' }}
+                    labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="score" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={3} 
-                    dot={{ r: 4, strokeWidth: 2, fill: 'white' }} 
-                    activeDot={{ r: 6, strokeWidth: 0 }}
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    stroke="hsl(var(--accent))"
+                    strokeWidth={2}
+                    dot={{ r: 3, strokeWidth: 2, fill: 'hsl(var(--background))', stroke: 'hsl(var(--accent))' }}
+                    activeDot={{ r: 5, strokeWidth: 0 }}
                     name="Fit Score"
                   />
                 </LineChart>
@@ -294,9 +312,9 @@ export function Brand() {
                   <Tooltip 
                     formatter={(value: number) => [`${value} missing`, 'Count']}
                   />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20} fill="#f43f5e">
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20} fill="hsl(var(--destructive))">
                     {skillGapData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={`rgba(244, 63, 94, ${Math.max(0.3, entry.rate / 100)})`} />
+                      <Cell key={`cell-${index}`} fill={`hsl(var(--destructive) / ${Math.max(0.3, entry.rate / 100)})`} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -306,30 +324,35 @@ export function Brand() {
         </Card>
       </div>
 
-      <Card className="border shadow-sm overflow-hidden">
-        <CardHeader className="bg-primary/5">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Award className="w-4 h-4 text-primary" /> Professional Core Strengths
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-[15px] font-semibold flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
+            Top keyword strengths
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-8">
-          <div className="flex flex-wrap justify-center gap-4">
-            {strengths.map((s, i) => {
-              const sizes = ['text-3xl', 'text-2xl', 'text-xl', 'text-lg', 'text-base'];
-              const size = sizes[Math.min(i, sizes.length - 1)];
-              const opacities = ['opacity-100', 'opacity-90', 'opacity-80', 'opacity-70', 'opacity-60'];
-              const opacity = opacities[Math.min(i, opacities.length - 1)];
-              
+        <CardContent className="space-y-2">
+          {topKeywords.length === 0 ? (
+            <p className="text-[12px] text-muted-foreground text-center py-4">
+              Run more analyses to see your top keywords.
+            </p>
+          ) : (
+            topKeywords.slice(0, 10).map((kw) => {
+              const pct = maxKeywordCount > 0 ? (kw.count / maxKeywordCount) * 100 : 0;
               return (
-                <span 
-                  key={s.name} 
-                  className={`${size} ${opacity} font-bold text-primary transition-all hover:scale-110 cursor-default`}
-                >
-                  {s.name}
-                </span>
+                <div key={kw.name} className="flex items-center gap-3">
+                  <span className="font-mono text-[12px] text-muted-foreground w-32 truncate text-right">{kw.name}</span>
+                  <div className="flex-1 h-1.5 bg-surface-2 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-accent rounded-full transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="font-mono tabular-nums text-[11px] text-muted-foreground w-8 text-right">{kw.count}</span>
+                </div>
               );
-            })}
-          </div>
+            })
+          )}
         </CardContent>
       </Card>
     </div>
