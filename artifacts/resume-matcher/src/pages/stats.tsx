@@ -32,6 +32,8 @@ import {
   Trophy,
 } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
 
 function StatCard({
   title,
@@ -47,16 +49,23 @@ function StatCard({
   highlight?: boolean;
 }) {
   return (
-    <Card className={`border shadow-sm ${highlight ? "border-foreground/20" : ""}`} data-testid={`stat-card-${title.toLowerCase().replace(/\s+/g, "-")}`}>
-      <CardContent className="pt-6 pb-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
-            <p className="text-3xl font-bold mt-1 tabular-nums">{value}</p>
-            {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+    <Card
+      padding="sm"
+      className={cn(
+        "transition-colors",
+        highlight && "border-accent/50",
+      )}
+      data-testid={`stat-card-${title.toLowerCase().replace(/\s+/g, "-")}`}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">{title}</p>
+            <p className="font-mono tabular-nums text-[24px] font-semibold mt-1.5 leading-none">{value}</p>
+            {sub && <p className="text-[11px] text-muted-foreground mt-1.5">{sub}</p>}
           </div>
-          <div className="p-2.5 rounded-xl bg-muted">
-            <Icon className="w-5 h-5 text-primary" />
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-2">
+            <Icon className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
         </div>
       </CardContent>
@@ -65,20 +74,20 @@ function StatCard({
 }
 
 const SCORE_BUCKETS = [
-  { label: "0–20", min: 0, max: 20, color: "#ef4444" },
-  { label: "21–40", min: 21, max: 40, color: "#f97316" },
-  { label: "41–60", min: 41, max: 60, color: "#eab308" },
-  { label: "61–80", min: 61, max: 80, color: "#84cc16" },
-  { label: "81–100", min: 81, max: 100, color: "#22c55e" },
+  { label: "0–20", min: 0, max: 20, color: "hsl(var(--destructive))" },
+  { label: "21–40", min: 21, max: 40, color: "hsl(var(--destructive))" },
+  { label: "41–60", min: 41, max: 60, color: "hsl(var(--warning))" },
+  { label: "61–80", min: 61, max: 80, color: "hsl(var(--warning))" },
+  { label: "81–100", min: 81, max: 100, color: "hsl(var(--success))" },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  not_applied: "#94a3b8",
-  applied: "#3b82f6",
-  got_interview: "#f59e0b",
-  got_online_exam: "#a855f7",
-  selected: "#22c55e",
-  rejected: "#ef4444",
+  not_applied: "hsl(var(--muted-foreground))",
+  applied: "hsl(var(--info))",
+  got_interview: "hsl(var(--warning))",
+  got_online_exam: "hsl(var(--accent))",
+  selected: "hsl(var(--success))",
+  rejected: "hsl(var(--destructive))",
 };
 
 export function Stats() {
@@ -103,9 +112,9 @@ export function Stats() {
     : [];
 
   const getFitColor = (score: number) => {
-    if (score >= 80) return "#22c55e";
-    if (score >= 60) return "#eab308";
-    return "#ef4444";
+    if (score >= 80) return "hsl(var(--success))";
+    if (score >= 60) return "hsl(var(--warning))";
+    return "hsl(var(--destructive))";
   };
 
   const scoreDistData = analyses
@@ -124,9 +133,9 @@ export function Stats() {
         const interview = analyses.filter((a) => ["got_interview", "selected"].includes(a.status)).length;
         const selected = analyses.filter((a) => a.status === "selected").length;
         return [
-          { name: "Applied", value: applied, fill: "#3b82f6" },
-          { name: "Interview", value: interview, fill: "#f59e0b" },
-          { name: "Selected", value: selected, fill: "#22c55e" },
+          { name: "Applied", value: applied, fill: "hsl(var(--info))" },
+          { name: "Interview", value: interview, fill: "hsl(var(--warning))" },
+          { name: "Selected", value: selected, fill: "hsl(var(--success))" },
         ].filter((d) => d.value > 0);
       })()
     : [];
@@ -192,7 +201,7 @@ export function Stats() {
           .map(status => ({
             status: status.replace("_", " "),
             avgDays: stageCounts[status] ? Math.round(stageTotals[status] / stageCounts[status]) : 0,
-            fill: STATUS_COLORS[status] || "#94a3b8"
+            fill: STATUS_COLORS[status] || "hsl(var(--muted-foreground))"
           }))
           .filter(d => d.avgDays > 0);
       })()
@@ -271,37 +280,49 @@ export function Stats() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
+      <header className="flex items-baseline justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Stats</h1>
-          <p className="text-muted-foreground mt-1">Aggregate insights across all your analyses.</p>
+          <h1 className="text-2xl font-semibold tracking-[-0.02em]">Stats</h1>
+          <p className="text-[13px] text-muted-foreground mt-1">Aggregate insights across all your analyses.</p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5 shrink-0"
-          onClick={() => setLocation("/compare")}
-        >
-          <GitCompareArrows className="w-3.5 h-3.5" />
-          Compare
-        </Button>
-      </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation("/compare")}
+          >
+            <GitCompareArrows className="w-3.5 h-3.5 mr-1.5" />
+            Compare
+          </Button>
+        </div>
+      </header>
 
       {isLoading ? (
         <div className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-28 rounded-xl" />
+              <Skeleton key={i} className="h-20 rounded-md" />
             ))}
           </div>
-          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-64 rounded-md" />
         </div>
       ) : !stats || stats.totalAnalyses === 0 ? (
-        <div className="text-center py-20 text-muted-foreground border border-dashed rounded-xl">
-          <TrendingUp className="w-8 h-8 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No data yet</p>
-          <p className="text-sm mt-1">Run analyses to see aggregate stats here.</p>
-        </div>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <TrendingUp />
+            </EmptyMedia>
+            <EmptyTitle>No data yet</EmptyTitle>
+            <EmptyDescription>
+              Run analyses to see aggregate stats here.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button onClick={() => setLocation("/")}>
+              Start a new analysis
+            </Button>
+          </EmptyContent>
+        </Empty>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -416,9 +437,10 @@ export function Stats() {
                       />
                       <Tooltip
                         cursor={{ fill: 'transparent' }}
-                        contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                        contentStyle={{ backgroundColor: 'hsl(var(--surface-3))', border: '1px solid hsl(var(--border-strong))', borderRadius: '6px', fontSize: '12px', color: 'hsl(var(--foreground))' }}
+                        labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
                       />
-                      <Bar dataKey="count" fill="#8884d8" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="count" fill="hsl(var(--accent))" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -441,7 +463,8 @@ export function Stats() {
                       <XAxis dataKey="status" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={30} />
                       <Tooltip
-                        contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                        contentStyle={{ backgroundColor: 'hsl(var(--surface-3))', border: '1px solid hsl(var(--border-strong))', borderRadius: '6px', fontSize: '12px', color: 'hsl(var(--foreground))' }}
+                        labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
                         formatter={(val: number) => [`${val} days`, "Avg Time"]}
                       />
                       <Bar dataKey="avgDays" radius={[4, 4, 0, 0]}>
@@ -479,7 +502,8 @@ export function Stats() {
                     <Tooltip
                       formatter={(val: number, name: string) => [`${val}`, name === "fit" ? "Fit Score" : "ATS Score"]}
                       labelFormatter={(label, payload) => payload?.[0]?.payload?.label ?? label}
-                      contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                      contentStyle={{ backgroundColor: 'hsl(var(--surface-3))', border: '1px solid hsl(var(--border-strong))', borderRadius: '6px', fontSize: '12px', color: 'hsl(var(--foreground))' }}
+                      labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
                     />
                     <Bar dataKey="fit" radius={[4, 4, 0, 0]} name="fit" cursor="pointer">
                       {trendData.map((entry, index) => (
@@ -504,7 +528,7 @@ export function Stats() {
                 <p className="text-xs text-muted-foreground mb-3">Each dot is an analysis. Color = status. Click to open.</p>
                 <ResponsiveContainer width="100%" height={200}>
                   <ScatterChart margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
                     <XAxis
                       dataKey="date"
                       type="number"
@@ -521,7 +545,7 @@ export function Stats() {
                       axisLine={false}
                       tickLine={false}
                       width={28}
-                      label={{ value: "Fit", angle: -90, position: "insideLeft", fontSize: 10, fill: "#94a3b8" }}
+                      label={{ value: "Fit", angle: -90, position: "insideLeft", fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                     />
                     <Tooltip
                       content={({ payload }) => {
@@ -543,7 +567,7 @@ export function Stats() {
                       onClick={(d) => setLocation(`/analysis/${d.id}`)}
                     >
                       {timelineData.map((entry, i) => (
-                        <Cell key={i} fill={STATUS_COLORS[entry.status] ?? "#94a3b8"} r={7} />
+                        <Cell key={i} fill={STATUS_COLORS[entry.status] ?? "hsl(var(--muted-foreground))"} r={7} />
                       ))}
                     </Scatter>
                   </ScatterChart>
@@ -626,7 +650,8 @@ export function Stats() {
                     <YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={25} />
                     <Tooltip
                       formatter={(val: number) => [`${val} analyses`, "Count"]}
-                      contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                      contentStyle={{ backgroundColor: 'hsl(var(--surface-3))', border: '1px solid hsl(var(--border-strong))', borderRadius: '6px', fontSize: '12px', color: 'hsl(var(--foreground))' }}
+                      labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
                     />
                     <Bar dataKey="count" radius={[4, 4, 0, 0]} cursor="pointer">
                       {scoreDistData.map((entry, index) => (
