@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { metricsMiddleware } from "./middlewares/metrics";
 
 const app: Express = express();
 
@@ -32,6 +33,9 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Observe all /api/* requests for metrics.
+app.use("/api", metricsMiddleware);
 
 app.use("/api", router);
 
