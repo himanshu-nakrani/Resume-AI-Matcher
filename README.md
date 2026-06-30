@@ -150,6 +150,29 @@ pnpm run typecheck
 pnpm run build
 ```
 
+## Testing
+
+We use [Vitest](https://vitest.dev) for unit and integration tests. The runner is configured as a workspace project across `lib/api-zod`, `lib/db`, `artifacts/api-server`, and `artifacts/resume-matcher`.
+
+```bash
+# Run all tests once
+pnpm run test
+
+# Watch mode
+pnpm run test:watch
+
+# Run a single workspace's tests
+pnpm --filter @workspace/api-server run test
+```
+
+API server tests use a temp-file SQLite per test process. The schema is materialized from `lib/db/src/schema.sql`, which is generated from the Drizzle schema via:
+
+```bash
+pnpm --filter @workspace/db run db:schema-sql
+```
+
+Regenerate `schema.sql` whenever you change `lib/db/src/schema/*.ts`.
+
 ## Deploy to GitHub Pages
 
 The frontend is published at:
