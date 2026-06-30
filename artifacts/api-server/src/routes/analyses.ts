@@ -25,9 +25,10 @@ import {
   FetchJobDescriptionBody,
   DuplicateAnalysisParams,
 } from "@workspace/api-zod";
-import { getAiClient } from "@workspace/integrations-openai-ai-server";
+import { getAiClient, runAiCompletion, isAiError } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
 import { getAiFromRequest, resolveDeepseekKeyForCreate } from "../lib/ai-from-request";
+import { sendAiError } from "../lib/send-ai-error";
 import { parseAiJson } from "../lib/parse-ai-json";
 import { optimizeLatexResume, canOptimizeLatex } from "../lib/latex-optimizer";
 import { validateLatex, formatValidationErrors } from "../lib/latex-validator";
@@ -195,7 +196,7 @@ async function validateAndCorrectLatexForPdf(
     "LaTeX to correct:\n" +
     inputLatex;
 
-  const completion = await getAiFromRequest(req).chat.completions.create({
+  const completion = await runAiCompletion(getAiFromRequest(req), {
     model: "deepseek-chat",
     max_completion_tokens: 8192,
     messages: [{ role: "user", content: prompt }],
@@ -357,7 +358,7 @@ router.post("/analyses", async (req, res): Promise<void> => {
 
   try {
     const ai = getAiClient(resolveDeepseekKeyForCreate(req, deepseekApiKey));
-    const completion = await ai.chat.completions.create({
+    const completion = await runAiCompletion(ai, {
       model: "deepseek-chat",
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
@@ -367,7 +368,11 @@ router.post("/analyses", async (req, res): Promise<void> => {
     aiResult = parseAiJson(content);
   } catch (err) {
     logger.error({ err }, "AI analysis failed");
-    res.status(500).json({ error: "AI analysis failed" });
+    if (isAiError(err)) {
+      sendAiError(res, err, "AI analysis failed");
+    } else {
+      res.status(500).json({ error: "AI analysis failed" });
+    }
     return;
   }
 
@@ -532,7 +537,11 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not compile optimized resume PDF.";
     logger.error({ err, id: params.data.id }, "Optimized resume PDF compilation failed");
-    res.status(500).json({ error: message });
+    if (isAiError(err)) {
+      sendAiError(res, err, "Optimized resume PDF compilation failed");
+    } else {
+      res.status(500).json({ error: message });
+    }
   }
 });
 
@@ -848,7 +857,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
       '{"jobTitle": "<job title or empty string>", "companyName": "<company name or empty string>", "jobDescription": "<full job description text, cleaned up, 200-2000 words>"}\n\n' +
       "Webpage text:\n" + text;
 
-    const completion = await getAiFromRequest(req).chat.completions.create({
+    const completion = await runAiCompletion(getAiFromRequest(req), {
       model: "deepseek-chat",
       max_completion_tokens: 3000,
       messages: [{ role: "user", content: extractPrompt }],
@@ -874,7 +883,11 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
     });
   } catch (err) {
     logger.error({ err, url }, "Job URL fetch failed");
-    res.status(400).json({ error: "Could not fetch that URL. Please copy the job description text manually." });
+    if (isAiError(err)) {
+      sendAiError(res, err, "Job URL fetch failed");
+    } else {
+      res.status(400).json({ error: "Could not fetch that URL. Please copy the job description text manually." });
+    }
   }
 });
 
@@ -912,7 +925,7 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
     "Write a " + tone + " cover letter that: (1) Opens with a specific, genuine insight about this company/role, (2) Highlights the top 3-4 most relevant achievements from the resume matching the JD requirements, using quantified results, (3) Addresses any gaps as learning opportunities not weaknesses, (4) Closes with genuine enthusiasm and confident call to action. Keep it 3-4 paragraphs, no longer than 250 words. Start with 'Dear Hiring Manager,' and write ONLY the cover letter text, no subject lines or commentary.";
 
   try {
-    const completion = await getAiFromRequest(req).chat.completions.create({
+    const completion = await runAiCompletion(getAiFromRequest(req), {
       model: "deepseek-chat",
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
@@ -928,7 +941,11 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
     res.json({ content });
   } catch (err) {
     logger.error({ err }, "Cover letter generation failed");
-    res.status(500).json({ error: "Cover letter generation failed" });
+    if (isAiError(err)) {
+      sendAiError(res, err, "Cover letter generation failed");
+    } else {
+      res.status(500).json({ error: "Cover letter generation failed" });
+    }
   }
 });
 
@@ -959,7 +976,7 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
     "Write 150-250 word LinkedIn post with: (1) A compelling hook that shows genuine insight about the role/industry, (2) 2-3 key achievements demonstrating enthusiasm for THIS role with numbers and results, (3) 2-3 specific strengths that make them ideal, (4) Specific call-to-action about roles they're exploring. Use line breaks for readability, 1-2 natural hashtags only, no emojis unless natural, no forced exclamation marks. Make it authentic. Write ONLY the post text, no preamble.";
 
   try {
-    const completion = await getAiFromRequest(req).chat.completions.create({
+    const completion = await runAiCompletion(getAiFromRequest(req), {
       model: "deepseek-chat",
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
@@ -975,7 +992,11 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
     res.json({ content });
   } catch (err) {
     logger.error({ err }, "LinkedIn post generation failed");
-    res.status(500).json({ error: "LinkedIn post generation failed" });
+    if (isAiError(err)) {
+      sendAiError(res, err, "LinkedIn post generation failed");
+    } else {
+      res.status(500).json({ error: "LinkedIn post generation failed" });
+    }
   }
 });
 
@@ -1023,7 +1044,7 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
     "- Return ONLY the rewritten bullet text, nothing else, no quotes";
 
   try {
-    const completion = await getAiFromRequest(req).chat.completions.create({
+    const completion = await runAiCompletion(getAiFromRequest(req), {
       model: "deepseek-chat",
       max_completion_tokens: 512,
       messages: [{ role: "user", content: prompt }],
@@ -1034,7 +1055,11 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
     res.json({ original: body.data.bulletText, rewritten });
   } catch (err) {
     logger.error({ err }, "Bullet rewrite failed");
-    res.status(500).json({ error: "Bullet rewrite failed" });
+    if (isAiError(err)) {
+      sendAiError(res, err, "Bullet rewrite failed");
+    } else {
+      res.status(500).json({ error: "Bullet rewrite failed" });
+    }
   }
 });
 
