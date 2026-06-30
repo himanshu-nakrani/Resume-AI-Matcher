@@ -1,0 +1,8 @@
+import { defineWorkspace } from "vitest/config";
+
+export default defineWorkspace([
+  "lib/api-zod/vitest.config.ts",
+  "lib/db/vitest.config.ts",
+  "artifacts/api-server/vitest.config.ts",
+  "artifacts/resume-matcher/vitest.config.ts",
+]);
