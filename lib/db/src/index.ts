@@ -38,9 +38,11 @@ function resolveSqliteDatabasePath(): string {
 const databasePath = resolveSqliteDatabasePath();
 fs.mkdirSync(path.dirname(databasePath), { recursive: true });
 
-const sqlite = new Database(databasePath);
+const sqlite: Database.Database = new Database(databasePath);
 sqlite.pragma("journal_mode = WAL");
 sqlite.pragma("foreign_keys = ON");
 
 export const db = drizzle(sqlite, { schema });
+export { sqlite };
+export { runMigrations } from "./migrate";
 export * from "./schema";
