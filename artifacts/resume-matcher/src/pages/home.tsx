@@ -133,10 +133,15 @@ export function Home() {
         });
         setLocation(`/analysis/${data.id}`);
       },
-      onError: () => {
+      onError: (error) => {
+        const envelope =
+          (error as { data?: { error?: { message?: string } } } | null | undefined)?.data?.error;
         toast({
           title: "Optimization failed",
-          description: "Check your DeepSeek API key and try again.",
+          description:
+            envelope?.message ??
+            (error as Error | null | undefined)?.message ??
+            "Please try again.",
           variant: "destructive",
         });
       },
