@@ -4,7 +4,7 @@ import { SearchJobsBody } from "@workspace/api-zod";
 import { runExaJobSearch } from "../lib/exa-job-search";
 import { enrichJobContent } from "../lib/exa-job-contents";
 import { logger } from "../lib/logger";
-import { getAiFromRequest } from "../lib/ai-from-request";
+import { getAiClient, FIREWORKS_DEFAULT_MODEL } from "@workspace/integrations-openai-ai-server";
 import { parseAiJson } from "../lib/parse-ai-json";
 
 const router: IRouter = Router();
@@ -101,8 +101,8 @@ router.post("/job-search/pre-screen", async (req, res): Promise<void> => {
     '"topGaps": ["<gap 1>", "<gap 2>", "<gap 3>"]}';
 
   try {
-    const completion = await getAiFromRequest(req).chat.completions.create({
-      model: "deepseek-chat",
+    const completion = await getAiClient().chat.completions.create({
+      model: FIREWORKS_DEFAULT_MODEL,
       max_completion_tokens: 300,
       messages: [{ role: "user", content: prompt }],
     });

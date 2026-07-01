@@ -25,9 +25,13 @@ import {
   FetchJobDescriptionBody,
   DuplicateAnalysisParams,
 } from "@workspace/api-zod";
-import { getAiClient, runAiCompletion, isAiError } from "@workspace/integrations-openai-ai-server";
+import {
+  getAiClient,
+  runAiCompletion,
+  isAiError,
+  FIREWORKS_DEFAULT_MODEL,
+} from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
-import { getAiFromRequest, resolveDeepseekKeyForCreate } from "../lib/ai-from-request";
 import { sendAiError } from "../lib/send-ai-error";
 import { parseAiJson } from "../lib/parse-ai-json";
 import { optimizeLatexResume, canOptimizeLatex } from "../lib/latex-optimizer";
@@ -197,8 +201,8 @@ async function validateAndCorrectLatexForPdf(
     "LaTeX to correct:\n" +
     inputLatex;
 
-  const completion = await runAiCompletion(getAiFromRequest(req), {
-    model: "deepseek-chat",
+  const completion = await runAiCompletion(getAiClient(), {
+    model: FIREWORKS_DEFAULT_MODEL,
     max_completion_tokens: 8192,
     messages: [{ role: "user", content: prompt }],
   }, { route });
@@ -308,7 +312,6 @@ router.post("/analyses", async (req, res): Promise<void> => {
   const sourceLatex = "sourceLatex" in parsed.data ? parsed.data.sourceLatex : undefined;
   const originalFileName = "originalFileName" in parsed.data ? parsed.data.originalFileName : undefined;
   const originalFileType = "originalFileType" in parsed.data ? parsed.data.originalFileType : undefined;
-  const deepseekApiKey = "deepseekApiKey" in parsed.data ? parsed.data.deepseekApiKey : undefined;
 
   req.log.info({ jobTitle }, "Running AI analysis");
 
@@ -358,9 +361,9 @@ router.post("/analyses", async (req, res): Promise<void> => {
   };
 
   try {
-    const ai = getAiClient(resolveDeepseekKeyForCreate(req, deepseekApiKey));
+    const ai = getAiClient();
     const completion = await runAiCompletion(ai, {
-      model: "deepseek-chat",
+      model: FIREWORKS_DEFAULT_MODEL,
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     }, { route: "/analyses" });
@@ -389,7 +392,7 @@ router.post("/analyses", async (req, res): Promise<void> => {
     
     if (canOptimize.canOptimize) {
       try {
-        const ai = getAiClient(resolveDeepseekKeyForCreate(req, deepseekApiKey));
+        const ai = getAiClient();
         const optimizationResult = await optimizeLatexResume(ai, finalSourceLatex, {
           jobTitle,
           companyName: companyName ?? null,
@@ -858,8 +861,8 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
       '{"jobTitle": "<job title or empty string>", "companyName": "<company name or empty string>", "jobDescription": "<full job description text, cleaned up, 200-2000 words>"}\n\n' +
       "Webpage text:\n" + text;
 
-    const completion = await runAiCompletion(getAiFromRequest(req), {
-      model: "deepseek-chat",
+    const completion = await runAiCompletion(getAiClient(), {
+      model: FIREWORKS_DEFAULT_MODEL,
       max_completion_tokens: 3000,
       messages: [{ role: "user", content: extractPrompt }],
     }, { route: "/fetch-job" });
@@ -926,8 +929,8 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
     "Write a " + tone + " cover letter that: (1) Opens with a specific, genuine insight about this company/role, (2) Highlights the top 3-4 most relevant achievements from the resume matching the JD requirements, using quantified results, (3) Addresses any gaps as learning opportunities not weaknesses, (4) Closes with genuine enthusiasm and confident call to action. Keep it 3-4 paragraphs, no longer than 250 words. Start with 'Dear Hiring Manager,' and write ONLY the cover letter text, no subject lines or commentary.";
 
   try {
-    const completion = await runAiCompletion(getAiFromRequest(req), {
-      model: "deepseek-chat",
+    const completion = await runAiCompletion(getAiClient(), {
+      model: FIREWORKS_DEFAULT_MODEL,
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     }, { route: "/analyses/:id/cover-letter" });
@@ -977,8 +980,8 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
     "Write 150-250 word LinkedIn post with: (1) A compelling hook that shows genuine insight about the role/industry, (2) 2-3 key achievements demonstrating enthusiasm for THIS role with numbers and results, (3) 2-3 specific strengths that make them ideal, (4) Specific call-to-action about roles they're exploring. Use line breaks for readability, 1-2 natural hashtags only, no emojis unless natural, no forced exclamation marks. Make it authentic. Write ONLY the post text, no preamble.";
 
   try {
-    const completion = await runAiCompletion(getAiFromRequest(req), {
-      model: "deepseek-chat",
+    const completion = await runAiCompletion(getAiClient(), {
+      model: FIREWORKS_DEFAULT_MODEL,
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     }, { route: "/analyses/:id/linkedin-post" });
@@ -1045,8 +1048,8 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
     "- Return ONLY the rewritten bullet text, nothing else, no quotes";
 
   try {
-    const completion = await runAiCompletion(getAiFromRequest(req), {
-      model: "deepseek-chat",
+    const completion = await runAiCompletion(getAiClient(), {
+      model: FIREWORKS_DEFAULT_MODEL,
       max_completion_tokens: 512,
       messages: [{ role: "user", content: prompt }],
     }, { route: "/analyses/:id/rewrite-bullet" });

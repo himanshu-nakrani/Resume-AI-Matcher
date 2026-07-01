@@ -7,6 +7,7 @@ import OpenAI, {
   PermissionDeniedError,
   RateLimitError,
 } from "openai";
+import { AiMissingKeyError } from "./client";
 
 export type AiErrorCode =
   | "AI_TIMEOUT"
@@ -15,6 +16,7 @@ export type AiErrorCode =
   | "AI_QUOTA_EXCEEDED"
   | "AI_BAD_REQUEST"
   | "AI_CONFIG_MISSING"
+  | "ai_missing_key"
   | "AI_UNKNOWN";
 
 export interface AiError extends Error {
@@ -25,14 +27,11 @@ export interface AiError extends Error {
 }
 
 export function isAiError(err: unknown): err is AiError {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "code" in err &&
-    typeof (err as { code: unknown }).code === "string" &&
-    (err as { code: string }).code.startsWith("AI_") &&
-    "retryable" in err
-  );
+  if (typeof err !== "object" || err === null) return false;
+  if (!("code" in err) || !("retryable" in err)) return false;
+  const code = (err as { code: unknown }).code;
+  if (typeof code !== "string") return false;
+  return code.startsWith("AI_") || code === "ai_missing_key";
 }
 
 export type AiTokenEvent = {
@@ -78,14 +77,14 @@ interface RunOptions {
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIES = 1;
 const DEFAULT_BACKOFF_MS = 500;
-const MISSING_KEY_SENTINEL = "missing-api-key";
 
 /**
  * Wrap `client.chat.completions.create` with a timeout, one retry on
  * retryable errors, and structured AiError mapping.
  *
- * Pre-flight: if the client was constructed with the missing-key sentinel,
- * throws AI_CONFIG_MISSING without making a network call.
+ * A missing API key surfaces as an `AiMissingKeyError` thrown by `getAiClient()`
+ * upstream; if such an error reaches this function's catch path it is classified
+ * as `ai_missing_key` (non-retryable) rather than becoming an unknown failure.
  */
 export async function runAiCompletion(
   client: OpenAI,
@@ -94,17 +93,6 @@ export async function runAiCompletion(
 ): Promise<OpenAI.Chat.ChatCompletion> {
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxRetries = opts.retries ?? DEFAULT_RETRIES;
-
-  // Pre-flight: missing key check (best-effort; falls through to a real call
-  // if the accessor isn't available on this SDK version).
-  const apiKey = (client as unknown as { apiKey?: string }).apiKey;
-  if (!apiKey || apiKey === MISSING_KEY_SENTINEL) {
-    throw makeAiError(
-      "AI_CONFIG_MISSING",
-      false,
-      "DEEPSEEK_API_KEY is not configured on the server",
-    );
-  }
 
   let lastError: AiError | undefined;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -154,8 +142,13 @@ function makeAiError(
 }
 
 function classifyAiError(err: unknown): AiError {
-  // Already-classified errors (e.g. from pre-flight check or nested calls) pass through.
+  // Already-classified errors (e.g. from nested calls) pass through.
   if (isAiError(err)) return err;
+
+  // Missing key surfaces as a distinct, non-retryable class from `getAiClient()`.
+  if (err instanceof AiMissingKeyError) {
+    return makeAiError("ai_missing_key", false, err.message, undefined, err);
+  }
 
   // OpenAI SDK class hierarchy. Order matters: more specific classes first.
   if (err instanceof APIConnectionTimeoutError) {

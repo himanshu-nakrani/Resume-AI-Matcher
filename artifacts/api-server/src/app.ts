@@ -31,7 +31,7 @@ app.use(
 );
 app.use(
   cors({
-    allowedHeaders: ["Content-Type", "Authorization", "X-DeepSeek-Api-Key"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 app.use(express.json());
