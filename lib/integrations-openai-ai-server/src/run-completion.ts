@@ -74,7 +74,7 @@ interface RunOptions {
   route?: string;
 }
 
-const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_TIMEOUT_MS = 120_000;
 const DEFAULT_RETRIES = 1;
 const DEFAULT_BACKOFF_MS = 500;
 
