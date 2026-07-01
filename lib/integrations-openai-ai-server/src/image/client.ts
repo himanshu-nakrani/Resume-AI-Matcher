@@ -3,13 +3,11 @@ import { toFile } from "openai";
 import { Buffer } from "node:buffer";
 import { getAiClient } from "../client";
 
-/** Same URL/key resolution as chat (`getAiClient`). */
-export const openai = getAiClient();
-
 export async function generateImageBuffer(
   prompt: string,
   size: "1024x1024" | "512x512" | "256x256" = "1024x1024"
 ): Promise<Buffer> {
+  const openai = getAiClient();
   const response = await openai.images.generate({
     model: "gpt-image-1",
     prompt,
@@ -24,6 +22,7 @@ export async function editImages(
   prompt: string,
   outputPath?: string
 ): Promise<Buffer> {
+  const openai = getAiClient();
   const images = await Promise.all(
     imageFiles.map((file) =>
       toFile(fs.createReadStream(file), file, {
