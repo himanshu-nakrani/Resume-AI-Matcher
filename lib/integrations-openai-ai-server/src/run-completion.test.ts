@@ -6,7 +6,7 @@ import OpenAI, {
   BadRequestError,
   RateLimitError,
 } from "openai";
-import { runAiCompletion, isAiError } from "./run-completion";
+import { runAiCompletion, isAiError, setAiTokenRecorder } from "./run-completion";
 
 /**
  * Build a fake OpenAI client whose `chat.completions.create` is driven by
@@ -139,5 +139,46 @@ describe("runAiCompletion", () => {
     expect(isAiError(new Error("regular"))).toBe(false);
     expect(isAiError(null)).toBe(false);
     expect(isAiError({ code: "OTHER" })).toBe(false);
+  });
+
+  it("calls the registered token recorder with outcome=success on success", async () => {
+    const events: Array<{ model: string; route: string; outcome: string; tokens: number }> = [];
+    setAiTokenRecorder((e) => events.push(e));
+    try {
+      const client = makeFakeClient(["success"]);
+      await runAiCompletion(client, PARAMS, { route: "/test/route" });
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        model: "test-model",
+        route: "/test/route",
+        outcome: "success",
+      });
+      // The fake client doesn't include `usage`, so tokens default to 0.
+      expect(events[0]?.tokens).toBe(0);
+    } finally {
+      setAiTokenRecorder(null);
+    }
+  });
+
+  it("calls the registered token recorder with outcome=error after classified failure", async () => {
+    const events: Array<{ outcome: string; tokens: number }> = [];
+    setAiTokenRecorder((e) => events.push(e));
+    try {
+      const client = makeFakeClient([
+        () => {
+          throw buildApiError(AuthenticationError, 401, "Invalid API key");
+        },
+      ]);
+      await expect(
+        runAiCompletion(client, PARAMS, { retries: 0, route: "/test/route" }),
+      ).rejects.toMatchObject({
+        code: "AI_AUTH_INVALID",
+      });
+      expect(events).toHaveLength(1);
+      expect(events[0]?.outcome).toBe("error");
+      expect(events[0]?.tokens).toBe(0);
+    } finally {
+      setAiTokenRecorder(null);
+    }
   });
 });

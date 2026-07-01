@@ -4,8 +4,11 @@ export { batchProcess, batchProcessWithSSE, isRateLimitError, type BatchOptions 
 export {
   runAiCompletion,
   isAiError,
+  setAiTokenRecorder,
   type AiError,
   type AiErrorCode,
+  type AiTokenEvent,
+  type AiTokenRecorder,
 } from "./run-completion";
 
 // Re-export the OpenAI type so consumers can reach into its namespaced types

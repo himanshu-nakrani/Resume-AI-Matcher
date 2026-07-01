@@ -35,11 +35,44 @@ export function isAiError(err: unknown): err is AiError {
   );
 }
 
+export type AiTokenEvent = {
+  model: string;
+  route: string;
+  outcome: "success" | "error";
+  tokens: number;
+};
+
+export type AiTokenRecorder = (event: AiTokenEvent) => void;
+
+let tokenRecorder: AiTokenRecorder | null = null;
+
+/**
+ * Register a callback that receives a token-usage event after every
+ * runAiCompletion call (success or classified failure). Pass `null` to
+ * unregister. The recorder is wrapped in a try/catch internally — a thrown
+ * exception from the recorder cannot crash the AI call.
+ */
+export function setAiTokenRecorder(fn: AiTokenRecorder | null): void {
+  tokenRecorder = fn;
+}
+
+function recordAiTokens(event: AiTokenEvent): void {
+  if (tokenRecorder) {
+    try {
+      tokenRecorder(event);
+    } catch {
+      /* swallow — metrics failures never crash AI calls */
+    }
+  }
+}
+
 interface RunOptions {
   /** Per-attempt timeout in ms. Default 30000. */
   timeoutMs?: number;
   /** Number of retries on retryable errors. Default 1. Set to 0 to disable. */
   retries?: number;
+  /** Express route pattern (e.g. "/analyses/:id/cover-letter"). Used as a metrics label. */
+  route?: string;
 }
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -76,7 +109,14 @@ export async function runAiCompletion(
   let lastError: AiError | undefined;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      return await client.chat.completions.create(params, { timeout: timeoutMs });
+      const completion = await client.chat.completions.create(params, { timeout: timeoutMs });
+      recordAiTokens({
+        model: params.model,
+        route: opts.route ?? "unknown",
+        outcome: "success",
+        tokens: completion.usage?.total_tokens ?? 0,
+      });
+      return completion;
     } catch (err) {
       const aiErr = classifyAiError(err);
       lastError = aiErr;
@@ -85,6 +125,12 @@ export async function runAiCompletion(
         await sleep(delay);
         continue;
       }
+      recordAiTokens({
+        model: params.model,
+        route: opts.route ?? "unknown",
+        outcome: "error",
+        tokens: 0,
+      });
       throw aiErr;
     }
   }
