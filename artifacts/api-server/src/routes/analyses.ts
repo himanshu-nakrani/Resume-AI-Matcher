@@ -90,7 +90,7 @@ function sanitizeLatexForPdf(latex: string): string {
     // fontawesome5 can abort Tectonic in this environment; remove icons but keep link text.
     .replace(/\\usepackage(?:\[[^\]]*\])?\{fontawesome5\}\s*/g, "")
     .replace(/\\faIcon\{[^}]+\}/g, "")
-    .replace(/\\fa[A-Za-z]+\b/g, "")
+    .replace(/\\fa[A-Z][A-Za-z]*\b/g, "")
     // Keep common resume punctuation representable with the default LaTeX fonts.
     .replace(/[“”]/g, '"')
     .replace(/[‘’]/g, "'")
@@ -235,6 +235,7 @@ function prepareLatexForPdfCompilation(latex: string): string {
 
 async function compileLatexToPdf(latex: string): Promise<Buffer> {
   const workDir = await mkdtemp(path.join(tmpdir(), "optimatch-latex-"));
+  let succeeded = false;
   try {
     await writeFile(path.join(workDir, "main.tex"), prepareLatexForPdfCompilation(latex), "utf8");
 
@@ -242,7 +243,9 @@ async function compileLatexToPdf(latex: string): Promise<Buffer> {
     for (const compiler of ["tectonic", "latexmk", "pdflatex"] as const) {
       try {
         await tryCompileLatex(compiler, workDir);
-        return await readFile(path.join(workDir, "main.pdf"));
+        const pdf = await readFile(path.join(workDir, "main.pdf"));
+        succeeded = true;
+        return pdf;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         errors.push({ compiler, message });
@@ -254,10 +257,14 @@ async function compileLatexToPdf(latex: string): Promise<Buffer> {
     throw new Error(
       noCompiler
         ? "No LaTeX compiler found. Install tectonic, latexmk, or pdflatex on the API server."
-        : `LaTeX compilation failed in ${realError?.compiler ?? "compiler"}. ${realError?.message ?? ""}`.slice(0, 700),
+        : `LaTeX compilation failed in ${realError?.compiler ?? "compiler"}. ${realError?.message ?? ""} [workdir: ${workDir}]`.slice(0, 900),
     );
   } finally {
-    await rm(workDir, { recursive: true, force: true });
+    if (succeeded) {
+      await rm(workDir, { recursive: true, force: true });
+    }
+    // On failure, leave workDir behind so we can inspect the tex file. It's a
+    // temp dir so it'll be cleaned up by the OS eventually.
   }
 }
 
