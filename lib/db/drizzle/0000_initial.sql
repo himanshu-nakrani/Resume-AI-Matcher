@@ -1,0 +1,92 @@
+CREATE TABLE `conversations` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`title` text NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `messages` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`conversation_id` integer NOT NULL,
+	`role` text NOT NULL,
+	`content` text NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`conversation_id`) REFERENCES `conversations`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `analyses` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`job_title` text NOT NULL,
+	`company_name` text,
+	`resume_text` text NOT NULL,
+	`original_file_name` text,
+	`original_file_type` text DEFAULT 'text' NOT NULL,
+	`source_latex` text,
+	`optimized_latex` text,
+	`job_description_text` text NOT NULL,
+	`fit_score` integer NOT NULL,
+	`fit_rationale` text NOT NULL,
+	`strengths` text NOT NULL,
+	`gaps` text NOT NULL,
+	`improvements` text NOT NULL,
+	`ats_keywords_matched` text NOT NULL,
+	`ats_keywords_missing` text NOT NULL,
+	`ats_score` integer NOT NULL,
+	`cover_letter` text,
+	`linkedin_post` text,
+	`status` text DEFAULT 'not_applied' NOT NULL,
+	`is_favorite` integer DEFAULT false NOT NULL,
+	`notes` text,
+	`share_token` text,
+	`is_public` integer DEFAULT false NOT NULL,
+	`deadline` text,
+	`contact_name` text,
+	`contact_email` text,
+	`follow_up_date` text,
+	`tags` text NOT NULL,
+	`portfolio_links` text NOT NULL,
+	`version_label` text,
+	`location` text,
+	`salary_expectation` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `notifications` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`type` text DEFAULT 'info' NOT NULL,
+	`title` text NOT NULL,
+	`body` text NOT NULL,
+	`analysis_id` integer,
+	`read` integer DEFAULT false NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`analysis_id`) REFERENCES `analyses`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `saved_jobs` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`url` text NOT NULL,
+	`title` text NOT NULL,
+	`company` text,
+	`source` text,
+	`published_date` text,
+	`highlights` text,
+	`salary` text,
+	`apply_type` text DEFAULT 'unknown',
+	`notes` text,
+	`saved_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`tags` text NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `saved_jobs_url_unique` ON `saved_jobs` (`url`);--> statement-breakpoint
+CREATE TABLE `search_alerts` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`name` text,
+	`query` text NOT NULL,
+	`search_type` text DEFAULT 'auto' NOT NULL,
+	`user_location` text,
+	`recent_only` integer DEFAULT false,
+	`filters` text,
+	`last_run_at` integer,
+	`last_result_count` integer,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`enabled` integer DEFAULT true
+);

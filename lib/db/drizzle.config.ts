@@ -8,6 +8,7 @@ const url = process.env.DATABASE_URL?.trim() ?? pathToFileURL(defaultDbFile).hre
 export default defineConfig({
   schema: path.join(process.cwd(), "src/schema/index.ts"),
   dialect: "sqlite",
+  out: "./drizzle",
   dbCredentials: {
     url,
   },
