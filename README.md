@@ -1,203 +1,257 @@
-# OptiMatch — AI Resume & Job Matcher
+# OptiMatch ✨
 
-An intelligent AI-powered platform that analyzes resumes against job descriptions to provide fit scores, ATS compatibility, personalized improvement suggestions, and comprehensive job application management.
+> AI-powered resume analysis and job application management platform.
 
-**Live app:** https://himanshu-nakrani.github.io/Resume-AI-Matcher/  
-**Repository:** https://github.com/himanshu-nakrani/Resume-AI-Matcher
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)](https://expressjs.com/)
+[![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)](https://sqlite.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-workspace-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![License](https://img.shields.io/badge/License-MIT-22C55E?logo=opensourceinitiative&logoColor=white)](./LICENSE)
 
-## Features
+**Live Demo:** [https://himanshu-nakrani.github.io/Resume-AI-Matcher/](https://himanshu-nakrani.github.io/Resume-AI-Matcher/)
 
-### Core Analysis
-- **AI Fit Scoring** — Paste your resume and a job description to get an AI-powered fit score (0–100), ATS score, strengths, gaps, and improvement suggestions
-- **Keyword Matching** — Identifies matched and missing ATS keywords from your resume
-- **Cover Letter Generator** — Generates tailored cover letters with 4 tone options (professional, friendly, enthusiastic, concise) with multiple variations
-- **LinkedIn Post Generator** — Creates personalized job-search posts for your network
-- **AI Bullet Rewriter** — Paste any resume bullet and get a stronger, impact-driven version
-- **Job URL Import** — Paste a job listing URL to automatically extract the job description, title, and company
+OptiMatch helps job seekers analyze their resumes against job descriptions, generate tailored cover letters, track applications, and make data-driven career decisions — all powered by modern AI.
 
-### Job Application Management
-- **Application Status Tracking** — Track each analysis through: Not Applied → Applied → Interview → Offer → Rejected
-- **Kanban Job Board** — Visual drag-and-drop board to manage your job pipeline by status
-- **Job Tracking** — Per-analysis deadline, follow-up date, contact info, and tags
-- **History with Search & Filter** — Search by title/company, filter by status/favorites, save searches
-- **Comparison View** — Side-by-side comparison of any two analyses (scores, keywords, strengths, gaps)
-- **Duplicate Analysis** — Clone any analysis to quickly apply to similar roles
+---
 
-### Analytics & Insights
-- **Advanced Stats** — Fit/ATS score trends, distribution histogram, pipeline funnel, and top keywords
-- **Funnel Analytics** — Pipeline widget showing applied → interview → offer conversion rates
-- **Brand Dashboard** — Keyword strength bars, skill gap map, personal summary stats, and strengths word-cloud
-- **Stats Enhancements** — Keyword trends, time-in-stage metrics, interview/offer conversion cards, score momentum
+## 🚀 What It Does
 
-### Collaboration & Sharing
-- **Social Sharing** — Create public share links with revocable tokens
-- **Email Sharing** — Quick email sharing button for analyses
-- **Favorites & Notes** — Star important analyses and add private auto-saved notes
-- **Portfolio Links** — Save up to 3 portfolio URLs (GitHub, portfolio, case study) per analysis
+Paste your resume and a job description (or a job URL) and OptiMatch gives you:
 
-### User Experience
-- **Professional Minimal UI** — Clean, modern interface with subtle animations and professional color palette
-- **Keyboard Command Palette** — `⌘K` / `Ctrl+K` global search and quick navigation
-- **Dark Mode Support** — Seamless light/dark theme switching
-- **Export PDF** — Print-optimized layout for sharing analyses
-- **Bulk CSV Export** — Export all analyses from History as CSV
-- **In-App Notifications** — Deadline and follow-up reminders with real-time badge count
-- **Error Boundary** — Graceful error handling with friendly recovery UI
+- **AI Fit Score** (0–100) with actionable reasoning
+- **ATS Compatibility Score** with matched/missing keywords
+- **Strengths, Gaps & Improvements** tailored to the role
+- **Cover Letter Generator** with 4 tones and multiple variations
+- **LinkedIn Post Generator** for your network
+- **Interview Questions**, **Learning Plans**, **Salary Guides**, **Career Paths**, and more
 
-## Tech Stack
+Then track every application through a visual Kanban board, analyze your pipeline with stats, and share analyses with public links.
+
+---
+
+## 🎯 Feature Highlights
+
+| Category | Features |
+|----------|----------|
+| **Resume Analysis** | AI fit score, ATS score, keyword matching, strengths/gaps, improvement suggestions |
+| **AI Generators** | Cover letter, LinkedIn post, follow-up emails, STAR answers, negotiation scripts |
+| **Job Import** | Paste a job URL to auto-extract title, company, and description |
+| **Application Tracking** | Status pipeline, Kanban board, deadlines, follow-ups, contacts, tags, favorites |
+| **Analytics** | Score trends, keyword trends, funnel conversion, time-in-stage, momentum |
+| **Sharing** | Public share links with revocable tokens, email sharing |
+| **Productivity** | Global command palette (`⌘K`/`Ctrl+K`), dark mode, PDF export, CSV export |
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        OptiMatch                             │
+├────────────────────────────┬────────────────────────────────┤
+│   artifacts/resume-matcher │     artifacts/api-server       │
+│   React + Vite Frontend    │     Express 5 API Server       │
+│   Port: 5173               │     Port: 3000                 │
+├────────────────────────────┴────────────────────────────────┤
+│              lib/ — Shared Libraries                         │
+│  • api-spec       (OpenAPI contract)                         │
+│  • api-zod        (Generated Zod schemas)                    │
+│  • api-client-react (Generated React Query hooks)            │
+│  • db             (Drizzle ORM + SQLite schema)              │
+│  • integrations   (OpenAI / DeepSeek AI clients)             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🛠️ Tech Stack
 
 ### Frontend
-- **React** with **Vite** for fast development
-- **TypeScript** for type safety
-- **TanStack Query** for data fetching and caching
-- **Wouter** for lightweight routing
-- **shadcn/ui** component library with **Tailwind CSS**
-- **Recharts** for data visualization
-- **Framer Motion** for animations
-- **React Hook Form** + **Zod** for form validation
+- [React 19](https://react.dev/) + [Vite 7](https://vitejs.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [TanStack Query](https://tanstack.com/query) for server state
+- [Wouter](https://github.com/molefrog/wouter) for routing
+- [shadcn/ui](https://ui.shadcn.com/) + [Tailwind CSS](https://tailwindcss.com/) for UI
+- [Recharts](https://recharts.org/) for charts
+- [Framer Motion](https://www.framer.com/motion/) for animations
 
 ### Backend
-- **Express 5** API server
-- **SQLite** (via **better-sqlite3**) with **Drizzle ORM** for local development
-- **Zod** for runtime validation
-- **Pino** for structured logging
-- **esbuild** for fast builds
+- [Express 5](https://expressjs.com/)
+- [SQLite](https://sqlite.org/) via [better-sqlite3](https://github.com/WiseLibs/better-sqlite3)
+- [Drizzle ORM](https://orm.drizzle.team/)
+- [Zod](https://zod.dev/) for validation
+- [Pino](https://getpino.io/) for structured logging
+- [esbuild](https://esbuild.github.io/) for bundling
 
-### AI Integration
-- **OpenAI GPT** / **DeepSeek** for all AI-powered features
-- Custom AI prompts for resume analysis, interview prep, salary guidance, and career planning
+### AI
+- [OpenAI GPT](https://openai.com/) / [DeepSeek](https://www.deepseek.com/)
 - Server-side API key management for security
 
-### Architecture
-- **pnpm workspace monorepo** with shared libraries
-- **OpenAPI spec** with automatic code generation (Orval)
-- **Shared Zod schemas** for type-safe API contracts
-- **React Query hooks** auto-generated from OpenAPI spec
+---
 
-## Project Structure
+## 📦 Prerequisites
 
-```
-├── artifacts/
-│   ├── resume-matcher/    # React frontend application
-│   ├── api-server/        # Express API server
-│   └── mockup-sandbox/    # UI component sandbox
-├── lib/
-│   ├── db/                # Database schema and Drizzle config
-│   ├── api-spec/          # OpenAPI specification
-│   ├── api-zod/           # Generated Zod validation schemas
-│   ├── api-client-react/  # Generated React Query hooks
-│   └── integrations/      # OpenAI integration libraries
-├── scripts/               # Build and utility scripts
-├── package.json           # Root workspace config
-└── pnpm-workspace.yaml    # Workspace definition
-```
+- [Node.js](https://nodejs.org/) 24+
+- [pnpm](https://pnpm.io/) 9+
+- An [OpenAI](https://platform.openai.com/) or [DeepSeek](https://platform.deepseek.com/) API key
+- An [Exa](https://exa.ai/) API key (for job URL import)
 
-## Getting Started
+---
 
-### Prerequisites
-- Node.js 24+
-- pnpm package manager
-- OpenAI / DeepSeek API key (configured on backend)
+## ⚡ Quick Start
 
-### Installation
+### 1. Install dependencies
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Set up database schema (creates/updates ./resume-matcher.sqlite at repo root by default)
-pnpm --filter @workspace/db run push
-
-# Generate API types and hooks
-pnpm --filter @workspace/api-spec run codegen
 ```
 
-### Configuration
+### 2. Set up the database
 
-Create a `.env` file in the `artifacts/api-server` directory:
+```bash
+pnpm --filter @workspace/db run push
+```
+
+This creates/updates `resume-matcher.sqlite` at the repo root.
+
+### 3. Configure environment variables
+
+Create `artifacts/api-server/.env`:
 
 ```env
-# Required: AI API Key
-DEEPSEEK_API_KEY=your_api_key_here
+# Required: choose one AI provider
+DEEPSEEK_API_KEY=your_deepseek_key_here
 # or
-OPENAI_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_openai_key_here
 
-# Optional: Server configuration
+# Required for job URL import
+EXA_API_KEY=your_exa_key_here
+
+# Optional
 PORT=3000
 NODE_ENV=development
 ```
 
-### Development
+> 🔒 Never commit API keys. Both `.env` files are already gitignored.
+
+### 4. Generate API types and hooks
 
 ```bash
-# Run API server
-pnpm --filter @workspace/api-server run dev
+pnpm --filter @workspace/api-spec run codegen
+```
 
-# Run frontend (in another terminal)
+### 5. Start the servers
+
+In one terminal, run the API server:
+
+```bash
+pnpm --filter @workspace/api-server run dev
+```
+
+In another terminal, run the frontend:
+
+```bash
 cd artifacts/resume-matcher
 pnpm run dev
 ```
 
-The frontend will be available at `http://localhost:5173` and the API at `http://localhost:3000`.
+- Frontend: [http://localhost:5173](http://localhost:5173)
+- API: [http://localhost:3000](http://localhost:3000)
+- API health check: [http://localhost:3000/api/healthz](http://localhost:3000/api/healthz)
 
-### Build
+---
 
-```bash
-# Typecheck all packages
-pnpm run typecheck
-
-# Build all packages
-pnpm run build
-```
-
-## Testing
-
-We use [Vitest](https://vitest.dev) for unit and integration tests. The runner is configured as a workspace project across `lib/api-zod`, `lib/db`, `artifacts/api-server`, and `artifacts/resume-matcher`.
+## 🧪 Testing
 
 ```bash
-# Run all tests once
+# Run all tests
 pnpm run test
 
 # Watch mode
 pnpm run test:watch
 
-# Run a single workspace's tests
+# Run a specific workspace's tests
 pnpm --filter @workspace/api-server run test
 ```
 
-API server tests use a temp-file SQLite per test process. The schema is materialized from `lib/db/src/schema.sql`, which is generated from the Drizzle schema via:
+---
 
-```bash
-pnpm --filter @workspace/db run db:schema-sql
+## 📜 Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm run typecheck` | Type-check all packages |
+| `pnpm run build` | Type-check + build all packages |
+| `pnpm --filter @workspace/api-server run dev` | Run API server in development |
+| `pnpm --filter @workspace/api-spec run codegen` | Regenerate API hooks and Zod schemas |
+| `pnpm --filter @workspace/db run push` | Push DB schema changes |
+
+---
+
+## 🗂️ Project Structure
+
+```
+.
+├── artifacts/
+│   ├── resume-matcher/    # React frontend
+│   ├── api-server/        # Express API server
+│   └── mockup-sandbox/    # UI component sandbox
+├── lib/
+│   ├── db/                # Database schema & Drizzle config
+│   ├── api-spec/          # OpenAPI specification
+│   ├── api-zod/           # Generated Zod validation schemas
+│   ├── api-client-react/  # Generated React Query hooks
+│   └── integrations/      # OpenAI / DeepSeek integrations
+├── scripts/               # Build and utility scripts
+├── package.json           # Root workspace config
+└── pnpm-workspace.yaml    # Workspace definition
 ```
 
-Regenerate `schema.sql` whenever you change `lib/db/src/schema/*.ts`.
+---
 
-## Deploy to GitHub Pages
+## 🚀 Deployment
 
-The frontend is published at:
+### Frontend (GitHub Pages)
 
-- https://himanshu-nakrani.github.io/Resume-AI-Matcher/
+The frontend auto-deploys via GitHub Actions:
 
-GitHub Actions can deploy the frontend automatically from this repository.
+1. Set **Settings → Pages → Source** to **GitHub Actions**
+2. Push to the default branch to trigger the workflow
+3. The workflow publishes `artifacts/resume-matcher/dist/public`
 
-1. Push to `main` (or `master`) to trigger deployment.
-2. In GitHub, set **Settings → Pages → Source** to **GitHub Actions**.
-3. The workflow builds `@workspace/resume-matcher` and publishes `artifacts/resume-matcher/dist/public`.
+Live site: [https://himanshu-nakrani.github.io/Resume-AI-Matcher/](https://himanshu-nakrani.github.io/Resume-AI-Matcher/)
 
-It automatically sets the correct Vite base path for project pages and includes a `404.html` fallback for client-side routes.
+### Backend
 
-## UI Design
+The API server can be deployed to any Node.js host. Build with:
 
-The application features a professional, minimal design with:
+```bash
+pnpm --filter @workspace/api-server run build
+pnpm --filter @workspace/api-server run start
+```
 
-- **Muted Color Palette** — Subtle blue-gray primary colors for a professional look
-- **Clean Typography** — Inter font family with optimized spacing and hierarchy
-- **Minimal Shadows** — Subtle elevation for depth without visual clutter
-- **Smooth Transitions** — Fast, subtle animations for better UX
-- **Responsive Layout** — Mobile-first design with adaptive components
-- **Accessibility** — WCAG compliant with keyboard navigation and screen reader support
+---
 
-## License
+## 🤝 Contributing
 
-MIT
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feat/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feat/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+Distributed under the MIT License. See [LICENSE](./LICENSE) for details.
+
+---
+
+<p align="center">
+  Built with ❤️ to help job seekers land their next role.
+</p>
