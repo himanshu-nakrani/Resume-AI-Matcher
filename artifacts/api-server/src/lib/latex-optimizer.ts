@@ -108,7 +108,7 @@ async function stageAIOptimization(
 
     const completion = await aiClient.chat.completions.create({
       model: FIREWORKS_DEFAULT_MODEL,
-      max_completion_tokens: 8192,
+      max_completion_tokens: 32768,
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -258,7 +258,7 @@ async function stageCorrection(
 
       const completion = await aiClient.chat.completions.create({
         model: FIREWORKS_DEFAULT_MODEL,
-        max_completion_tokens: 8192,
+        max_completion_tokens: 32768,
         messages: [{ role: "user", content: prompt }],
       });
 

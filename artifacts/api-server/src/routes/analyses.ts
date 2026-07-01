@@ -203,7 +203,7 @@ async function validateAndCorrectLatexForPdf(
 
   const completion = await runAiCompletion(getAiClient(), {
     model: FIREWORKS_DEFAULT_MODEL,
-    max_completion_tokens: 8192,
+    max_completion_tokens: 32768,
     messages: [{ role: "user", content: prompt }],
   }, { route });
 
@@ -364,10 +364,18 @@ router.post("/analyses", async (req, res): Promise<void> => {
     const ai = getAiClient();
     const completion = await runAiCompletion(ai, {
       model: FIREWORKS_DEFAULT_MODEL,
-      max_completion_tokens: 8192,
+      max_completion_tokens: 32768,
       messages: [{ role: "user", content: prompt }],
     }, { route: "/analyses" });
 
+    const finishReason = completion.choices[0]?.finish_reason;
+    if (finishReason === "length") {
+      logger.error({ finishReason, usage: completion.usage }, "AI analysis truncated");
+      res.status(502).json({
+        error: "AI analysis truncated (reached max token budget). Try again or shorten the resume/JD.",
+      });
+      return;
+    }
     const content = completion.choices[0]?.message?.content ?? "{}";
     aiResult = parseAiJson(content);
   } catch (err) {
@@ -931,7 +939,7 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
   try {
     const completion = await runAiCompletion(getAiClient(), {
       model: FIREWORKS_DEFAULT_MODEL,
-      max_completion_tokens: 8192,
+      max_completion_tokens: 32768,
       messages: [{ role: "user", content: prompt }],
     }, { route: "/analyses/:id/cover-letter" });
 
@@ -982,7 +990,7 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
   try {
     const completion = await runAiCompletion(getAiClient(), {
       model: FIREWORKS_DEFAULT_MODEL,
-      max_completion_tokens: 8192,
+      max_completion_tokens: 32768,
       messages: [{ role: "user", content: prompt }],
     }, { route: "/analyses/:id/linkedin-post" });
 
