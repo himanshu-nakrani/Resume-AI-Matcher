@@ -175,6 +175,7 @@ async function validateAndCorrectLatexForPdf(
   req: Request,
   inputLatex: string,
   context: { jobTitle: string; companyName: string | null },
+  route: string,
 ): Promise<string> {
   const prompt =
     "You are a senior LaTeX resume production editor. Validate and correct this optimized resume LaTeX before PDF compilation.\n\n" +
@@ -200,7 +201,7 @@ async function validateAndCorrectLatexForPdf(
     model: "deepseek-chat",
     max_completion_tokens: 8192,
     messages: [{ role: "user", content: prompt }],
-  });
+  }, { route });
 
   const corrected = extractLatexFromModel(completion.choices[0]?.message?.content ?? "");
   assertCompleteLatex(corrected);
@@ -362,7 +363,7 @@ router.post("/analyses", async (req, res): Promise<void> => {
       model: "deepseek-chat",
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
-    });
+    }, { route: "/analyses" });
 
     const content = completion.choices[0]?.message?.content ?? "{}";
     aiResult = parseAiJson(content);
@@ -517,7 +518,7 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
     const correctedLatex = await validateAndCorrectLatexForPdf(req, latex, {
       jobTitle: analysis.jobTitle,
       companyName: analysis.companyName,
-    });
+    }, "/analyses/:id/validate-latex");
     const normalizedLatex = correctedLatex.trim();
     const finalLatex = prepareLatexForPdfCompilation(normalizedLatex);
     if (finalLatex !== latex) {
@@ -861,7 +862,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
       model: "deepseek-chat",
       max_completion_tokens: 3000,
       messages: [{ role: "user", content: extractPrompt }],
-    });
+    }, { route: "/fetch-job" });
 
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
     let extracted: { jobTitle?: string; companyName?: string; jobDescription?: string } = {};
@@ -929,7 +930,7 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
       model: "deepseek-chat",
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
-    });
+    }, { route: "/analyses/:id/cover-letter" });
 
     const content = completion.choices[0]?.message?.content ?? "";
 
@@ -980,7 +981,7 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
       model: "deepseek-chat",
       max_completion_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
-    });
+    }, { route: "/analyses/:id/linkedin-post" });
 
     const content = completion.choices[0]?.message?.content ?? "";
 
@@ -1048,7 +1049,7 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
       model: "deepseek-chat",
       max_completion_tokens: 512,
       messages: [{ role: "user", content: prompt }],
-    });
+    }, { route: "/analyses/:id/rewrite-bullet" });
 
     const rewritten = completion.choices[0]?.message?.content?.trim() ?? "";
 

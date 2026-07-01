@@ -2,6 +2,8 @@ import "dotenv/config";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { seedSampleAnalysisIfEmpty } from "./lib/seed-sample-analysis";
+import { setAiTokenRecorder } from "@workspace/integrations-openai-ai-server";
+import { aiTokensTotal } from "./lib/metrics";
 
 const rawPort = process.env["PORT"] ?? "8080";
 
@@ -12,6 +14,10 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 seedSampleAnalysisIfEmpty();
+
+setAiTokenRecorder(({ model, route, outcome, tokens }) => {
+  aiTokensTotal.inc({ model, route, outcome }, tokens);
+});
 
 app.listen(port, (err) => {
   if (err) {
