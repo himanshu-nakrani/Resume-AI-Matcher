@@ -154,19 +154,36 @@ function injectResumePdfGuards(latex: string): string {
 
 function extractLatexFromModel(raw: string): string {
   const trimmed = raw.trim();
+
+  const candidates: string[] = [];
   try {
     const parsed = parseAiJson<{ latex?: string }>(trimmed);
     if (typeof parsed.latex === "string" && parsed.latex.trim()) {
-      return parsed.latex.trim();
+      candidates.push(parsed.latex.trim());
     }
   } catch {
     // Fall through to fenced/plain LaTeX extraction.
   }
+  candidates.push(
+    trimmed
+      .replace(/^```(?:latex|tex)?\s*\r?\n?/i, "")
+      .replace(/\r?\n?```\s*$/i, "")
+      .trim(),
+  );
 
-  return trimmed
-    .replace(/^```(?:latex|tex)?\s*\r?\n?/i, "")
-    .replace(/\r?\n?```\s*$/i, "")
-    .trim();
+  // Slice from \documentclass through \end{document}. Reasoning-heavy models
+  // (GLM-5.2 etc.) may emit prose before/after the LaTeX; the compiler treats
+  // those lines as LaTeX and fails with confusing errors.
+  for (const c of candidates) {
+    const start = c.indexOf("\\documentclass");
+    if (start === -1) continue;
+    const endMarker = "\\end{document}";
+    const endIdx = c.lastIndexOf(endMarker);
+    if (endIdx === -1 || endIdx <= start) continue;
+    return c.slice(start, endIdx + endMarker.length).trim();
+  }
+
+  return trimmed;
 }
 
 function assertCompleteLatex(latex: string): void {
