@@ -11,6 +11,7 @@
  */
 
 import type { OpenAI } from "@workspace/integrations-openai-ai-server";
+import { FIREWORKS_DEFAULT_MODEL } from "@workspace/integrations-openai-ai-server";
 
 type ChatCompletionCreateParamsNonStreaming = OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
 import { validateLatex, type ValidationResult } from "./latex-validator";
@@ -106,8 +107,8 @@ async function stageAIOptimization(
     const prompt = buildOptimizationPrompt(blocks, context);
 
     const completion = await aiClient.chat.completions.create({
-      model: "deepseek-chat",
-      max_completion_tokens: 8192,
+      model: FIREWORKS_DEFAULT_MODEL,
+      max_completion_tokens: 32768,
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -256,8 +257,8 @@ async function stageCorrection(
       const prompt = buildCorrectionPrompt(currentLatex, validationResult, context);
 
       const completion = await aiClient.chat.completions.create({
-        model: "deepseek-chat",
-        max_completion_tokens: 8192,
+        model: FIREWORKS_DEFAULT_MODEL,
+        max_completion_tokens: 32768,
         messages: [{ role: "user", content: prompt }],
       });
 

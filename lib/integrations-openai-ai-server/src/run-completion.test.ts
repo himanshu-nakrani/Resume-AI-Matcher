@@ -7,6 +7,7 @@ import OpenAI, {
   RateLimitError,
 } from "openai";
 import { runAiCompletion, isAiError, setAiTokenRecorder } from "./run-completion";
+import { AiMissingKeyError, getAiClient } from "./client";
 
 /**
  * Build a fake OpenAI client whose `chat.completions.create` is driven by
@@ -77,10 +78,14 @@ describe("runAiCompletion", () => {
     expect(result.choices[0]?.message?.content).toBe("ok");
   });
 
-  it("throws AI_CONFIG_MISSING when apiKey is 'missing-api-key'", async () => {
-    const client = makeFakeClient([], "missing-api-key");
-    await expect(runAiCompletion(client, PARAMS)).rejects.toMatchObject({
-      code: "AI_CONFIG_MISSING",
+  it("classifies AiMissingKeyError thrown mid-call as ai_missing_key", async () => {
+    const client = makeFakeClient([
+      () => {
+        throw new AiMissingKeyError();
+      },
+    ]);
+    await expect(runAiCompletion(client, PARAMS, { retries: 1 })).rejects.toMatchObject({
+      code: "ai_missing_key",
       retryable: false,
     });
   });
@@ -179,6 +184,21 @@ describe("runAiCompletion", () => {
       expect(events[0]?.tokens).toBe(0);
     } finally {
       setAiTokenRecorder(null);
+    }
+  });
+});
+
+describe("getAiClient", () => {
+  it("throws AiMissingKeyError when no key env is set", () => {
+    const prev1 = process.env.FIREWORKS_API_KEY;
+    const prev2 = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    delete process.env.FIREWORKS_API_KEY;
+    delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    try {
+      expect(() => getAiClient()).toThrow(AiMissingKeyError);
+    } finally {
+      if (prev1 !== undefined) process.env.FIREWORKS_API_KEY = prev1;
+      if (prev2 !== undefined) process.env.AI_INTEGRATIONS_OPENAI_API_KEY = prev2;
     }
   });
 });

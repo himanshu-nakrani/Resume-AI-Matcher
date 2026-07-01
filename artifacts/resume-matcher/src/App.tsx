@@ -1,7 +1,5 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { setDeepseekApiKeyGetter } from "@workspace/api-client-react";
-import { readDeepseekApiKeyFromStorage } from "@/lib/deepseek-storage";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -31,7 +29,14 @@ const queryClient = new QueryClient({
 
 const base = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
 
-setDeepseekApiKeyGetter(() => readDeepseekApiKeyFromStorage());
+// One-time cleanup of the legacy client-side API key. The server now reads
+// the key from FIREWORKS_API_KEY env; leaving the old value in localStorage
+// would keep sensitive data around for no reason.
+try {
+  localStorage.removeItem("optimatch_deepseek_api_key");
+} catch {
+  /* ignore */
+}
 
 function Router() {
   return (

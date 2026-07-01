@@ -25,9 +25,13 @@ import {
   FetchJobDescriptionBody,
   DuplicateAnalysisParams,
 } from "@workspace/api-zod";
-import { getAiClient, runAiCompletion, isAiError } from "@workspace/integrations-openai-ai-server";
+import {
+  getAiClient,
+  runAiCompletion,
+  isAiError,
+  FIREWORKS_DEFAULT_MODEL,
+} from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
-import { getAiFromRequest, resolveDeepseekKeyForCreate } from "../lib/ai-from-request";
 import { sendAiError } from "../lib/send-ai-error";
 import { parseAiJson } from "../lib/parse-ai-json";
 import { optimizeLatexResume, canOptimizeLatex } from "../lib/latex-optimizer";
@@ -86,7 +90,7 @@ function sanitizeLatexForPdf(latex: string): string {
     // fontawesome5 can abort Tectonic in this environment; remove icons but keep link text.
     .replace(/\\usepackage(?:\[[^\]]*\])?\{fontawesome5\}\s*/g, "")
     .replace(/\\faIcon\{[^}]+\}/g, "")
-    .replace(/\\fa[A-Za-z]+\b/g, "")
+    .replace(/\\fa[A-Z][A-Za-z]*\b/g, "")
     // Keep common resume punctuation representable with the default LaTeX fonts.
     .replace(/[“”]/g, '"')
     .replace(/[‘’]/g, "'")
@@ -150,19 +154,36 @@ function injectResumePdfGuards(latex: string): string {
 
 function extractLatexFromModel(raw: string): string {
   const trimmed = raw.trim();
+
+  const candidates: string[] = [];
   try {
     const parsed = parseAiJson<{ latex?: string }>(trimmed);
     if (typeof parsed.latex === "string" && parsed.latex.trim()) {
-      return parsed.latex.trim();
+      candidates.push(parsed.latex.trim());
     }
   } catch {
     // Fall through to fenced/plain LaTeX extraction.
   }
+  candidates.push(
+    trimmed
+      .replace(/^```(?:latex|tex)?\s*\r?\n?/i, "")
+      .replace(/\r?\n?```\s*$/i, "")
+      .trim(),
+  );
 
-  return trimmed
-    .replace(/^```(?:latex|tex)?\s*\r?\n?/i, "")
-    .replace(/\r?\n?```\s*$/i, "")
-    .trim();
+  // Slice from \documentclass through \end{document}. Reasoning-heavy models
+  // (GLM-5.2 etc.) may emit prose before/after the LaTeX; the compiler treats
+  // those lines as LaTeX and fails with confusing errors.
+  for (const c of candidates) {
+    const start = c.indexOf("\\documentclass");
+    if (start === -1) continue;
+    const endMarker = "\\end{document}";
+    const endIdx = c.lastIndexOf(endMarker);
+    if (endIdx === -1 || endIdx <= start) continue;
+    return c.slice(start, endIdx + endMarker.length).trim();
+  }
+
+  return trimmed;
 }
 
 function assertCompleteLatex(latex: string): void {
@@ -197,9 +218,9 @@ async function validateAndCorrectLatexForPdf(
     "LaTeX to correct:\n" +
     inputLatex;
 
-  const completion = await runAiCompletion(getAiFromRequest(req), {
-    model: "deepseek-chat",
-    max_completion_tokens: 8192,
+  const completion = await runAiCompletion(getAiClient(), {
+    model: FIREWORKS_DEFAULT_MODEL,
+    max_completion_tokens: 32768,
     messages: [{ role: "user", content: prompt }],
   }, { route });
 
@@ -214,6 +235,7 @@ function prepareLatexForPdfCompilation(latex: string): string {
 
 async function compileLatexToPdf(latex: string): Promise<Buffer> {
   const workDir = await mkdtemp(path.join(tmpdir(), "optimatch-latex-"));
+  let succeeded = false;
   try {
     await writeFile(path.join(workDir, "main.tex"), prepareLatexForPdfCompilation(latex), "utf8");
 
@@ -221,7 +243,9 @@ async function compileLatexToPdf(latex: string): Promise<Buffer> {
     for (const compiler of ["tectonic", "latexmk", "pdflatex"] as const) {
       try {
         await tryCompileLatex(compiler, workDir);
-        return await readFile(path.join(workDir, "main.pdf"));
+        const pdf = await readFile(path.join(workDir, "main.pdf"));
+        succeeded = true;
+        return pdf;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         errors.push({ compiler, message });
@@ -233,10 +257,14 @@ async function compileLatexToPdf(latex: string): Promise<Buffer> {
     throw new Error(
       noCompiler
         ? "No LaTeX compiler found. Install tectonic, latexmk, or pdflatex on the API server."
-        : `LaTeX compilation failed in ${realError?.compiler ?? "compiler"}. ${realError?.message ?? ""}`.slice(0, 700),
+        : `LaTeX compilation failed in ${realError?.compiler ?? "compiler"}. ${realError?.message ?? ""} [workdir: ${workDir}]`.slice(0, 900),
     );
   } finally {
-    await rm(workDir, { recursive: true, force: true });
+    if (succeeded) {
+      await rm(workDir, { recursive: true, force: true });
+    }
+    // On failure, leave workDir behind so we can inspect the tex file. It's a
+    // temp dir so it'll be cleaned up by the OS eventually.
   }
 }
 
@@ -308,7 +336,6 @@ router.post("/analyses", async (req, res): Promise<void> => {
   const sourceLatex = "sourceLatex" in parsed.data ? parsed.data.sourceLatex : undefined;
   const originalFileName = "originalFileName" in parsed.data ? parsed.data.originalFileName : undefined;
   const originalFileType = "originalFileType" in parsed.data ? parsed.data.originalFileType : undefined;
-  const deepseekApiKey = "deepseekApiKey" in parsed.data ? parsed.data.deepseekApiKey : undefined;
 
   req.log.info({ jobTitle }, "Running AI analysis");
 
@@ -358,13 +385,21 @@ router.post("/analyses", async (req, res): Promise<void> => {
   };
 
   try {
-    const ai = getAiClient(resolveDeepseekKeyForCreate(req, deepseekApiKey));
+    const ai = getAiClient();
     const completion = await runAiCompletion(ai, {
-      model: "deepseek-chat",
-      max_completion_tokens: 8192,
+      model: FIREWORKS_DEFAULT_MODEL,
+      max_completion_tokens: 32768,
       messages: [{ role: "user", content: prompt }],
     }, { route: "/analyses" });
 
+    const finishReason = completion.choices[0]?.finish_reason;
+    if (finishReason === "length") {
+      logger.error({ finishReason, usage: completion.usage }, "AI analysis truncated");
+      res.status(502).json({
+        error: "AI analysis truncated (reached max token budget). Try again or shorten the resume/JD.",
+      });
+      return;
+    }
     const content = completion.choices[0]?.message?.content ?? "{}";
     aiResult = parseAiJson(content);
   } catch (err) {
@@ -389,7 +424,7 @@ router.post("/analyses", async (req, res): Promise<void> => {
     
     if (canOptimize.canOptimize) {
       try {
-        const ai = getAiClient(resolveDeepseekKeyForCreate(req, deepseekApiKey));
+        const ai = getAiClient();
         const optimizationResult = await optimizeLatexResume(ai, finalSourceLatex, {
           jobTitle,
           companyName: companyName ?? null,
@@ -858,8 +893,8 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
       '{"jobTitle": "<job title or empty string>", "companyName": "<company name or empty string>", "jobDescription": "<full job description text, cleaned up, 200-2000 words>"}\n\n' +
       "Webpage text:\n" + text;
 
-    const completion = await runAiCompletion(getAiFromRequest(req), {
-      model: "deepseek-chat",
+    const completion = await runAiCompletion(getAiClient(), {
+      model: FIREWORKS_DEFAULT_MODEL,
       max_completion_tokens: 3000,
       messages: [{ role: "user", content: extractPrompt }],
     }, { route: "/fetch-job" });
@@ -926,9 +961,9 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
     "Write a " + tone + " cover letter that: (1) Opens with a specific, genuine insight about this company/role, (2) Highlights the top 3-4 most relevant achievements from the resume matching the JD requirements, using quantified results, (3) Addresses any gaps as learning opportunities not weaknesses, (4) Closes with genuine enthusiasm and confident call to action. Keep it 3-4 paragraphs, no longer than 250 words. Start with 'Dear Hiring Manager,' and write ONLY the cover letter text, no subject lines or commentary.";
 
   try {
-    const completion = await runAiCompletion(getAiFromRequest(req), {
-      model: "deepseek-chat",
-      max_completion_tokens: 8192,
+    const completion = await runAiCompletion(getAiClient(), {
+      model: FIREWORKS_DEFAULT_MODEL,
+      max_completion_tokens: 32768,
       messages: [{ role: "user", content: prompt }],
     }, { route: "/analyses/:id/cover-letter" });
 
@@ -977,9 +1012,9 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
     "Write 150-250 word LinkedIn post with: (1) A compelling hook that shows genuine insight about the role/industry, (2) 2-3 key achievements demonstrating enthusiasm for THIS role with numbers and results, (3) 2-3 specific strengths that make them ideal, (4) Specific call-to-action about roles they're exploring. Use line breaks for readability, 1-2 natural hashtags only, no emojis unless natural, no forced exclamation marks. Make it authentic. Write ONLY the post text, no preamble.";
 
   try {
-    const completion = await runAiCompletion(getAiFromRequest(req), {
-      model: "deepseek-chat",
-      max_completion_tokens: 8192,
+    const completion = await runAiCompletion(getAiClient(), {
+      model: FIREWORKS_DEFAULT_MODEL,
+      max_completion_tokens: 32768,
       messages: [{ role: "user", content: prompt }],
     }, { route: "/analyses/:id/linkedin-post" });
 
@@ -1045,8 +1080,8 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
     "- Return ONLY the rewritten bullet text, nothing else, no quotes";
 
   try {
-    const completion = await runAiCompletion(getAiFromRequest(req), {
-      model: "deepseek-chat",
+    const completion = await runAiCompletion(getAiClient(), {
+      model: FIREWORKS_DEFAULT_MODEL,
       max_completion_tokens: 512,
       messages: [{ role: "user", content: prompt }],
     }, { route: "/analyses/:id/rewrite-bullet" });

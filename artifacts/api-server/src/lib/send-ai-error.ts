@@ -8,6 +8,7 @@ const HTTP_BY_CODE: Record<AiErrorCode, number> = {
   AI_QUOTA_EXCEEDED: 503,
   AI_BAD_REQUEST: 400,
   AI_CONFIG_MISSING: 503,
+  ai_missing_key: 503,
   AI_UNKNOWN: 502,
 };
 
@@ -18,6 +19,7 @@ const FRIENDLY_BY_CODE: Record<AiErrorCode, string> = {
   AI_QUOTA_EXCEEDED: "AI service quota exceeded. Try again later.",
   AI_BAD_REQUEST: "The AI service rejected the request. Please try a different input.",
   AI_CONFIG_MISSING: "AI features are not configured on this server.",
+  ai_missing_key: "AI provider is not configured on the server. Set FIREWORKS_API_KEY.",
   AI_UNKNOWN: "The AI service returned an unexpected error. Try again.",
 };
 
