@@ -1,11 +1,10 @@
 #!/usr/bin/env node
-// One-off generator: spin up a temp SQLite, use drizzle-kit's push mechanism
-// to materialize the current Drizzle schema, then dump CREATE statements
-// from sqlite_master into lib/db/src/schema.sql.
+// One-off generator: spin up a temp SQLite, apply the versioned drizzle
+// migrations, then dump CREATE statements from sqlite_master into
+// lib/db/src/schema.sql.
 //
 // Usage: pnpm --filter @workspace/db run db:schema-sql
 
-import { execSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -15,28 +14,35 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const tempDb = path.join(os.tmpdir(), `schema-gen-${process.pid}.sqlite`);
 const outFile = path.resolve(repoRoot, "lib/db/src/schema.sql");
+const migrationsFolder = path.resolve(repoRoot, "lib/db/drizzle");
 
 console.log(`Spinning up temp DB at ${tempDb}`);
 try {
   if (fs.existsSync(tempDb)) fs.unlinkSync(tempDb);
 
-  execSync(
-    `pnpm --filter @workspace/db exec drizzle-kit push --force --config ./drizzle.config.ts`,
-    {
-      cwd: repoRoot,
-      env: { ...process.env, DATABASE_URL: `file:${tempDb}` },
-      stdio: "inherit",
-    },
-  );
-
-  // Resolve better-sqlite3 from lib/db where it is a declared dependency
+  // Resolve better-sqlite3 and drizzle-orm from lib/db where they are declared deps.
   const { default: Database } = await import(
     new URL("../lib/db/node_modules/better-sqlite3/lib/index.js", import.meta.url).href
   );
+  const { drizzle } = await import(
+    new URL(
+      "../lib/db/node_modules/drizzle-orm/better-sqlite3/index.js",
+      import.meta.url,
+    ).href
+  );
+  const { migrate } = await import(
+    new URL(
+      "../lib/db/node_modules/drizzle-orm/better-sqlite3/migrator.js",
+      import.meta.url,
+    ).href
+  );
+
   const db = new Database(tempDb);
+  migrate(drizzle(db), { migrationsFolder });
+
   const rows = db
     .prepare(
-      "SELECT sql FROM sqlite_master WHERE type IN ('table','index') AND sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY type DESC, name ASC",
+      "SELECT sql FROM sqlite_master WHERE type IN ('table','index') AND sql IS NOT NULL AND name NOT LIKE 'sqlite_%' AND name != '__drizzle_migrations' ORDER BY type DESC, name ASC",
     )
     .all();
   db.close();
