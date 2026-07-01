@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCopy } from "@/hooks/use-copy";
 import { useToast } from "@/hooks/use-toast";
-import { DEEPSEEK_KEY_STORAGE_KEY } from "@/lib/deepseek-storage";
 import {
   CheckCircle2, XCircle, Lightbulb, ChevronRight, FileText, Copy, Check, Download,
 } from "lucide-react";
@@ -62,11 +61,9 @@ export function OverviewTab({ analysis, id }: TabProps) {
     }
     setIsDownloadingPdf(true);
     try {
-      const deepseekKey = localStorage.getItem(DEEPSEEK_KEY_STORAGE_KEY)?.trim();
       const response = await fetch(`/api/analyses/${id}/resume.pdf`, {
         headers: {
           Accept: "application/pdf, application/json",
-          ...(deepseekKey ? { "X-DeepSeek-Api-Key": deepseekKey } : {}),
         },
       });
       if (!response.ok) {
