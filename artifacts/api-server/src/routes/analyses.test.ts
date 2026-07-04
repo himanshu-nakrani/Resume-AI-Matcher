@@ -55,6 +55,22 @@ describe("GET /api/analyses/:id", () => {
   });
 });
 
+describe("GET /api/analyses/:id/resume.pdf", () => {
+  it("returns a readable error when optimized LaTeX cannot compile", async () => {
+    const inserted = insertAnalysis({
+      optimizedLatex: "\\documentclass{article}\n\\begin{document}\n\\undefinedResumeCommand\n\\end{document}",
+    });
+
+    const response = await request(app)
+      .get(`/api/analyses/${inserted.id}/resume.pdf`)
+      .set("Accept", "application/pdf, application/json");
+
+    expect(response.status).toBe(422);
+    expect(response.body.error).toContain("Could not compile optimized resume PDF.");
+    expect(response.body.error).not.toBe("[object Object]");
+  });
+});
+
 describe("DELETE /api/analyses/:id", () => {
   it("deletes the row", async () => {
     const inserted = insertAnalysis({ jobTitle: "ToDelete" });

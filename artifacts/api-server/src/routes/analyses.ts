@@ -234,6 +234,35 @@ function prepareLatexForPdfCompilation(latex: string): string {
   return sanitizeLatexForPdf(injectResumePdfGuards(latex));
 }
 
+function isPdfRepairRequested(req: Request): boolean {
+  const repair = req.query.repair;
+  return repair === "1" || repair === "true";
+}
+
+function formatLatexCompileError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  const lines = raw
+    .replace(/\s*\[workdir: [^\]]+\]/g, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !line.startsWith("Command failed:"));
+
+  const usefulLines = lines.filter((line) => (
+    /error|failed|missing|undefined|halted|no latex compiler/i.test(line)
+  ));
+  const detail = (usefulLines.length > 0 ? usefulLines : lines).slice(0, 5).join(" ");
+
+  return detail
+    ? `Could not compile optimized resume PDF. ${detail}`.slice(0, 700)
+    : "Could not compile optimized resume PDF.";
+}
+
+function isLatexCompileFailure(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return err.message.includes("LaTeX compilation failed") || err.message.includes("No LaTeX compiler found");
+}
+
 async function compileLatexToPdf(latex: string): Promise<Buffer> {
   const workDir = await mkdtemp(path.join(tmpdir(), "optimatch-latex-"));
   let succeeded = false;
@@ -569,6 +598,11 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
       res.send(pdf);
       return;
     } catch (compileErr) {
+      if (!isPdfRepairRequested(req)) {
+        req.log.warn({ err: compileErr, id: params.data.id }, "Optimized resume PDF compilation failed");
+        res.status(422).json({ error: formatLatexCompileError(compileErr) });
+        return;
+      }
       req.log.warn({ err: compileErr, id: params.data.id }, "Initial LaTeX compilation failed; attempting AI repair");
     }
 
@@ -592,11 +626,13 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
     );
     res.send(pdf);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Could not compile optimized resume PDF.";
     logger.error({ err, id: params.data.id }, "Optimized resume PDF compilation failed");
     if (isAiError(err)) {
       sendAiError(res, err);
+    } else if (isLatexCompileFailure(err)) {
+      res.status(422).json({ error: formatLatexCompileError(err) });
     } else {
+      const message = err instanceof Error ? err.message : "Could not compile optimized resume PDF.";
       res.status(500).json({ error: message });
     }
   }
