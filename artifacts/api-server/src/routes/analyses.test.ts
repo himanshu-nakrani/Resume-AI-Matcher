@@ -150,6 +150,29 @@ describe("POST /api/analyses/:id/duplicate", () => {
     // The duplicate route appends " (copy)" to the job title.
     expect(response.body.jobTitle).toBe("Original (copy)");
   });
+
+  it("normalizes legacy JSON array fields while cloning", async () => {
+    const inserted = insertAnalysis({ jobTitle: "Legacy fields" });
+    const sqliteClient = (db as unknown as { $client: { exec: (sql: string) => void } }).$client;
+    sqliteClient.exec(`
+      UPDATE analyses
+      SET strengths = '"Single strength"',
+          gaps = '{"bad": true}',
+          improvements = '["Improve one", ""]',
+          ats_keywords_matched = '"TypeScript"',
+          ats_keywords_missing = '["GraphQL", 42]'
+      WHERE id = ${inserted.id};
+    `);
+
+    const response = await request(app).post(`/api/analyses/${inserted.id}/duplicate`);
+
+    expect(response.status).toBe(201);
+    expect(response.body.strengths).toEqual(["Single strength"]);
+    expect(response.body.gaps).toEqual([]);
+    expect(response.body.improvements).toEqual(["Improve one"]);
+    expect(response.body.atsKeywordsMatched).toEqual(["TypeScript"]);
+    expect(response.body.atsKeywordsMissing).toEqual(["GraphQL"]);
+  });
 });
 
 describe("POST /api/fetch-job", () => {

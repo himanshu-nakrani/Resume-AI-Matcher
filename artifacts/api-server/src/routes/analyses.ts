@@ -836,11 +836,11 @@ router.post("/analyses/:id/duplicate", async (req, res): Promise<void> => {
       jobDescriptionText: original.jobDescriptionText,
       fitScore: original.fitScore,
       fitRationale: original.fitRationale,
-      strengths: (original.strengths as string[]) ?? [],
-      gaps: (original.gaps as string[]) ?? [],
-      improvements: (original.improvements as string[]) ?? [],
-      atsKeywordsMatched: (original.atsKeywordsMatched as string[]) ?? [],
-      atsKeywordsMissing: (original.atsKeywordsMissing as string[]) ?? [],
+      strengths: stringArray(original.strengths),
+      gaps: stringArray(original.gaps),
+      improvements: stringArray(original.improvements),
+      atsKeywordsMatched: stringArray(original.atsKeywordsMatched),
+      atsKeywordsMissing: stringArray(original.atsKeywordsMissing),
       atsScore: original.atsScore,
       coverLetter: null,
       linkedinPost: null,
@@ -1146,8 +1146,8 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
 
   req.log.info({ id: params.data.id }, "Rewriting resume bullet");
 
-  const missingKeywords = (analysis.atsKeywordsMissing as string[]).slice(0, 10).join(", ");
-  const gaps = (analysis.gaps as string[]).slice(0, 5).join("; ");
+  const missingKeywords = stringArray(analysis.atsKeywordsMissing).slice(0, 10).join(", ");
+  const gaps = stringArray(analysis.gaps).slice(0, 5).join("; ");
 
   const prompt =
     "You are an expert resume writer. Rewrite the following resume bullet point to be stronger, more impactful, and to naturally incorporate relevant keywords from the job description.\n\n" +

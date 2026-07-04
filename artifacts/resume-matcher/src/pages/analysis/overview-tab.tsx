@@ -61,16 +61,60 @@ function errorMessageFromPayload(payload: ErrorPayload | null): string {
   return "Could not compile optimized resume PDF.";
 }
 
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function safeScore(value: unknown): number {
+  const score = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return Math.min(100, Math.max(0, Math.round(score)));
+}
+
+function EmptyLine({ children }: { children: string }) {
+  return (
+    <p className="rounded-md bg-surface-2 px-3 py-2 text-[13px] text-muted-foreground">
+      {children}
+    </p>
+  );
+}
+
 export function OverviewTab({ analysis, id }: TabProps) {
   const { copy, isCopied } = useCopy();
   const { toast } = useToast();
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
-  const strengths = (analysis.strengths as string[]) ?? [];
-  const gaps = (analysis.gaps as string[]) ?? [];
-  const improvements = (analysis.improvements as string[]) ?? [];
-  const atsMatched = (analysis.atsKeywordsMatched as string[]) ?? [];
-  const atsMissing = (analysis.atsKeywordsMissing as string[]) ?? [];
+  const strengths = stringArray(analysis.strengths);
+  const gaps = stringArray(analysis.gaps);
+  const improvements = stringArray(analysis.improvements);
+  const atsMatched = stringArray(analysis.atsKeywordsMatched);
+  const atsMissing = stringArray(analysis.atsKeywordsMissing);
+  const fitScore = safeScore(analysis.fitScore);
+  const atsScore = safeScore(analysis.atsScore);
+  const fitRationale =
+    typeof analysis.fitRationale === "string" && analysis.fitRationale.trim()
+      ? analysis.fitRationale.trim()
+      : "No fit rationale was returned for this analysis.";
   const optimizedLatex =
     (analysis as { optimizedLatex?: string | null }).optimizedLatex ?? null;
 
@@ -179,15 +223,15 @@ export function OverviewTab({ analysis, id }: TabProps) {
       <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-6 flex flex-col items-center gap-2">
-            <ScoreCircle score={analysis.fitScore} size="lg" label="Fit Score" />
+            <ScoreCircle score={fitScore} size="lg" label="Fit Score" />
             <p className="text-[13px] text-muted-foreground text-center max-w-xs mt-2">
-              {analysis.fitRationale}
+              {fitRationale}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6 flex flex-col items-center gap-2">
-            <ScoreCircle score={analysis.atsScore} size="lg" label="ATS Score" />
+            <ScoreCircle score={atsScore} size="lg" label="ATS Score" />
             <p className="text-[13px] text-muted-foreground text-center max-w-xs mt-2">
               How well your resume passes automated applicant tracking systems.
             </p>
@@ -205,11 +249,11 @@ export function OverviewTab({ analysis, id }: TabProps) {
           </CardHeader>
           <CardContent className="space-y-2">
             {strengths.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">No strengths identified.</p>
+              <EmptyLine>No strengths were returned for this analysis.</EmptyLine>
             ) : (
               strengths.map((s, i) => (
                 <div
-                  key={i}
+                  key={`${s}-${i}`}
                   className="flex items-start gap-2 text-[13px]"
                   data-testid={`strength-${i}`}
                 >
@@ -228,11 +272,11 @@ export function OverviewTab({ analysis, id }: TabProps) {
           </CardHeader>
           <CardContent className="space-y-2">
             {gaps.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">No critical gaps identified.</p>
+              <EmptyLine>No critical gaps were returned for this analysis.</EmptyLine>
             ) : (
               gaps.map((g, i) => (
                 <div
-                  key={i}
+                  key={`${g}-${i}`}
                   className="flex items-start gap-2 text-[13px]"
                   data-testid={`gap-${i}`}
                 >
@@ -254,11 +298,11 @@ export function OverviewTab({ analysis, id }: TabProps) {
         </CardHeader>
         <CardContent className="space-y-3">
           {improvements.length === 0 ? (
-            <p className="text-[13px] text-muted-foreground">No improvement suggestions.</p>
+            <EmptyLine>No improvement suggestions were returned for this analysis.</EmptyLine>
           ) : (
             improvements.map((imp, i) => (
               <div
-                key={i}
+                key={`${imp}-${i}`}
                 className="flex items-start gap-3 text-[13px] p-3 rounded-md bg-surface-2"
                 data-testid={`improvement-${i}`}
               >
@@ -282,11 +326,11 @@ export function OverviewTab({ analysis, id }: TabProps) {
             </p>
             <div className="flex flex-wrap gap-2">
               {atsMatched.length === 0 ? (
-                <p className="text-[13px] text-muted-foreground">None matched</p>
+                <EmptyLine>No matched ATS keywords were returned.</EmptyLine>
               ) : (
                 atsMatched.map((kw, i) => (
                   <Badge
-                    key={i}
+                    key={`${kw}-${i}`}
                     variant="success"
                     size="sm"
                     data-testid={`keyword-matched-${i}`}
@@ -303,11 +347,11 @@ export function OverviewTab({ analysis, id }: TabProps) {
             </p>
             <div className="flex flex-wrap gap-2">
               {atsMissing.length === 0 ? (
-                <p className="text-[13px] text-muted-foreground">No missing keywords</p>
+                <EmptyLine>No missing ATS keywords were returned.</EmptyLine>
               ) : (
                 atsMissing.map((kw, i) => (
                   <Badge
-                    key={i}
+                    key={`${kw}-${i}`}
                     variant="outline"
                     size="sm"
                     data-testid={`keyword-missing-${i}`}
