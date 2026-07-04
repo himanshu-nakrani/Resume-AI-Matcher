@@ -15,12 +15,30 @@ type UserProfile = {
   userEmail: string;
 };
 
+function safeScore(value: unknown): number {
+  const score = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 0;
+}
+
+function cleanProfile(value: unknown): Partial<UserProfile> {
+  if (!value || typeof value !== "object") return {};
+  const candidate = value as Partial<UserProfile>;
+  return {
+    userName: typeof candidate.userName === "string" ? candidate.userName : "",
+    userEmail: typeof candidate.userEmail === "string" ? candidate.userEmail : "",
+  };
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 export function UserPage() {
   const { toast } = useToast();
   const { data: analyses, isLoading, error } = useListAnalyses();
   const savedProfile = useMemo(() => {
     try {
-      return JSON.parse(localStorage.getItem(USER_STORAGE_KEY) ?? "{}") as Partial<UserProfile>;
+      return cleanProfile(JSON.parse(localStorage.getItem(USER_STORAGE_KEY) ?? "{}") as unknown);
     } catch {
       return {};
     }
@@ -33,15 +51,22 @@ export function UserPage() {
   const [saved, setSaved] = useState(false);
 
   const save = () => {
+    const nextProfile = {
+      userName: profile.userName.trim(),
+      userEmail: profile.userEmail.trim(),
+    };
+    if (!nextProfile.userName || !isValidEmail(nextProfile.userEmail)) {
+      toast({
+        title: "Profile incomplete",
+        description: "Add your name and a valid email address before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify({
-        userName: profile.userName.trim(),
-        userEmail: profile.userEmail.trim(),
-      }));
-      setProfile((current) => ({
-        userName: current.userName.trim(),
-        userEmail: current.userEmail.trim(),
-      }));
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextProfile));
+      setProfile(nextProfile);
       setSaved(true);
       toast({ title: "Profile saved", description: "Your optimizer defaults were updated on this device." });
       setTimeout(() => setSaved(false), 1500);
@@ -57,9 +82,10 @@ export function UserPage() {
   const optimizedCount = analyses?.length ?? 0;
   const activeCount = analyses?.filter((item) => !["selected", "rejected"].includes(item.status ?? "")).length ?? 0;
   const averageFit = optimizedCount > 0
-    ? Math.round((analyses ?? []).reduce((sum, item) => sum + item.fitScore, 0) / optimizedCount)
+    ? Math.round((analyses ?? []).reduce((sum, item) => sum + safeScore(item.fitScore), 0) / optimizedCount)
     : 0;
-  const profileComplete = Boolean(profile.userName.trim() && profile.userEmail.trim());
+  const profileComplete = Boolean(profile.userName.trim() && isValidEmail(profile.userEmail));
+  const canSave = profileComplete;
   const statsError = error instanceof Error ? error.message : null;
 
   return (
@@ -153,20 +179,24 @@ export function UserPage() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Email</label>
               <Input
+                type="email"
                 value={profile.userEmail}
                 onChange={(event) => setProfile((current) => ({ ...current, userEmail: event.target.value }))}
                 placeholder="you@example.com"
               />
+              {profile.userEmail.trim() && !isValidEmail(profile.userEmail) && (
+                <p className="text-xs text-destructive">Enter a valid email address.</p>
+              )}
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={save} className="gap-2" disabled={!profile.userName.trim() || !profile.userEmail.trim()}>
-            <Save className="h-4 w-4" />
-            {saved ? "Saved" : "Save profile"}
+            <Button onClick={save} className="gap-2" disabled={!canSave}>
+              <Save className="h-4 w-4" />
+              {saved ? "Saved" : "Save profile"}
             </Button>
             {!profileComplete && (
-              <p className="text-xs text-muted-foreground">Add both fields to enable one-click saving.</p>
+              <p className="text-xs text-muted-foreground">Add your name and a valid email to enable one-click saving.</p>
             )}
           </div>
         </CardContent>
