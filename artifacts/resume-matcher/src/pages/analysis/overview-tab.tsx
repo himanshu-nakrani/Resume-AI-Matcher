@@ -8,7 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCopy } from "@/hooks/use-copy";
 import { useToast } from "@/hooks/use-toast";
 import {
-  CheckCircle2, XCircle, Lightbulb, ChevronRight, FileText, Copy, Check, Download,
+  CheckCircle2,
+  XCircle,
+  Lightbulb,
+  ChevronRight,
+  FileText,
+  Copy,
+  Check,
+  Download,
 } from "lucide-react";
 import { BulletRewriter, InterviewChecklist } from "./shared";
 
@@ -17,7 +24,10 @@ interface TabProps {
   id: number;
 }
 
-function safeFileName(parts: Array<string | null | undefined>, ext: string): string {
+function safeFileName(
+  parts: Array<string | null | undefined>,
+  ext: string,
+): string {
   const base = parts
     .filter(Boolean)
     .join("-")
@@ -59,6 +69,25 @@ function errorMessageFromPayload(payload: ErrorPayload | null): string {
   const message = stringifyErrorValue(payload.message);
   if (message) return message;
   return "Could not compile optimized resume PDF.";
+}
+
+async function pdfErrorMessageFromResponse(
+  response: Response,
+): Promise<string> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const payload = (await response
+      .json()
+      .catch(() => null)) as ErrorPayload | null;
+    return errorMessageFromPayload(payload);
+  }
+
+  const text = await response.text().catch(() => "");
+  const message = text.trim();
+  return (
+    message ||
+    `Could not compile optimized resume PDF. Server returned ${response.status}.`
+  );
 }
 
 function stringArray(value: unknown): string[] {
@@ -135,16 +164,25 @@ export function OverviewTab({ analysis, id }: TabProps) {
         },
       });
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as ErrorPayload | null;
-        throw new Error(errorMessageFromPayload(payload));
+        throw new Error(await pdfErrorMessageFromResponse(response));
       }
+
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/pdf")) {
+        throw new Error(await pdfErrorMessageFromResponse(response));
+      }
+
       const blob = await response.blob();
-      const fileName = safeFileName([analysis.companyName, analysis.jobTitle], "pdf");
+      const fileName = safeFileName(
+        [analysis.companyName, analysis.jobTitle],
+        "pdf",
+      );
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
+      a.href = url;
       a.download = fileName;
       a.click();
-      URL.revokeObjectURL(a.href);
+      URL.revokeObjectURL(url);
       toast({
         title: "PDF downloaded",
         description: "Compiled from optimized LaTeX.",
@@ -153,7 +191,9 @@ export function OverviewTab({ analysis, id }: TabProps) {
       toast({
         title: "Could not download PDF",
         description:
-          err instanceof Error ? err.message : "Could not compile optimized resume PDF.",
+          err instanceof Error
+            ? err.message
+            : "Could not compile optimized resume PDF.",
         variant: "destructive",
       });
     } finally {
@@ -168,7 +208,8 @@ export function OverviewTab({ analysis, id }: TabProps) {
           <CardHeader className="pb-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-[15px] flex min-w-0 items-center gap-2">
-                <FileText className="w-3.5 h-3.5 text-accent" /> Optimized resume LaTeX
+                <FileText className="w-3.5 h-3.5 text-accent" /> Optimized
+                resume LaTeX
               </CardTitle>
               <div className="flex flex-wrap gap-2 no-print sm:justify-end">
                 <Button
@@ -176,7 +217,11 @@ export function OverviewTab({ analysis, id }: TabProps) {
                   size="sm"
                   onClick={() => copy(optimizedLatex, "Optimized LaTeX copied")}
                 >
-                  {isCopied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                  {isCopied ? (
+                    <Check className="w-3.5 h-3.5 mr-1" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 mr-1" />
+                  )}
                   Copy
                 </Button>
                 <Button
@@ -185,7 +230,10 @@ export function OverviewTab({ analysis, id }: TabProps) {
                   onClick={() =>
                     downloadTextFile(
                       optimizedLatex,
-                      safeFileName([analysis.companyName, analysis.jobTitle], "tex"),
+                      safeFileName(
+                        [analysis.companyName, analysis.jobTitle],
+                        "tex",
+                      ),
                     )
                   }
                 >
@@ -203,7 +251,8 @@ export function OverviewTab({ analysis, id }: TabProps) {
               </div>
             </div>
             <p className="text-[12px] text-muted-foreground mt-1">
-              AI-tailored LaTeX resume for {analysis.companyName ?? "this company"} and {analysis.jobTitle}.
+              AI-tailored LaTeX resume for{" "}
+              {analysis.companyName ?? "this company"} and {analysis.jobTitle}.
             </p>
           </CardHeader>
           <CardContent>
@@ -213,7 +262,8 @@ export function OverviewTab({ analysis, id }: TabProps) {
               className="min-h-[360px] font-mono text-[12px] resize-none"
             />
             <p className="text-[11px] text-muted-foreground mt-3 no-print">
-              Download PDF validates and repairs this optimized LaTeX with AI, then compiles it on the API server.
+              Download PDF validates and repairs this optimized LaTeX with AI,
+              then compiles it on the API server.
             </p>
           </CardContent>
         </Card>
@@ -249,7 +299,9 @@ export function OverviewTab({ analysis, id }: TabProps) {
           </CardHeader>
           <CardContent className="space-y-2">
             {strengths.length === 0 ? (
-              <EmptyLine>No strengths were returned for this analysis.</EmptyLine>
+              <EmptyLine>
+                No strengths were returned for this analysis.
+              </EmptyLine>
             ) : (
               strengths.map((s, i) => (
                 <div
@@ -272,7 +324,9 @@ export function OverviewTab({ analysis, id }: TabProps) {
           </CardHeader>
           <CardContent className="space-y-2">
             {gaps.length === 0 ? (
-              <EmptyLine>No critical gaps were returned for this analysis.</EmptyLine>
+              <EmptyLine>
+                No critical gaps were returned for this analysis.
+              </EmptyLine>
             ) : (
               gaps.map((g, i) => (
                 <div
@@ -293,12 +347,15 @@ export function OverviewTab({ analysis, id }: TabProps) {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-[15px] flex items-center gap-2">
-            <Lightbulb className="w-3.5 h-3.5 text-warning" /> Resume improvements
+            <Lightbulb className="w-3.5 h-3.5 text-warning" /> Resume
+            improvements
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {improvements.length === 0 ? (
-            <EmptyLine>No improvement suggestions were returned for this analysis.</EmptyLine>
+            <EmptyLine>
+              No improvement suggestions were returned for this analysis.
+            </EmptyLine>
           ) : (
             improvements.map((imp, i) => (
               <div
