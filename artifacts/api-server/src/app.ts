@@ -36,7 +36,7 @@ app.use(
 );
 app.use(
   cors({
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
   }),
 );
 app.use(express.json());
