@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useLocation, useSearch } from "wouter";
 import {
   useGetAnalysis,
@@ -12,9 +13,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, Heart, Trash2, GitCompareArrows, CalendarClock, Tag,
+  ArrowLeft,
+  Heart,
+  Trash2,
+  GitCompareArrows,
+  CalendarClock,
+  Tag,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ShareSection } from "./shared";
@@ -24,7 +40,13 @@ import { LinkedInTab } from "./linkedin-tab";
 import { PipelineTab } from "./pipeline-tab";
 import { NotesTab } from "./notes-tab";
 
-const TAB_VALUES = ["overview", "cover-letter", "linkedin", "pipeline", "notes"] as const;
+const TAB_VALUES = [
+  "overview",
+  "cover-letter",
+  "linkedin",
+  "pipeline",
+  "notes",
+] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 function isTabValue(v: string | null | undefined): v is TabValue {
@@ -57,7 +79,11 @@ function stringArray(value: unknown): string[] {
 }
 
 function dateValue(value: unknown): Date | null {
-  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+  if (
+    typeof value !== "string" &&
+    typeof value !== "number" &&
+    !(value instanceof Date)
+  ) {
     return null;
   }
   const date = new Date(value);
@@ -66,7 +92,9 @@ function dateValue(value: unknown): Date | null {
 
 function relativeDate(value: unknown): string {
   const date = dateValue(value);
-  return date ? formatDistanceToNow(date, { addSuffix: true }) : "Date unavailable";
+  return date
+    ? formatDistanceToNow(date, { addSuffix: true })
+    : "Date unavailable";
 }
 
 function shortDate(value: unknown): string | null {
@@ -81,8 +109,13 @@ export function Analysis() {
   const search = useSearch();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  const { data: analysis, isLoading, error } = useGetAnalysis(id, {
+  const {
+    data: analysis,
+    isLoading,
+    error,
+  } = useGetAnalysis(id, {
     query: { enabled: !!id, queryKey: getGetAnalysisQueryKey(id) },
   });
 
@@ -102,7 +135,8 @@ export function Analysis() {
       onError: (err) => {
         toast({
           title: "Could not delete analysis",
-          description: err instanceof Error ? err.message : "Try again in a moment.",
+          description:
+            err instanceof Error ? err.message : "Try again in a moment.",
           variant: "destructive",
         });
       },
@@ -114,12 +148,17 @@ export function Analysis() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) });
         queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
-        toast({ title: analysis?.isFavorite ? "Removed from favorites" : "Added to favorites" });
+        toast({
+          title: analysis?.isFavorite
+            ? "Removed from favorites"
+            : "Added to favorites",
+        });
       },
       onError: (err) => {
         toast({
           title: "Could not update analysis",
-          description: err instanceof Error ? err.message : "Try again in a moment.",
+          description:
+            err instanceof Error ? err.message : "Try again in a moment.",
           variant: "destructive",
         });
       },
@@ -131,13 +170,17 @@ export function Analysis() {
       onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) });
         queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
-        toast({ title: "Analysis duplicated", description: "Opening the copy now." });
+        toast({
+          title: "Analysis duplicated",
+          description: "Opening the copy now.",
+        });
         setLocation(`/analysis/${data.id}`);
       },
       onError: (err) => {
         toast({
           title: "Could not duplicate analysis",
-          description: err instanceof Error ? err.message : "Try again in a moment.",
+          description:
+            err instanceof Error ? err.message : "Try again in a moment.",
           variant: "destructive",
         });
       },
@@ -145,9 +188,7 @@ export function Analysis() {
   });
 
   const handleDelete = () => {
-    const confirmed = window.confirm("Delete this analysis? This cannot be undone.");
-    if (!confirmed) return;
-    deleteAnalysis.mutate({ id });
+    setIsDeleteOpen(true);
   };
 
   if (isLoading) {
@@ -166,7 +207,9 @@ export function Analysis() {
   if (error) {
     return (
       <div className="mx-auto max-w-xl py-20 text-center">
-        <p className="text-sm font-medium text-destructive">Could not load analysis.</p>
+        <p className="text-sm font-medium text-destructive">
+          Could not load analysis.
+        </p>
         <p className="mt-2 text-[13px] text-muted-foreground">
           {error instanceof Error ? error.message : "Try again in a moment."}
         </p>
@@ -174,9 +217,7 @@ export function Analysis() {
           <Button variant="secondary" onClick={() => setLocation("/history")}>
             Back to analyses
           </Button>
-          <Button onClick={() => window.location.reload()}>
-            Retry
-          </Button>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </div>
     );
@@ -186,7 +227,11 @@ export function Analysis() {
     return (
       <div className="text-center py-20">
         <p className="text-[13px] text-muted-foreground">Analysis not found.</p>
-        <Button variant="secondary" className="mt-4" onClick={() => setLocation("/history")}>
+        <Button
+          variant="secondary"
+          className="mt-4"
+          onClick={() => setLocation("/history")}
+        >
           Go back
         </Button>
       </div>
@@ -213,11 +258,19 @@ export function Analysis() {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-semibold tracking-[-0.02em]">{analysis.jobTitle}</h1>
-                {isSampled && <Badge variant="soft" size="sm">Sample</Badge>}
+                <h1 className="text-2xl font-semibold tracking-[-0.02em]">
+                  {analysis.jobTitle}
+                </h1>
+                {isSampled && (
+                  <Badge variant="soft" size="sm">
+                    Sample
+                  </Badge>
+                )}
               </div>
               {analysis.companyName && (
-                <p className="text-[13px] text-muted-foreground mt-0.5">{analysis.companyName}</p>
+                <p className="text-[13px] text-muted-foreground mt-0.5">
+                  {analysis.companyName}
+                </p>
               )}
               <p className="text-[11px] text-muted-foreground mt-1">
                 {relativeDate(analysis.createdAt)}
@@ -247,14 +300,33 @@ export function Analysis() {
               <Button
                 variant="ghost"
                 size="sm"
-                className={analysis.isFavorite ? "text-destructive" : "text-muted-foreground"}
-                onClick={() => updateAnalysis.mutate({ id, data: { isFavorite: !analysis.isFavorite } })}
+                className={
+                  analysis.isFavorite
+                    ? "text-destructive"
+                    : "text-muted-foreground"
+                }
+                onClick={() =>
+                  updateAnalysis.mutate({
+                    id,
+                    data: { isFavorite: !analysis.isFavorite },
+                  })
+                }
                 disabled={updateAnalysis.isPending}
-                title={analysis.isFavorite ? "Remove from favorites" : "Add to favorites"}
-                aria-label={analysis.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                title={
+                  analysis.isFavorite
+                    ? "Remove from favorites"
+                    : "Add to favorites"
+                }
+                aria-label={
+                  analysis.isFavorite
+                    ? "Remove from favorites"
+                    : "Add to favorites"
+                }
                 data-testid="button-favorite"
               >
-                <Heart className={`w-3.5 h-3.5 ${analysis.isFavorite ? "fill-destructive" : ""}`} />
+                <Heart
+                  className={`w-3.5 h-3.5 ${analysis.isFavorite ? "fill-destructive" : ""}`}
+                />
               </Button>
               <ShareSection
                 analysisId={id}
@@ -294,12 +366,49 @@ export function Analysis() {
           </TabsList>
         </div>
 
-        <TabsContent value="overview"><OverviewTab analysis={analysis} id={id} /></TabsContent>
-        <TabsContent value="cover-letter"><CoverLetterTab analysis={analysis} id={id} /></TabsContent>
-        <TabsContent value="linkedin"><LinkedInTab analysis={analysis} id={id} /></TabsContent>
-        <TabsContent value="pipeline"><PipelineTab analysis={analysis} id={id} /></TabsContent>
-        <TabsContent value="notes"><NotesTab analysis={analysis} id={id} /></TabsContent>
+        <TabsContent value="overview">
+          <OverviewTab analysis={analysis} id={id} />
+        </TabsContent>
+        <TabsContent value="cover-letter">
+          <CoverLetterTab analysis={analysis} id={id} />
+        </TabsContent>
+        <TabsContent value="linkedin">
+          <LinkedInTab analysis={analysis} id={id} />
+        </TabsContent>
+        <TabsContent value="pipeline">
+          <PipelineTab analysis={analysis} id={id} />
+        </TabsContent>
+        <TabsContent value="notes">
+          <NotesTab analysis={analysis} id={id} />
+        </TabsContent>
       </Tabs>
+
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this analysis?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{analysis.jobTitle}" will be permanently removed from your
+              workspace. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteAnalysis.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteAnalysis.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                deleteAnalysis.mutate({ id });
+              }}
+            >
+              {deleteAnalysis.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
