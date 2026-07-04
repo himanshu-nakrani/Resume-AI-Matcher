@@ -36,6 +36,7 @@ import { sendAiError } from "../lib/send-ai-error";
 import { parseAiJson } from "../lib/parse-ai-json";
 import { optimizeLatexResume, canOptimizeLatex } from "../lib/latex-optimizer";
 import { validateLatex, formatValidationErrors } from "../lib/latex-validator";
+import { fetchReadableTextFromUrl, UnsafeUrlError } from "../lib/safe-url-fetch";
 
 const router: IRouter = Router();
 const execFileAsync = promisify(execFile);
@@ -231,6 +232,35 @@ async function validateAndCorrectLatexForPdf(
 
 function prepareLatexForPdfCompilation(latex: string): string {
   return sanitizeLatexForPdf(injectResumePdfGuards(latex));
+}
+
+function isPdfRepairRequested(req: Request): boolean {
+  const repair = req.query.repair;
+  return repair === "1" || repair === "true";
+}
+
+function formatLatexCompileError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  const lines = raw
+    .replace(/\s*\[workdir: [^\]]+\]/g, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !line.startsWith("Command failed:"));
+
+  const usefulLines = lines.filter((line) => (
+    /error|failed|missing|undefined|halted|no latex compiler/i.test(line)
+  ));
+  const detail = (usefulLines.length > 0 ? usefulLines : lines).slice(0, 5).join(" ");
+
+  return detail
+    ? `Could not compile optimized resume PDF. ${detail}`.slice(0, 700)
+    : "Could not compile optimized resume PDF.";
+}
+
+function isLatexCompileFailure(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return err.message.includes("LaTeX compilation failed") || err.message.includes("No LaTeX compiler found");
 }
 
 async function compileLatexToPdf(latex: string): Promise<Buffer> {
@@ -550,12 +580,37 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
   }
 
   try {
-    const correctedLatex = await validateAndCorrectLatexForPdf(req, latex, {
+    const preparedLatex = prepareLatexForPdfCompilation(latex);
+    try {
+      const pdf = await compileLatexToPdf(preparedLatex);
+      if (preparedLatex !== latex) {
+        await db
+          .update(analyses)
+          .set({ optimizedLatex: preparedLatex })
+          .where(eq(analyses.id, params.data.id));
+      }
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${safeDownloadName([analysis.companyName, analysis.jobTitle], "pdf")}"`,
+      );
+      res.send(pdf);
+      return;
+    } catch (compileErr) {
+      if (!isPdfRepairRequested(req)) {
+        req.log.warn({ err: compileErr, id: params.data.id }, "Optimized resume PDF compilation failed");
+        res.status(422).json({ error: formatLatexCompileError(compileErr) });
+        return;
+      }
+      req.log.warn({ err: compileErr, id: params.data.id }, "Initial LaTeX compilation failed; attempting AI repair");
+    }
+
+    const correctedLatex = await validateAndCorrectLatexForPdf(req, preparedLatex, {
       jobTitle: analysis.jobTitle,
       companyName: analysis.companyName,
     }, "/analyses/:id/validate-latex");
-    const normalizedLatex = correctedLatex.trim();
-    const finalLatex = prepareLatexForPdfCompilation(normalizedLatex);
+    const finalLatex = prepareLatexForPdfCompilation(correctedLatex.trim());
     if (finalLatex !== latex) {
       await db
         .update(analyses)
@@ -571,11 +626,13 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
     );
     res.send(pdf);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Could not compile optimized resume PDF.";
     logger.error({ err, id: params.data.id }, "Optimized resume PDF compilation failed");
     if (isAiError(err)) {
-      sendAiError(res, err, "Optimized resume PDF compilation failed");
+      sendAiError(res, err);
+    } else if (isLatexCompileFailure(err)) {
+      res.status(422).json({ error: formatLatexCompileError(err) });
     } else {
+      const message = err instanceof Error ? err.message : "Could not compile optimized resume PDF.";
       res.status(500).json({ error: message });
     }
   }
@@ -852,35 +909,14 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
   req.log.info({ url }, "Fetching job description from URL");
 
   try {
-    const response = await fetch(url, {
+    const text = (await fetchReadableTextFromUrl(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; OptiMatch/1.0; +https://optimatch.app)",
         "Accept": "text/html,application/xhtml+xml",
       },
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!response.ok) {
-      res.status(400).json({ error: "Could not fetch that URL. Try copying the job description manually." });
-      return;
-    }
-
-    const html = await response.text();
-
-    // Strip HTML tags and extract readable text
-    const text = html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\s{3,}/g, "\n\n")
-      .trim()
-      .slice(0, 12000);
+      timeoutMs: 15000,
+      maxBytes: 1024 * 1024,
+    })).slice(0, 12000);
 
     if (text.length < 100) {
       res.status(400).json({ error: "Could not extract content from that URL. Try copying the job description manually." });
@@ -918,6 +954,12 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
       companyName: extracted.companyName ?? "",
     });
   } catch (err) {
+    if (err instanceof UnsafeUrlError) {
+      logger.warn({ err, url }, "Rejected unsafe job URL");
+      res.status(400).json({ error: "Could not fetch that URL. Please copy the job description text manually." });
+      return;
+    }
+
     logger.error({ err, url }, "Job URL fetch failed");
     if (isAiError(err)) {
       sendAiError(res, err, "Job URL fetch failed");

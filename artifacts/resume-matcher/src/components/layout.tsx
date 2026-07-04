@@ -351,7 +351,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface-1 px-4 py-3 md:hidden">
+        <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-surface-1 px-4 py-3 md:hidden">
           <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -368,7 +368,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <header className="sticky top-0 z-10 hidden h-12 items-center justify-between gap-3 border-b border-border bg-background/80 px-6 backdrop-blur-md md:flex">
+        <header className="sticky top-0 z-40 hidden h-12 items-center justify-between gap-3 border-b border-border bg-background/80 px-6 backdrop-blur-md md:flex">
           <div className="flex min-w-0 items-center gap-2 text-[12.5px]">
             {(() => {
               const bc = routeBreadcrumb(location);

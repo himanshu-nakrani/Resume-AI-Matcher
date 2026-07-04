@@ -55,6 +55,22 @@ describe("GET /api/analyses/:id", () => {
   });
 });
 
+describe("GET /api/analyses/:id/resume.pdf", () => {
+  it("returns a readable error when optimized LaTeX cannot compile", async () => {
+    const inserted = insertAnalysis({
+      optimizedLatex: "\\documentclass{article}\n\\begin{document}\n\\undefinedResumeCommand\n\\end{document}",
+    });
+
+    const response = await request(app)
+      .get(`/api/analyses/${inserted.id}/resume.pdf`)
+      .set("Accept", "application/pdf, application/json");
+
+    expect(response.status).toBe(422);
+    expect(response.body.error).toContain("Could not compile optimized resume PDF.");
+    expect(response.body.error).not.toBe("[object Object]");
+  });
+});
+
 describe("DELETE /api/analyses/:id", () => {
   it("deletes the row", async () => {
     const inserted = insertAnalysis({ jobTitle: "ToDelete" });
@@ -88,6 +104,26 @@ describe("POST /api/analyses/:id/duplicate", () => {
     expect(response.body.id).not.toBe(inserted.id);
     // The duplicate route appends " (copy)" to the job title.
     expect(response.body.jobTitle).toBe("Original (copy)");
+  });
+});
+
+describe("POST /api/fetch-job", () => {
+  it("rejects localhost URLs before fetching", async () => {
+    const response = await request(app)
+      .post("/api/fetch-job")
+      .send({ url: "http://localhost:8080/internal-job" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain("Could not fetch");
+  });
+
+  it("rejects private IP URLs before fetching", async () => {
+    const response = await request(app)
+      .post("/api/fetch-job")
+      .send({ url: "http://192.168.1.10/jobs/1" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain("Could not fetch");
   });
 });
 
