@@ -91,6 +91,26 @@ describe("POST /api/analyses/:id/duplicate", () => {
   });
 });
 
+describe("POST /api/fetch-job", () => {
+  it("rejects localhost URLs before fetching", async () => {
+    const response = await request(app)
+      .post("/api/fetch-job")
+      .send({ url: "http://localhost:8080/internal-job" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain("Could not fetch");
+  });
+
+  it("rejects private IP URLs before fetching", async () => {
+    const response = await request(app)
+      .post("/api/fetch-job")
+      .send({ url: "http://192.168.1.10/jobs/1" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain("Could not fetch");
+  });
+});
+
 describe("Share flow", () => {
   it("issues a token, returns the analysis via /share/:token, then revokes it", async () => {
     const inserted = insertAnalysis({ jobTitle: "Shareable" });

@@ -36,6 +36,7 @@ import { sendAiError } from "../lib/send-ai-error";
 import { parseAiJson } from "../lib/parse-ai-json";
 import { optimizeLatexResume, canOptimizeLatex } from "../lib/latex-optimizer";
 import { validateLatex, formatValidationErrors } from "../lib/latex-validator";
+import { fetchReadableTextFromUrl, UnsafeUrlError } from "../lib/safe-url-fetch";
 
 const router: IRouter = Router();
 const execFileAsync = promisify(execFile);
@@ -852,35 +853,14 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
   req.log.info({ url }, "Fetching job description from URL");
 
   try {
-    const response = await fetch(url, {
+    const text = (await fetchReadableTextFromUrl(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; OptiMatch/1.0; +https://optimatch.app)",
         "Accept": "text/html,application/xhtml+xml",
       },
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!response.ok) {
-      res.status(400).json({ error: "Could not fetch that URL. Try copying the job description manually." });
-      return;
-    }
-
-    const html = await response.text();
-
-    // Strip HTML tags and extract readable text
-    const text = html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\s{3,}/g, "\n\n")
-      .trim()
-      .slice(0, 12000);
+      timeoutMs: 15000,
+      maxBytes: 1024 * 1024,
+    })).slice(0, 12000);
 
     if (text.length < 100) {
       res.status(400).json({ error: "Could not extract content from that URL. Try copying the job description manually." });
@@ -918,6 +898,12 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
       companyName: extracted.companyName ?? "",
     });
   } catch (err) {
+    if (err instanceof UnsafeUrlError) {
+      logger.warn({ err, url }, "Rejected unsafe job URL");
+      res.status(400).json({ error: "Could not fetch that URL. Please copy the job description text manually." });
+      return;
+    }
+
     logger.error({ err, url }, "Job URL fetch failed");
     if (isAiError(err)) {
       sendAiError(res, err, "Job URL fetch failed");

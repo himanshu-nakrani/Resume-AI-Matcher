@@ -6,6 +6,7 @@ import { enrichJobContent } from "../lib/exa-job-contents";
 import { logger } from "../lib/logger";
 import { getAiClient, FIREWORKS_DEFAULT_MODEL } from "@workspace/integrations-openai-ai-server";
 import { parseAiJson } from "../lib/parse-ai-json";
+import { fetchReadableTextFromUrl, UnsafeUrlError } from "../lib/safe-url-fetch";
 
 const router: IRouter = Router();
 
@@ -62,30 +63,19 @@ router.post("/job-search/pre-screen", async (req, res): Promise<void> => {
   let jobContent = typeof description === "string" && description.startsWith("http") ? null : (description as string);
   if (!jobContent && jobUrl) {
     try {
-      const htmlRes = await fetch(jobUrl as string, {
+      jobContent = (await fetchReadableTextFromUrl(jobUrl as string, {
         headers: {
           "User-Agent": "Mozilla/5.0 (compatible; OptiMatch/1.0)",
           Accept: "text/html,application/xhtml+xml",
         },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (htmlRes.ok) {
-        const html = await htmlRes.text();
-        jobContent = html
-          .replace(/<script[\s\S]*?<\/script>/gi, " ")
-          .replace(/<style[\s\S]*?<\/style>/gi, " ")
-          .replace(/<[^>]+>/g, " ")
-          .replace(/&nbsp;/g, " ")
-          .replace(/&amp;/g, "&")
-          .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'")
-          .replace(/\s{3,}/g, "\n\n")
-          .trim()
-          .slice(0, 2000);
+        timeoutMs: 8000,
+        maxBytes: 256 * 1024,
+      })).slice(0, 2000);
+    } catch (err) {
+      if (err instanceof UnsafeUrlError) {
+        res.status(400).json({ error: "Job URL is not allowed" });
+        return;
       }
-    } catch {
       // Fall through to use URL as context string
     }
   }
