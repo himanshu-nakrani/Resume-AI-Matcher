@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "wouter";
 import { useListAnalyses, useGetAnalysis, getGetAnalysisQueryKey } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,23 +19,33 @@ import {
   ArrowLeftRight,
   ArrowUp,
   ArrowDown,
+  GitCompareArrows,
+  AlertCircle,
+  PlusCircle,
 } from "lucide-react";
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { formatDistanceToNow } from "date-fns";
 
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+}
+
 function ScoreBar({ score, label, compareScore }: { score: number; label: string; compareScore?: number }) {
+  const boundedScore = Math.max(0, Math.min(100, score));
   const color =
-    score >= 80 ? "hsl(var(--success))"
-    : score >= 60 ? "hsl(var(--warning))"
+    boundedScore >= 80 ? "hsl(var(--success))"
+    : boundedScore >= 60 ? "hsl(var(--warning))"
     : "hsl(var(--destructive))";
-  const delta = typeof compareScore === "number" ? score - compareScore : null;
+  const delta = typeof compareScore === "number" ? boundedScore - compareScore : null;
   return (
     <div className="space-y-1">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">{label}</span>
         <div className="flex items-baseline gap-2">
           <span className="font-mono tabular-nums text-[20px] font-semibold" style={{ color }}>
-            {score}
+            {boundedScore}
           </span>
           {delta !== null && delta !== 0 && (
             <Badge variant={delta > 0 ? "success" : "destructive"} size="sm">
@@ -45,14 +56,14 @@ function ScoreBar({ score, label, compareScore }: { score: number; label: string
         </div>
       </div>
       <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
-        <div className="h-full transition-all" style={{ width: `${score}%`, backgroundColor: color }} />
+        <div className="h-full transition-all" style={{ width: `${boundedScore}%`, backgroundColor: color }} />
       </div>
     </div>
   );
 }
 
 function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | null }) {
-  const { data, isLoading } = useGetAnalysis(id, {
+  const { data, isLoading, isError, error } = useGetAnalysis(id, {
     query: { enabled: !!id, queryKey: getGetAnalysisQueryKey(id) },
   });
   const { data: compareData } = useGetAnalysis(compareId ?? 0, {
@@ -70,26 +81,44 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-48" />
+      <div className="space-y-3">
+        <Skeleton className="h-24 rounded-md" />
+        <Skeleton className="h-36 rounded-md" />
+        <Skeleton className="h-36 rounded-md" />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card>
+        <CardContent className="flex items-start gap-3 p-4">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <div>
+            <p className="text-sm font-semibold">Could not load analysis</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {error instanceof Error ? error.message : "Try again in a moment."}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   if (!data) return null;
 
-  const strengths = (data.strengths as string[]) ?? [];
-  const gaps = (data.gaps as string[]) ?? [];
-  const atsMatched = (data.atsKeywordsMatched as string[]) ?? [];
-  const atsMissing = (data.atsKeywordsMissing as string[]) ?? [];
+  const strengths = stringArray(data.strengths);
+  const gaps = stringArray(data.gaps);
+  const atsMatched = stringArray(data.atsKeywordsMatched);
+  const atsMissing = stringArray(data.atsKeywordsMissing);
+  const compareStrengths = stringArray(compareData?.strengths);
+  const compareGaps = stringArray(compareData?.gaps);
 
   const uniqueStrengths = compareData
-    ? strengths.filter((s) => !(compareData.strengths as string[]).includes(s))
+    ? strengths.filter((s) => !compareStrengths.includes(s))
     : [];
   const uniqueGaps = compareData
-    ? gaps.filter((g) => !(compareData.gaps as string[]).includes(g))
+    ? gaps.filter((g) => !compareGaps.includes(g))
     : [];
 
   return (
@@ -124,18 +153,22 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {strengths.map((s, i) => (
-            <div key={i} className={`text-sm flex items-start gap-2 p-2 rounded-lg transition-colors ${uniqueStrengths.includes(s) ? "bg-green-50 dark:bg-green-900/20 font-semibold text-green-700 dark:text-green-400" : "hover:bg-muted/50"}`}>
-              <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${uniqueStrengths.includes(s) ? "text-green-600 dark:text-green-400" : "text-green-500"}`} />
-              <span className="flex-1">{s}</span>
-              {uniqueStrengths.includes(s) && (
-                <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 shrink-0">
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  unique
-                </Badge>
-              )}
-            </div>
-          ))}
+          {strengths.length === 0 ? (
+            <p className="rounded-md bg-surface-2 px-3 py-2 text-xs text-muted-foreground">No strengths were returned for this analysis.</p>
+          ) : (
+            strengths.map((s, i) => (
+              <div key={i} className={`text-sm flex items-start gap-2 p-2 rounded-lg transition-colors ${uniqueStrengths.includes(s) ? "bg-green-50 dark:bg-green-900/20 font-semibold text-green-700 dark:text-green-400" : "hover:bg-muted/50"}`}>
+                <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${uniqueStrengths.includes(s) ? "text-green-600 dark:text-green-400" : "text-green-500"}`} />
+                <span className="flex-1">{s}</span>
+                {uniqueStrengths.includes(s) && (
+                  <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 shrink-0">
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    unique
+                  </Badge>
+                )}
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
 
@@ -150,18 +183,22 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {gaps.map((g, i) => (
-            <div key={i} className={`text-sm flex items-start gap-2 p-2 rounded-lg transition-colors ${uniqueGaps.includes(g) ? "bg-red-50 dark:bg-red-900/20 font-semibold text-red-700 dark:text-red-400" : "hover:bg-muted/50"}`}>
-              <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
-              <span className="flex-1">{g}</span>
-              {uniqueGaps.includes(g) && (
-                <Badge variant="outline" className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700 shrink-0">
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  unique
-                </Badge>
-              )}
-            </div>
-          ))}
+          {gaps.length === 0 ? (
+            <p className="rounded-md bg-surface-2 px-3 py-2 text-xs text-muted-foreground">No gaps were returned for this analysis.</p>
+          ) : (
+            gaps.map((g, i) => (
+              <div key={i} className={`text-sm flex items-start gap-2 p-2 rounded-lg transition-colors ${uniqueGaps.includes(g) ? "bg-red-50 dark:bg-red-900/20 font-semibold text-red-700 dark:text-red-400" : "hover:bg-muted/50"}`}>
+                <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                <span className="flex-1">{g}</span>
+                {uniqueGaps.includes(g) && (
+                  <Badge variant="outline" className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700 shrink-0">
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    unique
+                  </Badge>
+                )}
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
 
@@ -182,20 +219,24 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
                 {atsMatched.length}
               </Badge>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {atsMatched.map((kw) => {
-                const inOtherColumn = compareMatchedSet.has(kw);
-                return (
-                  <Badge
-                    key={kw}
-                    variant={compareId == null ? "default" : inOtherColumn ? "default" : "success"}
-                    size="sm"
-                  >
-                    {kw}
-                  </Badge>
-                );
-              })}
-            </div>
+            {atsMatched.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No matched keywords.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {atsMatched.map((kw) => {
+                  const inOtherColumn = compareMatchedSet.has(kw);
+                  return (
+                    <Badge
+                      key={kw}
+                      variant={compareId == null ? "default" : inOtherColumn ? "default" : "success"}
+                      size="sm"
+                    >
+                      {kw}
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -204,20 +245,24 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
                 {atsMissing.length}
               </Badge>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {atsMissing.map((kw) => {
-                const inOtherColumn = compareMissingSet.has(kw);
-                return (
-                  <Badge
-                    key={kw}
-                    variant={compareId == null ? "outline" : inOtherColumn ? "outline" : "warning"}
-                    size="sm"
-                  >
-                    {kw}
-                  </Badge>
-                );
-              })}
-            </div>
+            {atsMissing.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No missing keywords.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {atsMissing.map((kw) => {
+                  const inOtherColumn = compareMissingSet.has(kw);
+                  return (
+                    <Badge
+                      key={kw}
+                      variant={compareId == null ? "outline" : inOtherColumn ? "outline" : "warning"}
+                      size="sm"
+                    >
+                      {kw}
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -242,74 +287,147 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
 }
 
 export function Compare() {
-  const { data: analyses } = useListAnalyses();
+  const [, setLocation] = useLocation();
+  const { data: analyses = [], isLoading, error } = useListAnalyses();
   const [leftId, setLeftId] = useState<number | null>(null);
   const [rightId, setRightId] = useState<number | null>(null);
 
+  useEffect(() => {
+    if (analyses.length < 2) return;
+    const ids = new Set(analyses.map((analysis) => analysis.id));
+    const nextLeftId = leftId != null && ids.has(leftId) ? leftId : analyses[0].id;
+    const nextRightId =
+      rightId != null && ids.has(rightId) && rightId !== nextLeftId
+        ? rightId
+        : analyses.find((analysis) => analysis.id !== nextLeftId)?.id ?? null;
+
+    if (nextLeftId !== leftId) setLeftId(nextLeftId);
+    if (nextRightId !== rightId) setRightId(nextRightId);
+  }, [analyses, leftId, rightId]);
+
+  const selectedCount = [leftId, rightId].filter((id): id is number => id != null).length;
+
   return (
     <div className="space-y-6">
-      <header className="mb-4">
-        <h1 className="text-2xl font-semibold tracking-[-0.02em]">Compare analyses</h1>
-        <p className="text-[13px] text-muted-foreground mt-1">
-          Side-by-side diff of two resume analyses.
-        </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-[-0.02em]">Compare analyses</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Side-by-side score, keyword, strength, and gap diff across resume versions.
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/")}>
+          <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
+          New analysis
+        </Button>
       </header>
 
-      <div className="flex items-center gap-3">
-        <div className="flex-1">
-          <Select value={leftId?.toString() ?? ""} onValueChange={(v) => setLeftId(Number(v))}>
-            <SelectTrigger>
-              <SelectValue placeholder="Pick first analysis" />
-            </SelectTrigger>
-            <SelectContent>
-              {analyses?.map((a) => (
-                <SelectItem key={a.id} value={a.id.toString()}>
-                  {a.jobTitle} {a.companyName ? `· ${a.companyName}` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {isLoading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-24 rounded-md" />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <Skeleton className="h-96 rounded-md" />
+            <Skeleton className="h-96 rounded-md" />
+          </div>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => { const tmp = leftId; setLeftId(rightId); setRightId(tmp); }}
-          disabled={leftId == null || rightId == null}
-          aria-label="Swap analyses"
-        >
-          <ArrowLeftRight className="h-3.5 w-3.5" />
-        </Button>
-        <div className="flex-1">
-          <Select value={rightId?.toString() ?? ""} onValueChange={(v) => setRightId(Number(v))}>
-            <SelectTrigger>
-              <SelectValue placeholder="Pick second analysis" />
-            </SelectTrigger>
-            <SelectContent>
-              {analyses?.map((a) => (
-                <SelectItem key={a.id} value={a.id.toString()}>
-                  {a.jobTitle} {a.companyName ? `· ${a.companyName}` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {leftId != null && <AnalysisColumn id={leftId} compareId={rightId} />}
-        {rightId != null && <AnalysisColumn id={rightId} compareId={leftId} />}
-      </div>
-
-      {leftId == null && rightId == null && (
+      ) : error ? (
         <Empty>
           <EmptyHeader>
-            <EmptyTitle>Pick two analyses to compare</EmptyTitle>
+            <EmptyMedia variant="icon">
+              <AlertCircle />
+            </EmptyMedia>
+            <EmptyTitle>Could not load analyses</EmptyTitle>
             <EmptyDescription>
-              Select an analysis on each side to see the diff highlight gaps and shared strengths.
+              {error instanceof Error ? error.message : "Try again in a moment."}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
+      ) : analyses.length < 2 ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <GitCompareArrows />
+            </EmptyMedia>
+            <EmptyTitle>Run at least two analyses</EmptyTitle>
+            <EmptyDescription>
+              Compare needs two resume-target pairs so it can highlight score movement, shared keywords, and unique gaps.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button onClick={() => setLocation("/")}>
+              <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
+              Start a new analysis
+            </Button>
+          </EmptyContent>
+        </Empty>
+      ) : (
+        <>
+          <div className="rounded-lg border bg-surface-1 p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[12px] font-semibold">Comparison set</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {selectedCount}/2 selected from {analyses.length} analyses
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => { const tmp = leftId; setLeftId(rightId); setRightId(tmp); }}
+                disabled={leftId == null || rightId == null}
+                aria-label="Swap analyses"
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
+              <Select value={leftId?.toString() ?? ""} onValueChange={(v) => setLeftId(Number(v))}>
+                <SelectTrigger aria-label="Pick first analysis">
+                  <SelectValue placeholder="Pick first analysis" />
+                </SelectTrigger>
+                <SelectContent>
+                  {analyses.map((a) => (
+                    <SelectItem key={a.id} value={a.id.toString()} disabled={a.id === rightId}>
+                      {a.jobTitle} {a.companyName ? `· ${a.companyName}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="hidden text-center text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground md:block">
+                vs
+              </div>
+              <Select value={rightId?.toString() ?? ""} onValueChange={(v) => setRightId(Number(v))}>
+                <SelectTrigger aria-label="Pick second analysis">
+                  <SelectValue placeholder="Pick second analysis" />
+                </SelectTrigger>
+                <SelectContent>
+                  {analyses.map((a) => (
+                    <SelectItem key={a.id} value={a.id.toString()} disabled={a.id === leftId}>
+                      {a.jobTitle} {a.companyName ? `· ${a.companyName}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {leftId != null && <AnalysisColumn id={leftId} compareId={rightId} />}
+            {rightId != null && <AnalysisColumn id={rightId} compareId={leftId} />}
+          </div>
+
+          {leftId == null && rightId == null && (
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>Pick two analyses to compare</EmptyTitle>
+                <EmptyDescription>
+                  Select an analysis on each side to see the diff highlight gaps and shared strengths.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+        </>
       )}
     </div>
   );
