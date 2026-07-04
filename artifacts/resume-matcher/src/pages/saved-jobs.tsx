@@ -1,14 +1,12 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Bookmark, Trash2, ExternalLink, FileText, Search, Tag, X, MousePointerClick, DollarSign, Save } from "lucide-react";
+import { Bookmark, Trash2, ExternalLink, Search, X, MousePointerClick, DollarSign, Save } from "lucide-react";
 
 interface SavedJob {
   id: number;
@@ -25,68 +23,114 @@ interface SavedJob {
   savedAt: string;
 }
 
+type ApiErrorPayload = {
+  error?: string | { message?: string };
+  message?: string;
+};
+
+function apiErrorMessage(payload: ApiErrorPayload | null, fallback: string): string {
+  if (!payload) return fallback;
+  if (typeof payload.error === "string") return payload.error;
+  if (payload.error?.message) return payload.error.message;
+  if (payload.message) return payload.message;
+  return fallback;
+}
+
 export function SavedJobsPage() {
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingNotes, setEditingNotes] = useState<number | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
-  const [tagInput, setTagInput] = useState<{ [key: number]: string }>({});
 
   const fetchSavedJobs = async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/saved-jobs");
-      if (res.ok) setSavedJobs(await res.json());
-    } catch { /* ignore */ }
-    setLoading(false);
+      const data = await res.json().catch(() => null) as SavedJob[] | ApiErrorPayload | null;
+      if (!res.ok) {
+        throw new Error(apiErrorMessage(data as ApiErrorPayload | null, "Could not load saved jobs."));
+      }
+      setSavedJobs(Array.isArray(data) ? data : []);
+    } catch (err) {
+      toast({
+        title: "Could not load saved jobs",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useState(() => { fetchSavedJobs(); });
+  useEffect(() => {
+    void fetchSavedJobs();
+  }, []);
 
   const deleteJob = async (id: number) => {
-    const res = await fetch(`/api/saved-jobs/${id}`, { method: "DELETE" });
-    if (res.ok) {
+    try {
+      const res = await fetch(`/api/saved-jobs/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as ApiErrorPayload | null;
+        throw new Error(apiErrorMessage(data, "Could not remove this job."));
+      }
       setSavedJobs((prev) => prev.filter((j) => j.id !== id));
       toast({ title: "Job removed" });
+    } catch (err) {
+      toast({
+        title: "Could not remove job",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
     }
   };
 
   const saveNotes = async (id: number) => {
-    await fetch(`/api/saved-jobs/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes: notesDraft }),
-    });
-    setSavedJobs((prev) => prev.map((j) => (j.id === id ? { ...j, notes: notesDraft } : j)));
-    setEditingNotes(null);
-    toast({ title: "Notes saved" });
-  };
-
-  const addTag = async (id: number, tag: string) => {
-    const job = savedJobs.find((j) => j.id === id);
-    if (!job || job.tags.includes(tag)) return;
-    const newTags = [...job.tags, tag];
-    await fetch(`/api/saved-jobs/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tags: newTags }),
-    });
-    setSavedJobs((prev) => prev.map((j) => (j.id === id ? { ...j, tags: newTags } : j)));
+    try {
+      const res = await fetch(`/api/saved-jobs/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: notesDraft }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as ApiErrorPayload | null;
+        throw new Error(apiErrorMessage(data, "Could not save notes."));
+      }
+      setSavedJobs((prev) => prev.map((j) => (j.id === id ? { ...j, notes: notesDraft } : j)));
+      setEditingNotes(null);
+      toast({ title: "Notes saved" });
+    } catch (err) {
+      toast({
+        title: "Could not save notes",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
+    }
   };
 
   const removeTag = async (id: number, tag: string) => {
     const job = savedJobs.find((j) => j.id === id);
     if (!job) return;
     const newTags = job.tags.filter((t) => t !== tag);
-    await fetch(`/api/saved-jobs/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tags: newTags }),
-    });
-    setSavedJobs((prev) => prev.map((j) => (j.id === id ? { ...j, tags: newTags } : j)));
+    try {
+      const res = await fetch(`/api/saved-jobs/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: newTags }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as ApiErrorPayload | null;
+        throw new Error(apiErrorMessage(data, "Could not remove tag."));
+      }
+      setSavedJobs((prev) => prev.map((j) => (j.id === id ? { ...j, tags: newTags } : j)));
+    } catch (err) {
+      toast({
+        title: "Could not remove tag",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
+    }
   };
 
   const filtered = savedJobs.filter((j) =>

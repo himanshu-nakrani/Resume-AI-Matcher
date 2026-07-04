@@ -347,9 +347,16 @@ export function Home() {
         toast({ title: "Job saved", description: "View in Saved Jobs." });
       } else if (res.status === 409) {
         toast({ title: "Already saved", description: "This job is already in your saved list." });
+      } else {
+        const data = (await res.json().catch(() => null)) as ApiErrorPayload | null;
+        throw new Error(apiErrorMessage(data, "Could not save this job."));
       }
-    } catch {
-      toast({ title: "Could not save", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: "Could not save",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
     }
   };
 
