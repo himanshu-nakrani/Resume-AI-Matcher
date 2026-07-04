@@ -72,9 +72,87 @@ type SavedSearch = {
   favoritesOnly: boolean;
 };
 
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function safeScore(value: unknown): number {
+  const score = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 0;
+}
+
+function scoreColor(score: number): string {
+  if (score >= 80) return "hsl(var(--success))";
+  if (score >= 60) return "hsl(var(--warning))";
+  return "hsl(var(--destructive))";
+}
+
+function dateValue(value: unknown): Date | null {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function relativeDate(value: unknown): string {
+  const date = dateValue(value);
+  return date ? formatDistanceToNow(date, { addSuffix: true }) : "Date unavailable";
+}
+
+function fullDate(value: unknown): string {
+  const date = dateValue(value);
+  return date ? format(date, "PPp") : "Date unavailable";
+}
+
+function exportDate(value: unknown): string {
+  const date = dateValue(value);
+  return date ? format(date, "yyyy-MM-dd") : "";
+}
+
+function csvCell(value: unknown): string {
+  const text = value == null ? "" : String(value);
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+
+function isSavedSearch(value: unknown): value is SavedSearch {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<SavedSearch>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.name === "string" &&
+    typeof candidate.query === "string" &&
+    typeof candidate.favoritesOnly === "boolean" &&
+    (candidate.status === "all" || ALL_STATUSES.includes(candidate.status as Status))
+  );
+}
+
 function loadSavedSearches(): SavedSearch[] {
   try {
-    return JSON.parse(localStorage.getItem(SAVED_SEARCHES_KEY) ?? "[]");
+    const parsed = JSON.parse(localStorage.getItem(SAVED_SEARCHES_KEY) ?? "[]") as unknown;
+    return Array.isArray(parsed) ? parsed.filter(isSavedSearch) : [];
   } catch {
     return [];
   }
@@ -252,15 +330,15 @@ export function History() {
     const headers = ["ID", "Job Title", "Company", "Fit Score", "ATS Score", "Status", "Favorite", "Deadline", "Notes", "Created At"];
     const rows = filtered.map((a) => [
       a.id,
-      '"' + a.jobTitle.replace(/"/g, '""') + '"',
-      '"' + (a.companyName ?? "").replace(/"/g, '""') + '"',
-      a.fitScore,
-      a.atsScore,
+      csvCell(a.jobTitle),
+      csvCell(a.companyName),
+      safeScore(a.fitScore),
+      safeScore(a.atsScore),
       a.status,
       a.isFavorite ? "Yes" : "No",
       a.deadline ?? "",
-      '"' + (a.notes ?? "").replace(/"/g, '""') + '"',
-      format(new Date(a.createdAt), "yyyy-MM-dd"),
+      csvCell(a.notes),
+      exportDate(a.createdAt),
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -568,13 +646,15 @@ export function History() {
             </thead>
             <tbody>
               {filtered.map((a) => {
-                const isSampled = (a.tags ?? []).includes("sample");
+                const fitScore = safeScore(a.fitScore);
+                const atsScore = safeScore(a.atsScore);
+                const isSampled = stringArray(a.tags).includes("sample");
                 return (
                   <tr
                     key={a.id}
                     className="border-b border-border hover:bg-surface-2 cursor-pointer group"
                     onClick={() => setLocation(`/analysis/${a.id}`)}
-                    title={`Created ${format(new Date(a.createdAt), "PPp")}`}
+                    title={`Created ${fullDate(a.createdAt)}`}
                   >
                     <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <input
@@ -593,15 +673,15 @@ export function History() {
                       </div>
                     </td>
                     <td className="px-3 py-2 text-[13px] text-muted-foreground truncate">{a.companyName ?? "—"}</td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[13px]" style={{ color: a.fitScore >= 80 ? "hsl(var(--success))" : a.fitScore >= 60 ? "hsl(var(--warning))" : "hsl(var(--destructive))" }}>
-                      {a.fitScore}
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[13px]" style={{ color: scoreColor(fitScore) }}>
+                      {fitScore}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[13px] text-muted-foreground">{a.atsScore}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[13px] text-muted-foreground">{atsScore}</td>
                     <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <StatusPicker analysisId={a.id} currentStatus={a.status} />
                     </td>
                     <td className="hidden lg:table-cell px-3 py-2 text-[12px] text-muted-foreground">
-                      {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
+                      {relativeDate(a.createdAt)}
                     </td>
                     <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
@@ -639,7 +719,9 @@ export function History() {
       {!isLoading && filtered.length > 0 && (
         <div className="md:hidden space-y-3">
           {filtered.map((a) => {
-            const isSampled = (a.tags ?? []).includes("sample");
+            const fitScore = safeScore(a.fitScore);
+            const atsScore = safeScore(a.atsScore);
+            const isSampled = stringArray(a.tags).includes("sample");
             return (
               <Card
                 key={a.id}
@@ -668,12 +750,12 @@ export function History() {
                       <FavoriteButton analysisId={a.id} isFavorite={a.isFavorite} />
                     </div>
                     <div className="flex items-center gap-3 text-[12px]">
-                      <span className="font-mono tabular-nums" style={{ color: a.fitScore >= 80 ? "hsl(var(--success))" : a.fitScore >= 60 ? "hsl(var(--warning))" : "hsl(var(--destructive))" }}>
-                        Fit {a.fitScore}
+                      <span className="font-mono tabular-nums" style={{ color: scoreColor(fitScore) }}>
+                        Fit {fitScore}
                       </span>
-                      <span className="font-mono tabular-nums text-muted-foreground">ATS {a.atsScore}</span>
+                      <span className="font-mono tabular-nums text-muted-foreground">ATS {atsScore}</span>
                       <span className="text-muted-foreground ml-auto">
-                        {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
+                        {relativeDate(a.createdAt)}
                       </span>
                     </div>
                     <div onClick={(e) => e.stopPropagation()}>
