@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useListAnalyses } from "@workspace/api-client-react";
 import {
@@ -43,6 +43,20 @@ const PAGES: GoEntry[] = [
   { label: "Search Alerts", path: "/alerts", icon: Bell },
 ];
 
+function safeScore(value: unknown): number {
+  const score = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 0;
+}
+
+function dateTime(value: unknown): number {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+    return 0;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
@@ -51,7 +65,7 @@ export function CommandPalette() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setOpen((prev) => !prev);
       }
@@ -68,8 +82,16 @@ export function CommandPalette() {
     [setLocation],
   );
 
-  const favorites = analyses?.filter((a) => a.isFavorite) ?? [];
-  const recent = analyses?.slice(0, 5) ?? [];
+  const favorites = useMemo(
+    () => (analyses ?? [])
+      .filter((a) => a.isFavorite)
+      .sort((a, b) => dateTime(b.createdAt) - dateTime(a.createdAt)),
+    [analyses],
+  );
+  const recent = useMemo(
+    () => [...(analyses ?? [])].sort((a, b) => dateTime(b.createdAt) - dateTime(a.createdAt)).slice(0, 5),
+    [analyses],
+  );
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
@@ -112,7 +134,7 @@ export function CommandPalette() {
                     </span>
                   )}
                   <span className="ml-2 font-mono text-[11px] font-medium tabular-nums">
-                    {a.fitScore}
+                    {safeScore(a.fitScore)}
                   </span>
                 </CommandItem>
               ))}
@@ -137,7 +159,7 @@ export function CommandPalette() {
                     </span>
                   )}
                   <span className="ml-2 font-mono text-[11px] font-medium tabular-nums">
-                    {a.fitScore}
+                    {safeScore(a.fitScore)}
                   </span>
                 </CommandItem>
               ))}

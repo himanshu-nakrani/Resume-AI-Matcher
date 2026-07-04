@@ -294,7 +294,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n") {
         e.preventDefault();
         setLocation("/");
         return;
