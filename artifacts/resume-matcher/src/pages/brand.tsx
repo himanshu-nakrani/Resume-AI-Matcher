@@ -1,6 +1,9 @@
 import { useMemo } from "react";
+import { useLocation } from "wouter";
 import { useListAnalyses } from "@workspace/api-client-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ScoreCircle } from "@/components/score-circle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -25,7 +28,15 @@ import {
   Award,
   Briefcase,
   Sparkles,
+  AlertCircle,
+  PlusCircle,
 } from "lucide-react";
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+}
 
 function StatCard({
   title,
@@ -65,13 +76,13 @@ function StatCard({
 }
 
 export function Brand() {
-  const { data: analyses, isLoading } = useListAnalyses();
+  const [, setLocation] = useLocation();
+  const { data: analyses = [], isLoading, error } = useListAnalyses();
 
   const topKeywords = useMemo(() => {
-    if (!analyses) return [] as Array<{ name: string; count: number }>;
     const counts = new Map<string, number>();
     for (const a of analyses) {
-      for (const kw of (a.atsKeywordsMatched as string[] | undefined) ?? []) {
+      for (const kw of stringArray(a.atsKeywordsMatched)) {
         counts.set(kw, (counts.get(kw) ?? 0) + 1);
       }
     }
@@ -105,24 +116,49 @@ export function Brand() {
     );
   }
 
-  if (!analyses || analyses.length === 0) {
+  if (error) {
     return (
-      <div className="text-center py-20 text-muted-foreground border border-dashed rounded-xl">
-        <Fingerprint className="w-12 h-12 mx-auto mb-4 opacity-20" />
-        <h2 className="text-xl font-semibold text-foreground">No Brand Data Yet</h2>
-        <p className="mt-2 max-w-xs mx-auto text-sm">
-          Run your first analysis to start building your professional brand profile.
-        </p>
-      </div>
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <AlertCircle />
+          </EmptyMedia>
+          <EmptyTitle>Could not load brand data</EmptyTitle>
+          <EmptyDescription>
+            {error instanceof Error ? error.message : "Try again in a moment."}
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  if (analyses.length === 0) {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Fingerprint />
+          </EmptyMedia>
+          <EmptyTitle>No brand data yet</EmptyTitle>
+          <EmptyDescription>
+            Run your first analysis to start building a professional brand profile from real job targets.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button onClick={() => setLocation("/")}>
+            <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
+            Start a new analysis
+          </Button>
+        </EmptyContent>
+      </Empty>
     );
   }
 
   // 1. Keyword Strength Index
   const matchedFreq: Record<string, number> = {};
-  const matchedCount: Record<string, number> = {}; // To calculate avg match rate if we had it, but for now just frequency
   
   analyses.forEach(a => {
-    const matched = (a.atsKeywordsMatched as string[]) || [];
+    const matched = stringArray(a.atsKeywordsMatched);
     matched.forEach(kw => {
       matchedFreq[kw] = (matchedFreq[kw] || 0) + 1;
     });
@@ -140,7 +176,7 @@ export function Brand() {
   // 2. Skill Gap Map
   const missingFreq: Record<string, number> = {};
   analyses.forEach(a => {
-    const missing = (a.atsKeywordsMissing as string[]) || [];
+    const missing = stringArray(a.atsKeywordsMissing);
     missing.forEach(kw => {
       missingFreq[kw] = (missingFreq[kw] || 0) + 1;
     });
@@ -178,13 +214,17 @@ export function Brand() {
 
   return (
     <div className="space-y-8 pb-10">
-      <header className="flex items-baseline justify-between gap-3 mb-6">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-[-0.02em]">Brand dashboard</h1>
           <p className="text-[13px] text-muted-foreground mt-1">
             Your professional identity quantified across {totalAnalyses} analyses.
           </p>
         </div>
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/")}>
+          <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
+          New analysis
+        </Button>
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -264,29 +304,35 @@ export function Brand() {
             <p className="text-xs text-muted-foreground">Most frequent matched keywords across all resumes.</p>
           </CardHeader>
           <CardContent>
-            <div className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={keywordStrengthData} layout="vertical" margin={{ left: 20 }}>
-                  <XAxis type="number" hide />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    width={100} 
-                    axisLine={false} 
-                    tickLine={false}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <Tooltip 
-                    formatter={(value: number) => [`${value} occurrences`, 'Count']}
-                  />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-                    {keywordStrengthData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={`hsl(var(--primary) / ${Math.max(0.3, entry.rate / 100)})`} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {keywordStrengthData.length === 0 ? (
+              <div className="flex h-[260px] items-center justify-center rounded-md bg-surface-1 px-6 text-center text-[13px] text-muted-foreground">
+                Matched keywords will appear here after analyses return ATS keyword data.
+              </div>
+            ) : (
+              <div className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={keywordStrengthData} layout="vertical" margin={{ left: 20 }}>
+                    <XAxis type="number" hide />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      width={100}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <Tooltip
+                      formatter={(value: number) => [`${value} occurrences`, 'Count']}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                      {keywordStrengthData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={`hsl(var(--primary) / ${Math.max(0.3, entry.rate / 100)})`} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -297,29 +343,35 @@ export function Brand() {
             <p className="text-xs text-muted-foreground">Top missing keywords — your biggest growth opportunities.</p>
           </CardHeader>
           <CardContent>
-            <div className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={skillGapData} layout="vertical" margin={{ left: 20 }}>
-                  <XAxis type="number" hide />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    width={100} 
-                    axisLine={false} 
-                    tickLine={false}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <Tooltip 
-                    formatter={(value: number) => [`${value} missing`, 'Count']}
-                  />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20} fill="hsl(var(--destructive))">
-                    {skillGapData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={`hsl(var(--destructive) / ${Math.max(0.3, entry.rate / 100)})`} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {skillGapData.length === 0 ? (
+              <div className="flex h-[260px] items-center justify-center rounded-md bg-surface-1 px-6 text-center text-[13px] text-muted-foreground">
+                Missing keyword trends will appear here when analyses identify recurring gaps.
+              </div>
+            ) : (
+              <div className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={skillGapData} layout="vertical" margin={{ left: 20 }}>
+                    <XAxis type="number" hide />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      width={100}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <Tooltip
+                      formatter={(value: number) => [`${value} missing`, 'Count']}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20} fill="hsl(var(--destructive))">
+                      {skillGapData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={`hsl(var(--destructive) / ${Math.max(0.3, entry.rate / 100)})`} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
