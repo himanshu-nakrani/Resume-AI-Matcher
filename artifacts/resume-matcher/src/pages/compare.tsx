@@ -27,13 +27,51 @@ import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescript
 import { formatDistanceToNow } from "date-fns";
 
 function stringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
-    : [];
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function safeScore(value: unknown): number {
+  const score = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 0;
+}
+
+function dateValue(value: unknown): Date | null {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function relativeDate(value: unknown): string {
+  const date = dateValue(value);
+  return date ? formatDistanceToNow(date, { addSuffix: true }) : "Date unavailable";
 }
 
 function ScoreBar({ score, label, compareScore }: { score: number; label: string; compareScore?: number }) {
-  const boundedScore = Math.max(0, Math.min(100, score));
+  const boundedScore = safeScore(score);
   const color =
     boundedScore >= 80 ? "hsl(var(--success))"
     : boundedScore >= 60 ? "hsl(var(--warning))"
@@ -71,11 +109,11 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
   });
 
   const compareMatchedSet = useMemo(
-    () => new Set((compareData?.atsKeywordsMatched as string[] | undefined) ?? []),
+    () => new Set(stringArray(compareData?.atsKeywordsMatched)),
     [compareData?.atsKeywordsMatched],
   );
   const compareMissingSet = useMemo(
-    () => new Set((compareData?.atsKeywordsMissing as string[] | undefined) ?? []),
+    () => new Set(stringArray(compareData?.atsKeywordsMissing)),
     [compareData?.atsKeywordsMissing],
   );
 
@@ -113,6 +151,10 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
   const atsMissing = stringArray(data.atsKeywordsMissing);
   const compareStrengths = stringArray(compareData?.strengths);
   const compareGaps = stringArray(compareData?.gaps);
+  const fitScore = safeScore(data.fitScore);
+  const atsScore = safeScore(data.atsScore);
+  const compareFitScore = compareData ? safeScore(compareData.fitScore) : undefined;
+  const compareAtsScore = compareData ? safeScore(compareData.atsScore) : undefined;
 
   const uniqueStrengths = compareData
     ? strengths.filter((s) => !compareStrengths.includes(s))
@@ -130,14 +172,14 @@ function AnalysisColumn({ id, compareId }: { id: number; compareId?: number | nu
             <p className="text-sm text-muted-foreground">{data.companyName}</p>
           )}
           <p className="text-xs text-muted-foreground mt-0.5">
-            {formatDistanceToNow(new Date(data.createdAt), { addSuffix: true })}
+            {relativeDate(data.createdAt)}
           </p>
         </div>
 
         <Card className="border-2 mt-3">
           <CardContent className="pt-6 space-y-4">
-            <ScoreBar score={data.fitScore} label="Fit Score" compareScore={compareData?.fitScore} />
-            <ScoreBar score={data.atsScore} label="ATS Score" compareScore={compareData?.atsScore} />
+            <ScoreBar score={fitScore} label="Fit Score" compareScore={compareFitScore} />
+            <ScoreBar score={atsScore} label="ATS Score" compareScore={compareAtsScore} />
           </CardContent>
         </Card>
       </div>
