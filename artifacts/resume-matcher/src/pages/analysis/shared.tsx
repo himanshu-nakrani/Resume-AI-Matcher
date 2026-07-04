@@ -45,6 +45,44 @@ export const CHECKLIST_ITEMS = [
   "Send a thank-you email within 24 hours after the interview",
 ];
 
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function dateValue(value: unknown): Date | null {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formattedLongDate(value: unknown): string | null {
+  const date = dateValue(value);
+  return date ? format(date, "MMM d, yyyy") : null;
+}
+
 // Helper used by JobTrackingSection
 function downloadICS(data: {
   id: number;
@@ -57,7 +95,7 @@ function downloadICS(data: {
   const toICSDate = (s: string) => s.replace(/-/g, "");
   const title = data.jobTitle + (data.companyName ? " @ " + data.companyName : "");
 
-  if (data.deadline) {
+  if (data.deadline && dateValue(data.deadline)) {
     const d = toICSDate(data.deadline);
     events.push([
       "BEGIN:VEVENT",
@@ -70,7 +108,7 @@ function downloadICS(data: {
     ].join("\r\n"));
   }
 
-  if (data.followUpDate) {
+  if (data.followUpDate && dateValue(data.followUpDate)) {
     const d = toICSDate(data.followUpDate);
     events.push([
       "BEGIN:VEVENT",
@@ -130,10 +168,14 @@ export function JobTrackingSection({ analysisId, analysis }: {
   const [linkInput, setLinkInput] = useState("");
 
   const { data: allAnalyses } = useListAnalyses();
+  const tags = stringArray(analysis.tags);
+  const portfolioLinks = stringArray(analysis.portfolioLinks);
+  const deadlineLabel = formattedLongDate(analysis.deadline);
+  const followUpLabel = formattedLongDate(analysis.followUpDate);
 
   const allExistingTags = Array.from(new Set(
-    (allAnalyses ?? []).flatMap((a) => (a.tags as string[]) ?? [])
-  )).filter((t) => !(analysis.tags ?? []).includes(t));
+    (allAnalyses ?? []).flatMap((a) => stringArray(a.tags))
+  )).filter((t) => !tags.includes(t));
 
   const suggestions = tagInput.trim()
     ? allExistingTags.filter((t) => t.toLowerCase().includes(tagInput.toLowerCase()))
@@ -149,9 +191,6 @@ export function JobTrackingSection({ analysisId, analysis }: {
   const save = useCallback((field: string, value: string | string[]) => {
     update.mutate({ id: analysisId, data: { [field]: value } });
   }, [analysisId, update]);
-
-  const tags = (analysis.tags as string[]) ?? [];
-  const portfolioLinks = (analysis.portfolioLinks as string[]) ?? [];
 
   const addTag = (t?: string) => {
     const tag = (t ?? tagInput).trim();
@@ -413,18 +452,18 @@ export function JobTrackingSection({ analysisId, analysis }: {
           </div>
         </div>
 
-        {(analysis.deadline || analysis.followUpDate) && (
+        {(deadlineLabel || followUpLabel) && (
           <div className="flex flex-wrap items-center gap-3 pt-1">
-            {analysis.deadline && (
+            {deadlineLabel && (
               <div className="flex items-center gap-1.5 text-xs text-orange-600 dark:text-orange-400 font-medium">
                 <CalendarClock className="w-3.5 h-3.5" />
-                Deadline: {format(new Date(analysis.deadline), "MMM d, yyyy")}
+                Deadline: {deadlineLabel}
               </div>
             )}
-            {analysis.followUpDate && (
+            {followUpLabel && (
               <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium">
                 <CalendarClock className="w-3.5 h-3.5" />
-                Follow-up: {format(new Date(analysis.followUpDate), "MMM d, yyyy")}
+                Follow-up: {followUpLabel}
               </div>
             )}
             {/* Phase 21 — Email Reminder */}

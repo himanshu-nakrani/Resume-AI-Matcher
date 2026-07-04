@@ -31,6 +31,49 @@ function isTabValue(v: string | null | undefined): v is TabValue {
   return v != null && (TAB_VALUES as readonly string[]).includes(v);
 }
 
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function dateValue(value: unknown): Date | null {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function relativeDate(value: unknown): string {
+  const date = dateValue(value);
+  return date ? formatDistanceToNow(date, { addSuffix: true }) : "Date unavailable";
+}
+
+function shortDate(value: unknown): string | null {
+  const date = dateValue(value);
+  return date ? format(date, "MMM d") : null;
+}
+
 export function Analysis() {
   const params = useParams<{ id: string }>();
   const id = parseInt(params.id ?? "0", 10);
@@ -150,7 +193,11 @@ export function Analysis() {
     );
   }
 
-  const isSampled = ((analysis.tags as string[] | undefined) ?? []).includes("sample");
+  const tags = stringArray(analysis.tags);
+  const isSampled = tags.includes("sample");
+  const visibleTags = tags.filter((tag) => tag !== "sample");
+  const deadlineLabel = shortDate(analysis.deadline);
+  const followUpLabel = shortDate(analysis.followUpDate);
 
   return (
     <div className="space-y-0" data-testid={`analysis-${id}`}>
@@ -173,30 +220,27 @@ export function Analysis() {
                 <p className="text-[13px] text-muted-foreground mt-0.5">{analysis.companyName}</p>
               )}
               <p className="text-[11px] text-muted-foreground mt-1">
-                {formatDistanceToNow(new Date(analysis.createdAt), { addSuffix: true })}
+                {relativeDate(analysis.createdAt)}
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
-                {analysis.deadline && (
+                {deadlineLabel && (
                   <Badge variant="warning" size="sm">
                     <CalendarClock className="w-3 h-3 mr-1" />
-                    Due {format(new Date(analysis.deadline), "MMM d")}
+                    Due {deadlineLabel}
                   </Badge>
                 )}
-                {analysis.followUpDate && (
+                {followUpLabel && (
                   <Badge variant="info" size="sm">
                     <CalendarClock className="w-3 h-3 mr-1" />
-                    Follow-up {format(new Date(analysis.followUpDate), "MMM d")}
+                    Follow-up {followUpLabel}
                   </Badge>
                 )}
-                {Array.isArray(analysis.tags) &&
-                  (analysis.tags as string[])
-                    .filter((tag) => tag !== "sample")
-                    .map((tag) => (
-                      <Badge key={tag} variant="soft" size="sm">
-                        <Tag className="w-3 h-3 mr-1" />
-                        {tag}
-                      </Badge>
-                    ))}
+                {visibleTags.map((tag) => (
+                  <Badge key={tag} variant="soft" size="sm">
+                    <Tag className="w-3 h-3 mr-1" />
+                    {tag}
+                  </Badge>
+                ))}
               </div>
             </div>
             <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end no-print">
