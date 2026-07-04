@@ -30,6 +30,7 @@ import {
   CalendarClock,
   SlidersHorizontal,
   LayoutGrid,
+  RefreshCw,
 } from "lucide-react";
 
 type Status =
@@ -203,7 +204,13 @@ export function Board() {
   const [searchText, setSearchText] = useState("");
   const [movingIds, setMovingIds] = useState<Set<number>>(new Set());
 
-  const { data: allAnalyses, isLoading, error } = useListAnalyses();
+  const {
+    data: allAnalyses,
+    isLoading,
+    error,
+    refetch: refetchAnalyses,
+    isFetching,
+  } = useListAnalyses();
   const analysesList = useMemo(
     () =>
       (Array.isArray(allAnalyses) ? allAnalyses : [])
@@ -559,8 +566,15 @@ export function Board() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Reload
+            <Button
+              variant="outline"
+              onClick={() => void refetchAnalyses()}
+              disabled={isFetching}
+            >
+              <RefreshCw
+                className={`mr-1.5 h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`}
+              />
+              {isFetching ? "Retrying..." : "Retry"}
             </Button>
           </EmptyContent>
         </Empty>

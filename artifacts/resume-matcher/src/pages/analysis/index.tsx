@@ -31,6 +31,7 @@ import {
   GitCompareArrows,
   CalendarClock,
   Tag,
+  RefreshCw,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ShareSection } from "./shared";
@@ -115,6 +116,8 @@ export function Analysis() {
     data: analysis,
     isLoading,
     error,
+    refetch: refetchAnalysis,
+    isFetching,
   } = useGetAnalysis(id, {
     query: { enabled: !!id, queryKey: getGetAnalysisQueryKey(id) },
   });
@@ -217,7 +220,12 @@ export function Analysis() {
           <Button variant="secondary" onClick={() => setLocation("/history")}>
             Back to analyses
           </Button>
-          <Button onClick={() => window.location.reload()}>Retry</Button>
+          <Button onClick={() => void refetchAnalysis()} disabled={isFetching}>
+            <RefreshCw
+              className={`mr-1.5 h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`}
+            />
+            {isFetching ? "Retrying..." : "Retry"}
+          </Button>
         </div>
       </div>
     );

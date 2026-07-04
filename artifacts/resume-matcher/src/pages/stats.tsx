@@ -32,6 +32,7 @@ import {
   GitCompareArrows,
   Calendar,
   Trophy,
+  RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -244,12 +245,16 @@ export function Stats() {
     isLoading: statsLoading,
     isError: statsIsError,
     error: statsError,
+    refetch: refetchStats,
+    isFetching: statsFetching,
   } = useGetAnalysisStats();
   const {
     data: analyses,
     isLoading: analysesLoading,
     isError: analysesIsError,
     error: analysesError,
+    refetch: refetchAnalyses,
+    isFetching: analysesFetching,
   } = useListAnalyses();
   const [drillBucket, setDrillBucket] = useState<null | {
     label: string;
@@ -258,6 +263,7 @@ export function Stats() {
 
   const isLoading = statsLoading || analysesLoading;
   const isError = statsIsError || analysesIsError;
+  const isRetrying = statsFetching || analysesFetching;
   const error = statsError ?? analysesError;
   const analysesList = useMemo(
     () =>
@@ -550,8 +556,18 @@ export function Stats() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Reload
+            <Button
+              variant="outline"
+              onClick={() => {
+                void refetchStats();
+                void refetchAnalyses();
+              }}
+              disabled={isRetrying}
+            >
+              <RefreshCw
+                className={`mr-1.5 h-3.5 w-3.5 ${isRetrying ? "animate-spin" : ""}`}
+              />
+              {isRetrying ? "Retrying..." : "Retry"}
             </Button>
           </EmptyContent>
         </Empty>
