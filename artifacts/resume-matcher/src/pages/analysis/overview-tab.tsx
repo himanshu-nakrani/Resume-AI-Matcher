@@ -122,11 +122,11 @@ export function OverviewTab({ analysis, id }: TabProps) {
       {optimizedLatex && (
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[15px] flex items-center gap-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="text-[15px] flex min-w-0 items-center gap-2">
                 <FileText className="w-3.5 h-3.5 text-accent" /> Optimized resume LaTeX
               </CardTitle>
-              <div className="flex gap-2 no-print">
+              <div className="flex flex-wrap gap-2 no-print sm:justify-end">
                 <Button
                   variant="ghost"
                   size="sm"

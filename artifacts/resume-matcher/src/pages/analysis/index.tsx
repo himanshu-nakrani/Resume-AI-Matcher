@@ -2,6 +2,7 @@ import { useParams, useLocation, useSearch } from "wouter";
 import {
   useGetAnalysis,
   getGetAnalysisQueryKey,
+  getListAnalysesQueryKey,
   useDeleteAnalysis,
   useUpdateAnalysis,
   useDuplicateAnalysis,
@@ -38,7 +39,7 @@ export function Analysis() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: analysis, isLoading } = useGetAnalysis(id, {
+  const { data: analysis, isLoading, error } = useGetAnalysis(id, {
     query: { enabled: !!id, queryKey: getGetAnalysisQueryKey(id) },
   });
 
@@ -49,12 +50,36 @@ export function Analysis() {
   };
 
   const deleteAnalysis = useDeleteAnalysis({
-    mutation: { onSuccess: () => setLocation("/") },
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
+        toast({ title: "Analysis deleted" });
+        setLocation("/history");
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not delete analysis",
+          description: err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
+    },
   });
 
   const updateAnalysis = useUpdateAnalysis({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) }),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
+        toast({ title: analysis?.isFavorite ? "Removed from favorites" : "Added to favorites" });
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not update analysis",
+          description: err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
     },
   });
 
@@ -62,11 +87,25 @@ export function Analysis() {
     mutation: {
       onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
         toast({ title: "Analysis duplicated", description: "Opening the copy now." });
         setLocation(`/analysis/${data.id}`);
       },
+      onError: (err) => {
+        toast({
+          title: "Could not duplicate analysis",
+          description: err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
     },
   });
+
+  const handleDelete = () => {
+    const confirmed = window.confirm("Delete this analysis? This cannot be undone.");
+    if (!confirmed) return;
+    deleteAnalysis.mutate({ id });
+  };
 
   if (isLoading) {
     return (
@@ -81,11 +120,30 @@ export function Analysis() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="mx-auto max-w-xl py-20 text-center">
+        <p className="text-sm font-medium text-destructive">Could not load analysis.</p>
+        <p className="mt-2 text-[13px] text-muted-foreground">
+          {error instanceof Error ? error.message : "Try again in a moment."}
+        </p>
+        <div className="mt-4 flex justify-center gap-2">
+          <Button variant="secondary" onClick={() => setLocation("/history")}>
+            Back to analyses
+          </Button>
+          <Button onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!analysis) {
     return (
       <div className="text-center py-20">
         <p className="text-[13px] text-muted-foreground">Analysis not found.</p>
-        <Button variant="secondary" className="mt-4" onClick={() => setLocation("/")}>
+        <Button variant="secondary" className="mt-4" onClick={() => setLocation("/history")}>
           Go back
         </Button>
       </div>
@@ -97,7 +155,7 @@ export function Analysis() {
   return (
     <div className="space-y-0" data-testid={`analysis-${id}`}>
       <Tabs value={activeTab} onValueChange={setTab}>
-        <div className="sticky top-12 z-30 bg-background border-b border-border pb-3 mb-6 -mx-6 px-6">
+        <div className="sticky top-12 z-30 bg-background border-b border-border pb-3 mb-6 sm:-mx-6 sm:px-6">
           <button
             onClick={() => setLocation("/")}
             className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground mb-2 transition-colors no-print"
@@ -147,6 +205,9 @@ export function Analysis() {
                 size="sm"
                 className={analysis.isFavorite ? "text-destructive" : "text-muted-foreground"}
                 onClick={() => updateAnalysis.mutate({ id, data: { isFavorite: !analysis.isFavorite } })}
+                disabled={updateAnalysis.isPending}
+                title={analysis.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                aria-label={analysis.isFavorite ? "Remove from favorites" : "Add to favorites"}
                 data-testid="button-favorite"
               >
                 <Heart className={`w-3.5 h-3.5 ${analysis.isFavorite ? "fill-destructive" : ""}`} />
@@ -162,6 +223,7 @@ export function Analysis() {
                 onClick={() => duplicateAnalysis.mutate({ id })}
                 disabled={duplicateAnalysis.isPending}
                 title="Duplicate this analysis"
+                aria-label="Duplicate this analysis"
               >
                 <GitCompareArrows className="w-3.5 h-3.5" />
               </Button>
@@ -169,15 +231,17 @@ export function Analysis() {
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground hover:text-destructive"
-                onClick={() => deleteAnalysis.mutate({ id })}
+                onClick={handleDelete}
                 disabled={deleteAnalysis.isPending}
+                title="Delete this analysis"
+                aria-label="Delete this analysis"
                 data-testid="button-delete"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </Button>
             </div>
           </div>
-          <TabsList className="mt-4">
+          <TabsList className="mt-4 flex max-w-full gap-3 overflow-x-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="cover-letter">Cover Letter</TabsTrigger>
             <TabsTrigger value="linkedin">LinkedIn</TabsTrigger>
