@@ -19,7 +19,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, BriefcaseBusiness, FileText, Link2, Upload, UserRound, X } from "lucide-react";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  CheckCircle2,
+  Circle,
+  ClipboardCheck,
+  FileText,
+  Link2,
+  Upload,
+  UserRound,
+  X,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -112,6 +123,21 @@ export function Home() {
       jobDescriptionText: "",
     },
   });
+  const watchedValues = form.watch();
+  const profileReady = Boolean(watchedValues.userName?.trim() && watchedValues.userEmail?.trim());
+  const resumeCharacterCount = watchedValues.resumeText?.trim().length ?? 0;
+  const jobDescriptionCharacterCount = watchedValues.jobDescriptionText?.trim().length ?? 0;
+  const resumeReady = resumeCharacterCount >= 50;
+  const roleReady = Boolean(watchedValues.jobTitle?.trim() && watchedValues.companyName?.trim());
+  const jobReady = jobDescriptionCharacterCount >= 50;
+  const readinessSteps = [
+    { label: "Profile", complete: profileReady },
+    { label: "Resume", complete: resumeReady },
+    { label: "Role", complete: roleReady },
+    { label: "JD", complete: jobReady },
+  ];
+  const completedStepCount = readinessSteps.filter((step) => step.complete).length;
+  const readyToAnalyze = completedStepCount === readinessSteps.length;
 
   useEffect(() => {
     const subscription = form.watch((values) => {
@@ -386,23 +412,78 @@ export function Home() {
   };
 
   return (
-    <div className="space-y-0 max-w-5xl mx-auto">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-[-0.02em]">Optimize your resume</h1>
-        <p className="text-[13px] text-muted-foreground mt-1">
-          Paste your resume and a job to see your fit score and improvement plan.
-        </p>
-      </header>
+    <div className="mx-auto max-w-6xl space-y-0">
+      <section className="mb-6 overflow-hidden rounded-lg border border-border bg-surface-1 shadow-sm">
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="p-5 sm:p-6">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-accent/20 bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent">
+                <ClipboardCheck className="h-3 w-3" />
+                {readyToAnalyze ? "Ready to optimize" : `${completedStepCount}/4 ready`}
+              </span>
+              {resumeFileName && (
+                <span className="truncate text-[11px] text-muted-foreground">
+                  {resumeFileName}
+                </span>
+              )}
+            </div>
+            <div className="max-w-2xl">
+              <h1 className="text-2xl font-semibold tracking-[-0.02em]">Optimize your resume</h1>
+              <p className="mt-2 text-[13px] leading-6 text-muted-foreground">
+                Build one targeted version for the role, then use the analysis to track follow-up work.
+              </p>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {readinessSteps.map((step) => {
+                const Icon = step.complete ? CheckCircle2 : Circle;
+                return (
+                  <div
+                    key={step.label}
+                    className={cn(
+                      "flex h-10 items-center gap-2 rounded-md border px-3 text-[12px] transition-colors",
+                      step.complete
+                        ? "border-accent/25 bg-accent/10 text-foreground"
+                        : "border-border bg-surface-2 text-muted-foreground",
+                    )}
+                  >
+                    <Icon className={cn("h-3.5 w-3.5", step.complete && "text-accent")} />
+                    <span className="truncate font-medium">{step.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="border-t border-border bg-surface-2/70 p-5 lg:border-l lg:border-t-0">
+            <div className="grid grid-cols-3 gap-3 lg:grid-cols-1">
+              <div>
+                <p className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-subtle-foreground">Resume</p>
+                <p className="mt-1 text-lg font-semibold tabular">{resumeCharacterCount.toLocaleString()}</p>
+                <p className="text-[11px] text-muted-foreground">characters</p>
+              </div>
+              <div>
+                <p className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-subtle-foreground">Job brief</p>
+                <p className="mt-1 text-lg font-semibold tabular">{jobDescriptionCharacterCount.toLocaleString()}</p>
+                <p className="text-[11px] text-muted-foreground">characters</p>
+              </div>
+              <div>
+                <p className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-subtle-foreground">Run state</p>
+                <p className="mt-1 text-sm font-semibold">{createAnalysis.isPending ? "Optimizing" : readyToAnalyze ? "Ready" : "Draft"}</p>
+                <p className="text-[11px] text-muted-foreground">{readyToAnalyze ? "All inputs set" : "Missing inputs"}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-24 md:pb-0" data-testid="form-analysis">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
             {/* LEFT column */}
             <div className="space-y-6">
-              <Card className="border">
+              <Card className="border shadow-sm">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                    <UserRound className="h-4 w-4 text-muted-foreground" /> User Information
+                    <UserRound className="h-4 w-4 text-accent" /> Candidate
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -423,38 +504,38 @@ export function Home() {
                 </CardContent>
               </Card>
 
-              <Card className="border">
+              <Card className="border shadow-sm">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                    <FileText className="h-4 w-4 text-muted-foreground" /> Resume Upload
+                    <FileText className="h-4 w-4 text-accent" /> Resume
                   </CardTitle>
                   <CardDescription className="text-sm">
-                    Upload your resume in PDF, LaTeX, or TXT format. We'll parse it automatically.
+                    PDF, LaTeX, and TXT are supported.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div
                     className={cn(
-                      "relative rounded-lg border border-dashed p-8 text-center transition-all duration-200",
-                      isParsingResume ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/50"
+                      "relative rounded-lg border border-dashed p-6 text-center transition-all duration-200",
+                      isParsingResume ? "border-accent bg-accent/5" : "border-border bg-surface-2/60 hover:border-accent/50 hover:bg-surface-2"
                     )}
                   >
                     <div className="flex flex-col items-center gap-4">
                       <div className={cn(
                         "rounded-lg p-3 transition-all duration-200",
-                        isParsingResume ? "bg-primary/10" : "bg-muted"
+                        isParsingResume ? "bg-accent/10" : "bg-surface-3"
                       )}>
                         <Upload className={cn(
                           "h-6 w-6 transition-colors",
-                          isParsingResume ? "text-primary" : "text-muted-foreground"
+                          isParsingResume ? "text-accent" : "text-muted-foreground"
                         )} />
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm font-medium">
-                          {isParsingResume ? "Reading your resume..." : "Drag & drop your resume here"}
+                          {isParsingResume ? "Reading your resume..." : "Drop in a resume file"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          or click to browse files
+                          Browse files or paste text below
                         </p>
                       </div>
                       <Button
@@ -469,12 +550,12 @@ export function Home() {
                           <Input type="file" accept=".pdf,.tex,.latex,.txt" className="hidden" onChange={onResumeFileChange} />
                         </label>
                       </Button>
-                      <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-                        <span>PDF</span>
-                        <span>•</span>
-                        <span>LaTeX</span>
-                        <span>•</span>
-                        <span>TXT</span>
+                      <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                        {["PDF", "LaTeX", "TXT"].map((type) => (
+                          <span key={type} className="rounded border border-border bg-background px-1.5 py-0.5">
+                            {type}
+                          </span>
+                        ))}
                       </div>
                     </div>
                     {resumeFileName && (
@@ -513,8 +594,8 @@ export function Home() {
                         />
                       </FormControl>
                       <FormMessage />
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Tip: PDFs are converted to LaTeX during optimization. LaTeX files preserve structure perfectly.
+                      <p className="text-xs text-muted-foreground mt-2 tabular">
+                        {resumeCharacterCount.toLocaleString()} characters parsed
                       </p>
                     </FormItem>
                   )} />
@@ -524,10 +605,10 @@ export function Home() {
 
             {/* RIGHT column */}
             <div className="space-y-6">
-              <Card className="border">
+              <Card className="border shadow-sm lg:sticky lg:top-16">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                    <BriefcaseBusiness className="h-4 w-4 text-muted-foreground" /> Target Job
+                    <BriefcaseBusiness className="h-4 w-4 text-accent" /> Target role
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -553,7 +634,7 @@ export function Home() {
                       <Button type="button" variant="secondary" size="sm" onClick={() => setShowUrlInput((v) => !v)}>
                         <Link2 className="h-3.5 w-3.5 mr-1.5" /> Import JD from URL
                       </Button>
-                      <span className="text-xs text-muted-foreground">or paste the job description below</span>
+                      <span className="text-xs text-muted-foreground">or paste the JD</span>
                     </div>
                     {showUrlInput && (
                       <div className="flex gap-2">
@@ -569,8 +650,11 @@ export function Home() {
                     <FormField control={form.control} name="jobDescriptionText" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Job Description</FormLabel>
-                        <FormControl><Textarea className="min-h-[220px] font-mono text-sm" placeholder="Paste the full JD here..." {...field} data-testid="textarea-jd" /></FormControl>
+                        <FormControl><Textarea className="min-h-[248px] font-mono text-sm" placeholder="Paste the full JD here..." {...field} data-testid="textarea-jd" /></FormControl>
                         <FormMessage />
+                        <p className="text-xs text-muted-foreground mt-2 tabular">
+                          {jobDescriptionCharacterCount.toLocaleString()} characters
+                        </p>
                       </FormItem>
                     )} />
                   </div>
@@ -580,8 +664,14 @@ export function Home() {
           </div>
 
           {/* Submit button — desktop in-flow */}
-          <div className="hidden md:flex justify-end">
-            <Button type="submit" size="lg" disabled={createAnalysis.isPending} loading={createAnalysis.isPending}>
+          <div className="hidden items-center justify-between rounded-lg border border-border bg-surface-1 p-3 shadow-sm md:flex">
+            <div className="flex min-w-0 items-center gap-2 text-[13px] text-muted-foreground">
+              <ClipboardCheck className={cn("h-4 w-4 shrink-0", readyToAnalyze && "text-accent")} />
+              <span className="truncate">
+                {readyToAnalyze ? "Inputs are ready for optimization." : `Complete ${readinessSteps.length - completedStepCount} sections to run analysis.`}
+              </span>
+            </div>
+            <Button type="submit" size="lg" disabled={createAnalysis.isPending || !readyToAnalyze} loading={createAnalysis.isPending}>
               Analyze
               <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
@@ -589,7 +679,7 @@ export function Home() {
 
           {/* Submit button — mobile sticky */}
           <div className="fixed md:hidden bottom-16 left-0 right-0 z-30 border-t border-border bg-surface-1 p-4">
-            <Button type="submit" size="lg" className="w-full" disabled={createAnalysis.isPending} loading={createAnalysis.isPending}>
+            <Button type="submit" size="lg" className="w-full" disabled={createAnalysis.isPending || !readyToAnalyze} loading={createAnalysis.isPending}>
               Analyze
             </Button>
           </div>
