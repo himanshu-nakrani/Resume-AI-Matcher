@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
 import { useToast } from "@/hooks/use-toast";
-import { Filter, X, MapPin, Tag, CalendarClock, SlidersHorizontal, LayoutGrid } from "lucide-react";
+import { AlertCircle, Filter, X, MapPin, Tag, CalendarClock, SlidersHorizontal, LayoutGrid } from "lucide-react";
 
 type Status = "not_applied" | "applied" | "got_interview" | "got_online_exam" | "selected" | "rejected";
 
@@ -58,6 +58,7 @@ const STATUS_CONFIG: Record<Status, { label: string; className: string; headerCo
 };
 
 const COLUMNS: Status[] = ["not_applied", "applied", "got_interview", "got_online_exam", "selected", "rejected"];
+const STATUS_SET = new Set<Status>(COLUMNS);
 
 const STATUS_COLORS: Record<string, string> = {
   not_applied: "hsl(var(--muted-foreground))",
@@ -67,6 +68,53 @@ const STATUS_COLORS: Record<string, string> = {
   selected: "hsl(var(--success))",
   rejected: "hsl(var(--destructive))",
 };
+
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function statusKey(value: unknown): Status {
+  return typeof value === "string" && STATUS_SET.has(value as Status)
+    ? (value as Status)
+    : "not_applied";
+}
+
+function safeScore(value: unknown): number {
+  const score = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return Math.min(100, Math.max(0, Math.round(score)));
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizedMinScore(value: string): number | null {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.min(100, Math.max(0, parsed));
+}
 
 export function Board() {
   const [, setLocation] = useLocation();
@@ -100,25 +148,28 @@ export function Board() {
   const allTags = useMemo(() => {
     const set = new Set<string>();
     (allAnalyses ?? []).forEach((a) => {
-      ((a.tags as string[]) ?? []).forEach((t) => set.add(t));
+      stringArray(a.tags).forEach((t) => set.add(t));
     });
     return Array.from(set).sort();
   }, [allAnalyses]);
 
   const filtered = useMemo(() => {
+    const scoreFilter = normalizedMinScore(minScore);
+    const locationFilter = filterLocation.trim().toLowerCase();
+    const searchFilter = searchText.trim().toLowerCase();
+
     return (allAnalyses ?? []).filter((a) => {
-      if (minScore && a.fitScore < Number(minScore)) return false;
-      if (filterTag && !((a.tags as string[]) ?? []).includes(filterTag)) return false;
+      if (scoreFilter !== null && safeScore(a.fitScore) < scoreFilter) return false;
+      if (filterTag && !stringArray(a.tags).includes(filterTag)) return false;
       if (filterLocation) {
-        const loc = ((a as any).location as string | null) ?? "";
-        if (!loc.toLowerCase().includes(filterLocation.toLowerCase())) return false;
+        const loc = stringValue(a.location);
+        if (!loc.toLowerCase().includes(locationFilter)) return false;
       }
       if (hasDeadlineOnly && !a.deadline) return false;
-      if (searchText) {
-        const q = searchText.toLowerCase();
-        const title = (a.jobTitle ?? "").toLowerCase();
-        const company = (a.companyName ?? "").toLowerCase();
-        if (!title.includes(q) && !company.includes(q)) return false;
+      if (searchFilter) {
+        const title = stringValue(a.jobTitle).toLowerCase();
+        const company = stringValue(a.companyName).toLowerCase();
+        if (!title.includes(searchFilter) && !company.includes(searchFilter)) return false;
       }
       return true;
     });
@@ -144,8 +195,7 @@ export function Board() {
       rejected: [],
     };
     filtered.forEach((a) => {
-      const status = (a.status as Status) || "not_applied";
-      if (groups[status]) groups[status].push(a);
+      groups[statusKey(a.status)].push(a);
     });
     return groups;
   }, [filtered]);
@@ -167,7 +217,7 @@ export function Board() {
   const moveAnalysis = (id: number, targetStatus: Status) => {
     if (movingIds.has(id)) return;
     const analysis = allAnalyses?.find((item) => item.id === id);
-    const currentStatus = (analysis?.status as Status | undefined) ?? "not_applied";
+    const currentStatus = statusKey(analysis?.status);
     if (currentStatus === targetStatus) return;
 
     setMovingIds((prev) => new Set(prev).add(id));
@@ -207,11 +257,10 @@ export function Board() {
 
   return (
     <div className="space-y-6 h-full flex flex-col">
-      {/* Header */}
-      <header className="flex items-baseline justify-between gap-3 mb-6">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-[-0.02em]">Application tracker</h1>
-          <p className="text-[13px] text-muted-foreground mt-1">
+          <p className="mt-1 text-[13px] text-muted-foreground">
             Pipeline of every analysis in flight.
             {activeFilterCount > 0 && (
               <span className="ml-2 text-accent font-medium">
@@ -273,7 +322,15 @@ export function Board() {
                   max="100"
                   placeholder="e.g. 70"
                   value={minScore}
-                  onChange={(e) => setMinScore(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "") {
+                      setMinScore("");
+                      return;
+                    }
+                    const parsed = Number(value);
+                    if (Number.isFinite(parsed)) setMinScore(String(Math.min(100, Math.max(0, parsed))));
+                  }}
                   className="h-8 text-xs pr-8"
                 />
                 {minScore && (
@@ -312,7 +369,7 @@ export function Board() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setHasDeadlineOnly((p) => !p)}
-              className={"flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border transition-all " + (hasDeadlineOnly ? "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-700" : "text-muted-foreground border-muted hover:border-muted-foreground/40")}
+              className={"flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors " + (hasDeadlineOnly ? "border-warning/30 bg-warning/10 text-warning" : "border-border text-muted-foreground hover:border-border-strong hover:text-foreground")}
             >
               <CalendarClock className="w-3.5 h-3.5" />
               Has deadline only
@@ -323,31 +380,31 @@ export function Board() {
           {activeFilterCount > 0 && (
             <div className="flex flex-wrap gap-2 pt-1">
               {minScore && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                <span className="inline-flex items-center gap-1 rounded-md border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
                   Fit ≥ {minScore}%
                   <button onClick={() => setMinScore("")}><X className="w-2.5 h-2.5" /></button>
                 </span>
               )}
               {filterTag && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                <span className="inline-flex items-center gap-1 rounded-md border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
                   Tag: {filterTag}
                   <button onClick={() => setFilterTag("")}><X className="w-2.5 h-2.5" /></button>
                 </span>
               )}
               {filterLocation && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                <span className="inline-flex items-center gap-1 rounded-md border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
                   <MapPin className="w-2.5 h-2.5" /> {filterLocation}
                   <button onClick={() => setFilterLocation("")}><X className="w-2.5 h-2.5" /></button>
                 </span>
               )}
               {hasDeadlineOnly && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-700">
+                <span className="inline-flex items-center gap-1 rounded-md border border-warning/20 bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">
                   Has deadline
                   <button onClick={() => setHasDeadlineOnly(false)}><X className="w-2.5 h-2.5" /></button>
                 </span>
               )}
               {searchText && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                <span className="inline-flex items-center gap-1 rounded-md border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
                   "{searchText}"
                   <button onClick={() => setSearchText("")}><X className="w-2.5 h-2.5" /></button>
                 </span>
@@ -358,14 +415,25 @@ export function Board() {
         </Card>
       )}
 
-      {!isLoading && error && (
-        <div className="rounded-md border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          Could not load application tracker. {error instanceof Error ? error.message : "Try again in a moment."}
-        </div>
-      )}
-
       {/* Kanban Board */}
-      {!error && (allAnalyses ?? []).length === 0 ? (
+      {error ? (
+        <Empty className="bg-surface-1">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <AlertCircle />
+            </EmptyMedia>
+            <EmptyTitle>Could not load tracker</EmptyTitle>
+            <EmptyDescription>
+              {error instanceof Error ? error.message : "Refresh the page or try again in a moment."}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Reload
+            </Button>
+          </EmptyContent>
+        </Empty>
+      ) : (allAnalyses ?? []).length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -380,7 +448,24 @@ export function Board() {
             <Button onClick={() => setLocation("/")}>Start a new analysis</Button>
           </EmptyContent>
         </Empty>
-      ) : !error ? (
+      ) : filtered.length === 0 ? (
+        <Empty className="bg-surface-1">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Filter />
+            </EmptyMedia>
+            <EmptyTitle>No applications match these filters</EmptyTitle>
+            <EmptyDescription>
+              Clear one or more filters to bring analyses back into the tracker.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="outline" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          </EmptyContent>
+        </Empty>
+      ) : (
         <div className="flex gap-6 overflow-x-auto pb-6 flex-1 min-h-0 items-start">
           {COLUMNS.map((status) => (
             <div
@@ -402,6 +487,8 @@ export function Board() {
                 ) : (
                   columns[status]?.map((a) => {
                     const isMoving = movingIds.has(a.id);
+                    const currentStatus = statusKey(a.status);
+                    const score = safeScore(a.fitScore);
                     return (
                     <Card
                       key={a.id}
@@ -420,7 +507,7 @@ export function Board() {
                           {isMoving && <p className="text-[10px] text-muted-foreground">Updating status...</p>}
                           <select
                             className="mt-2 h-7 max-w-full rounded-md border border-input bg-background px-2 text-[11px] text-muted-foreground"
-                            value={(a.status as Status) || "not_applied"}
+                            value={currentStatus}
                             disabled={isMoving}
                             onClick={(event) => event.stopPropagation()}
                             onChange={(event) => {
@@ -437,7 +524,7 @@ export function Board() {
                             ))}
                           </select>
                         </div>
-                        <ScoreCircle score={a.fitScore} size="sm" />
+                        <ScoreCircle score={score} size="sm" />
                       </CardContent>
                     </Card>
                     );
@@ -447,7 +534,7 @@ export function Board() {
             </div>
           ))}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
