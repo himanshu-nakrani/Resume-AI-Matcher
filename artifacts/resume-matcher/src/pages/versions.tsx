@@ -24,9 +24,46 @@ type AnalysisItem = {
 };
 
 function stringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
-    : [];
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function safeScore(value: unknown): number {
+  const score = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 0;
+}
+
+function dateValue(value: unknown): Date | null {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dateTime(value: unknown): number {
+  return dateValue(value)?.getTime() ?? 0;
 }
 
 function groupKey(a: AnalysisItem) {
@@ -48,9 +85,9 @@ function statusLabel(s: string) {
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatCreatedAt(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Unknown date" : format(date, "MMM d, yyyy");
+function formatCreatedAt(value: unknown) {
+  const date = dateValue(value);
+  return date ? format(date, "MMM d, yyyy") : "Unknown date";
 }
 
 export function Versions() {
@@ -68,10 +105,10 @@ export function Versions() {
       .map(([, items]) => ({
         jobTitle: items[0].jobTitle,
         companyName: items[0].companyName,
-        items: [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+        items: [...items].sort((a, b) => dateTime(b.createdAt) - dateTime(a.createdAt)),
       }))
       .filter((g) => g.items.length > 0)
-      .sort((a, b) => new Date(b.items[0].createdAt).getTime() - new Date(a.items[0].createdAt).getTime());
+      .sort((a, b) => dateTime(b.items[0].createdAt) - dateTime(a.items[0].createdAt));
   }, [analyses]);
 
   const multiGroups = groups.filter((g) => g.items.length > 1);
@@ -185,6 +222,7 @@ export function Versions() {
                       const loc = item.location;
                       const isLatest = idx === 0;
                       const tags = stringArray(item.tags).slice(0, 2);
+                      const fitScore = safeScore(item.fitScore);
                       return (
                         <button
                           key={item.id}
@@ -228,9 +266,9 @@ export function Versions() {
                           <div className="flex items-center justify-between gap-3 sm:justify-end">
                             <div className="text-right">
                               <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Fit</p>
-                              <p className="text-sm font-semibold tabular-nums">{item.fitScore}%</p>
+                              <p className="text-sm font-semibold tabular-nums">{fitScore}%</p>
                             </div>
-                            <ScoreCircle score={item.fitScore} size="sm" />
+                            <ScoreCircle score={fitScore} size="sm" />
                             <ChevronRight className="h-4 w-4 text-muted-foreground/40 transition-colors group-hover:text-muted-foreground" />
                           </div>
                         </button>
@@ -251,13 +289,14 @@ export function Versions() {
                 {singleGroups.map((group) => {
                   const item = group.items[0];
                   const tags = stringArray(item.tags).slice(0, 2);
+                  const fitScore = safeScore(item.fitScore);
                   return (
                     <button
                       key={item.id}
                       className="group flex items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-surface-1"
                       onClick={() => setLocation("/analysis/" + item.id)}
                     >
-                      <ScoreCircle score={item.fitScore} size="sm" />
+                      <ScoreCircle score={fitScore} size="sm" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold">{item.jobTitle}</p>
                         {item.companyName && <p className="truncate text-xs text-muted-foreground">{item.companyName}</p>}
