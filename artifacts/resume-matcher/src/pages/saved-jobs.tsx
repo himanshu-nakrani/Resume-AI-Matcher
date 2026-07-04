@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { apiErrorMessage, type ApiErrorPayload } from "@/lib/api-error";
 import {
   Bookmark,
   Trash2,
@@ -30,22 +31,6 @@ interface SavedJob {
   notes: string | null;
   tags: string[];
   savedAt: string;
-}
-
-type ApiErrorPayload = {
-  error?: string | { message?: string };
-  message?: string;
-};
-
-function apiErrorMessage(
-  payload: ApiErrorPayload | null,
-  fallback: string,
-): string {
-  if (!payload) return fallback;
-  if (typeof payload.error === "string") return payload.error;
-  if (payload.error?.message) return payload.error.message;
-  if (payload.message) return payload.message;
-  return fallback;
 }
 
 function stringArray(value: unknown): string[] {

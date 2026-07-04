@@ -43,6 +43,7 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiErrorMessage, type ApiErrorPayload } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 
 import {
@@ -57,22 +58,6 @@ import type { FormValues, JobSearchHit } from "./home/helpers";
 import { RecentAnalysesStrip, JobSearchSection } from "./home/sections";
 
 type ResumeFileType = "pdf" | "latex" | "text";
-
-type ApiErrorPayload = {
-  error?: string | { message?: string; code?: string };
-  message?: string;
-};
-
-function apiErrorMessage(
-  payload: ApiErrorPayload | null,
-  fallback: string,
-): string {
-  if (!payload) return fallback;
-  if (typeof payload.error === "string") return payload.error;
-  if (payload.error?.message) return payload.error.message;
-  if (payload.message) return payload.message;
-  return fallback;
-}
 
 function stripLatexToText(source: string) {
   return source

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCopy } from "@/hooks/use-copy";
 import { useToast } from "@/hooks/use-toast";
+import { apiErrorMessage } from "@/lib/api-error";
 import {
   CheckCircle2,
   XCircle,
@@ -47,39 +48,13 @@ function downloadTextFile(content: string, fileName: string): void {
   URL.revokeObjectURL(url);
 }
 
-type ErrorPayload = {
-  error?: unknown;
-  message?: unknown;
-};
-
-function stringifyErrorValue(value: unknown): string | null {
-  if (!value) return null;
-  if (typeof value === "string") return value;
-  if (typeof value === "object" && "message" in value) {
-    const message = (value as { message?: unknown }).message;
-    if (typeof message === "string") return message;
-  }
-  return null;
-}
-
-function errorMessageFromPayload(payload: ErrorPayload | null): string {
-  if (!payload) return "Could not compile optimized resume PDF.";
-  const error = stringifyErrorValue(payload.error);
-  if (error) return error;
-  const message = stringifyErrorValue(payload.message);
-  if (message) return message;
-  return "Could not compile optimized resume PDF.";
-}
-
 async function pdfErrorMessageFromResponse(
   response: Response,
 ): Promise<string> {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
-    const payload = (await response
-      .json()
-      .catch(() => null)) as ErrorPayload | null;
-    return errorMessageFromPayload(payload);
+    const payload = await response.json().catch(() => null);
+    return apiErrorMessage(payload, "Could not compile optimized resume PDF.");
   }
 
   const text = await response.text().catch(() => "");
