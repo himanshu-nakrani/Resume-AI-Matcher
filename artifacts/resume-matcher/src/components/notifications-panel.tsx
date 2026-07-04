@@ -1,10 +1,23 @@
-import { useState } from "react";
+import { KeyboardEvent, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { Bell, Check, CheckCheck, X, CalendarClock, CalendarCheck, Info } from "lucide-react";
+import {
+  Bell,
+  Check,
+  CheckCheck,
+  X,
+  CalendarClock,
+  CalendarCheck,
+  Info,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
-import { getListNotificationsQueryKey, useListNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@workspace/api-client-react";
+import {
+  getListNotificationsQueryKey,
+  useListNotifications,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
@@ -24,16 +37,103 @@ type NotificationsPanelProps = {
   triggerClassName?: string;
 };
 
-export function NotificationsPanel({ triggerClassName }: NotificationsPanelProps) {
+type NormalizedNotification = {
+  id: number;
+  type: keyof typeof ICON_MAP;
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: string;
+  analysisId: number | null;
+};
+
+function numberValue(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function dateTime(value: unknown): number {
+  if (
+    typeof value !== "string" &&
+    typeof value !== "number" &&
+    !(value instanceof Date)
+  ) {
+    return 0;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function formatCreatedAt(value: unknown): string {
+  const time = dateTime(value);
+  if (!time) return "Date unavailable";
+  return formatDistanceToNow(new Date(time), { addSuffix: true });
+}
+
+function normalizeNotification(value: unknown): NormalizedNotification | null {
+  if (!value || typeof value !== "object") return null;
+  const notification = value as Record<string, unknown>;
+  const id = numberValue(notification.id);
+  if (id == null) return null;
+
+  const title =
+    typeof notification.title === "string" && notification.title.trim()
+      ? notification.title.trim()
+      : "Notification";
+  const body =
+    typeof notification.body === "string" ? notification.body.trim() : "";
+  const type =
+    notification.type === "deadline" ||
+    notification.type === "follow_up" ||
+    notification.type === "info"
+      ? notification.type
+      : "info";
+
+  return {
+    id,
+    type,
+    title,
+    body,
+    read: notification.read === true,
+    createdAt:
+      typeof notification.createdAt === "string" ? notification.createdAt : "",
+    analysisId: numberValue(notification.analysisId),
+  };
+}
+
+export function NotificationsPanel({
+  triggerClassName,
+}: NotificationsPanelProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
   const notificationsQueryKey = getListNotificationsQueryKey();
-  const { data: notifications = [], isLoading, error } = useListNotifications({
+  const {
+    data: notifications = [],
+    isLoading,
+    error,
+  } = useListNotifications({
     query: { queryKey: notificationsQueryKey, refetchInterval: 60_000 },
   });
+
+  const visibleNotifications = useMemo(
+    () =>
+      (Array.isArray(notifications) ? notifications : [])
+        .map(normalizeNotification)
+        .filter((n): n is NormalizedNotification => n != null)
+        .sort(
+          (a, b) =>
+            dateTime(b.createdAt) - dateTime(a.createdAt) || b.id - a.id,
+        ),
+    [notifications],
+  );
 
   const markAll = useMarkAllNotificationsRead({
     mutation: {
@@ -44,7 +144,8 @@ export function NotificationsPanel({ triggerClassName }: NotificationsPanelProps
       onError: (err) => {
         toast({
           title: "Could not update notifications",
-          description: err instanceof Error ? err.message : "Try again in a moment.",
+          description:
+            err instanceof Error ? err.message : "Try again in a moment.",
           variant: "destructive",
         });
       },
@@ -53,20 +154,22 @@ export function NotificationsPanel({ triggerClassName }: NotificationsPanelProps
 
   const markOne = useMarkNotificationRead({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: notificationsQueryKey }),
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: notificationsQueryKey }),
       onError: (err) => {
         toast({
           title: "Could not mark notification read",
-          description: err instanceof Error ? err.message : "Try again in a moment.",
+          description:
+            err instanceof Error ? err.message : "Try again in a moment.",
           variant: "destructive",
         });
       },
     },
   });
 
-  const unread = notifications.filter((n) => !n.read).length;
+  const unread = visibleNotifications.filter((n) => !n.read).length;
 
-  const handleNotificationClick = (n: typeof notifications[0]) => {
+  const handleNotificationClick = (n: NormalizedNotification) => {
     if (!n.read) {
       markOne.mutate({ id: n.id });
     }
@@ -74,6 +177,15 @@ export function NotificationsPanel({ triggerClassName }: NotificationsPanelProps
       setLocation("/analysis/" + n.analysisId);
       setOpen(false);
     }
+  };
+
+  const handleNotificationKeyDown = (
+    event: KeyboardEvent<HTMLDivElement>,
+    notification: NormalizedNotification,
+  ) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleNotificationClick(notification);
   };
 
   return (
@@ -128,47 +240,66 @@ export function NotificationsPanel({ triggerClassName }: NotificationsPanelProps
               {isLoading ? (
                 <div className="space-y-3 p-4">
                   {[1, 2, 3].map((item) => (
-                    <div key={item} className="h-12 animate-pulse rounded-md bg-muted" />
+                    <div
+                      key={item}
+                      className="h-12 animate-pulse rounded-md bg-muted"
+                    />
                   ))}
                 </div>
               ) : error ? (
                 <div className="px-4 py-10 text-center text-destructive">
                   <Bell className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                  <p className="text-xs font-medium">Could not load notifications</p>
+                  <p className="text-xs font-medium">
+                    Could not load notifications
+                  </p>
                   <p className="mt-1 text-[11px] text-destructive/80">
-                    {error instanceof Error ? error.message : "Try again in a moment."}
+                    {error instanceof Error
+                      ? error.message
+                      : "Try again in a moment."}
                   </p>
                 </div>
-              ) : notifications.length === 0 ? (
+              ) : visibleNotifications.length === 0 ? (
                 <div className="py-10 text-center text-muted-foreground">
                   <Bell className="w-6 h-6 mx-auto mb-2 opacity-30" />
                   <p className="text-xs">No notifications yet</p>
                 </div>
               ) : (
-                notifications.map((n) => {
-                  const IconComp = ICON_MAP[n.type as keyof typeof ICON_MAP] ?? Info;
-                  const iconColor = COLOR_MAP[n.type as keyof typeof COLOR_MAP] ?? "text-muted-foreground";
+                visibleNotifications.map((n) => {
+                  const IconComp = ICON_MAP[n.type] ?? Info;
+                  const iconColor =
+                    COLOR_MAP[n.type] ?? "text-muted-foreground";
                   return (
                     <div
                       key={n.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleNotificationClick(n)}
+                      onKeyDown={(event) => handleNotificationKeyDown(event, n)}
                       className={`flex gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors border-b last:border-0 ${
                         !n.read ? "bg-primary/5" : ""
                       }`}
                     >
-                      <IconComp className={`w-4 h-4 shrink-0 mt-0.5 ${iconColor}`} />
+                      <IconComp
+                        className={`w-4 h-4 shrink-0 mt-0.5 ${iconColor}`}
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <p className={`text-xs font-medium leading-tight ${!n.read ? "text-foreground" : "text-muted-foreground"}`}>
+                          <p
+                            className={`break-words text-xs font-medium leading-tight ${!n.read ? "text-foreground" : "text-muted-foreground"}`}
+                          >
                             {n.title}
                           </p>
                           {!n.read && (
                             <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 mt-1" />
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{n.body}</p>
+                        {n.body && (
+                          <p className="mt-0.5 break-words text-xs leading-tight text-muted-foreground">
+                            {n.body}
+                          </p>
+                        )}
                         <p className="text-[10px] text-muted-foreground/60 mt-1">
-                          {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                          {formatCreatedAt(n.createdAt)}
                         </p>
                       </div>
                       {!n.read && (
@@ -194,7 +325,9 @@ export function NotificationsPanel({ triggerClassName }: NotificationsPanelProps
 
             {unread > 0 && (
               <div className="px-4 py-2 border-t">
-                <Badge variant="secondary" className="text-xs">{unread} unread</Badge>
+                <Badge variant="secondary" className="text-xs">
+                  {unread} unread
+                </Badge>
               </div>
             )}
           </div>
