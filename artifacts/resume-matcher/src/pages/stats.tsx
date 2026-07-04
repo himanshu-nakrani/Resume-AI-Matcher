@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { useGetAnalysisStats, useListAnalyses } from "@workspace/api-client-react";
+import {
+  useGetAnalysisStats,
+  useListAnalyses,
+} from "@workspace/api-client-react";
 import { ScoreCircle } from "@/components/score-circle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +35,14 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from "@/components/ui/empty";
 
 function StatCard({
   title,
@@ -50,18 +60,21 @@ function StatCard({
   return (
     <Card
       padding="sm"
-      className={cn(
-        "transition-colors",
-        highlight && "border-accent/50",
-      )}
+      className={cn("transition-colors", highlight && "border-accent/50")}
       data-testid={`stat-card-${title.toLowerCase().replace(/\s+/g, "-")}`}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">{title}</p>
-            <p className="font-mono tabular-nums text-[24px] font-semibold mt-1.5 leading-none">{value}</p>
-            {sub && <p className="text-[11px] text-muted-foreground mt-1.5">{sub}</p>}
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+              {title}
+            </p>
+            <p className="font-mono tabular-nums text-[24px] font-semibold mt-1.5 leading-none">
+              {value}
+            </p>
+            {sub && (
+              <p className="text-[11px] text-muted-foreground mt-1.5">{sub}</p>
+            )}
           </div>
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-2">
             <Icon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -124,20 +137,49 @@ function stringArray(value: unknown): string[] {
 }
 
 function safeScore(value: unknown): number {
-  const score = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  const score = numberValue(value) ?? 0;
   return Math.min(100, Math.max(0, Math.round(score)));
 }
 
+function positiveInteger(value: unknown, fallback = 0): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.round(value));
+}
+
+function textValue(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function numberValue(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 function dateMs(value: unknown): number | null {
-  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+  if (
+    typeof value !== "string" &&
+    typeof value !== "number" &&
+    !(value instanceof Date)
+  ) {
     return null;
   }
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date.getTime();
 }
 
+function formatDate(value: unknown, pattern: string): string {
+  const ms = dateMs(value);
+  return ms === null ? "Date unavailable" : format(new Date(ms), pattern);
+}
+
 function statusKey(value: unknown): string {
-  return typeof value === "string" && value in STATUS_COLORS ? value : "not_applied";
+  return typeof value === "string" && value in STATUS_COLORS
+    ? value
+    : "not_applied";
 }
 
 function statusLabel(value: unknown): string {
@@ -156,6 +198,45 @@ function keywordTrendRows(values: string[], limit: number) {
     .slice(0, limit);
 }
 
+type StatsAnalysis = {
+  id: number;
+  jobTitle: string;
+  companyName: string | null;
+  fitScore: number;
+  atsScore: number;
+  status: string;
+  createdAt: string | number | Date | null;
+  atsKeywordsMatched: string[];
+  atsKeywordsMissing: string[];
+};
+
+function normalizeAnalysis(value: unknown): StatsAnalysis | null {
+  if (!value || typeof value !== "object") return null;
+  const analysis = value as Record<string, unknown>;
+  const id = numberValue(analysis.id);
+  if (id === null) return null;
+
+  return {
+    id,
+    jobTitle: textValue(analysis.jobTitle, "Untitled role"),
+    companyName:
+      typeof analysis.companyName === "string" && analysis.companyName.trim()
+        ? analysis.companyName.trim()
+        : null,
+    fitScore: safeScore(analysis.fitScore),
+    atsScore: safeScore(analysis.atsScore),
+    status: statusKey(analysis.status),
+    createdAt:
+      typeof analysis.createdAt === "string" ||
+      typeof analysis.createdAt === "number" ||
+      analysis.createdAt instanceof Date
+        ? analysis.createdAt
+        : null,
+    atsKeywordsMatched: stringArray(analysis.atsKeywordsMatched),
+    atsKeywordsMissing: stringArray(analysis.atsKeywordsMissing),
+  };
+}
+
 export function Stats() {
   const [, setLocation] = useLocation();
   const {
@@ -170,25 +251,39 @@ export function Stats() {
     isError: analysesIsError,
     error: analysesError,
   } = useListAnalyses();
-  const [drillBucket, setDrillBucket] = useState<null | { label: string; ids: number[] }>(null);
+  const [drillBucket, setDrillBucket] = useState<null | {
+    label: string;
+    ids: number[];
+  }>(null);
 
   const isLoading = statsLoading || analysesLoading;
   const isError = statsIsError || analysesIsError;
   const error = statsError ?? analysesError;
-  const analysesList = analyses ?? [];
+  const analysesList = useMemo(
+    () =>
+      (Array.isArray(analyses) ? analyses : [])
+        .map(normalizeAnalysis)
+        .filter((analysis): analysis is StatsAnalysis => analysis != null),
+    [analyses],
+  );
+  const totalAnalyses = positiveInteger(
+    stats?.totalAnalyses,
+    analysesList.length,
+  );
 
-  const trendData = analysesList.length > 0
-    ? [...analysesList]
-        .reverse()
-        .slice(-12)
-        .map((a, i) => ({
-          name: `#${i + 1}`,
-          fit: safeScore(a.fitScore),
-          ats: safeScore(a.atsScore),
-          label: a.jobTitle,
-          id: a.id,
-        }))
-    : [];
+  const trendData =
+    analysesList.length > 0
+      ? [...analysesList]
+          .reverse()
+          .slice(-12)
+          .map((a, i) => ({
+            name: `#${i + 1}`,
+            fit: a.fitScore,
+            ats: a.atsScore,
+            label: a.jobTitle,
+            id: a.id,
+          }))
+      : [];
 
   const getFitColor = (score: number) => {
     if (score >= 80) return "hsl(var(--success))";
@@ -196,160 +291,219 @@ export function Stats() {
     return "hsl(var(--destructive))";
   };
 
-  const scoreDistData = analysesList.length > 0
-    ? SCORE_BUCKETS.map((bucket) => ({
-        ...bucket,
-        count: analysesList.filter((a) => safeScore(a.fitScore) >= bucket.min && safeScore(a.fitScore) <= bucket.max).length,
-        ids: analysesList
-          .filter((a) => safeScore(a.fitScore) >= bucket.min && safeScore(a.fitScore) <= bucket.max)
-          .map((a) => a.id),
-      }))
-    : [];
+  const scoreDistData =
+    analysesList.length > 0
+      ? SCORE_BUCKETS.map((bucket) => ({
+          ...bucket,
+          count: analysesList.filter(
+            (a) => a.fitScore >= bucket.min && a.fitScore <= bucket.max,
+          ).length,
+          ids: analysesList
+            .filter((a) => a.fitScore >= bucket.min && a.fitScore <= bucket.max)
+            .map((a) => a.id),
+        }))
+      : [];
 
-  const pipelineData = analysesList.length > 0
-    ? (() => {
-        const applied = analysesList.filter((a) => ["applied", "got_interview", "got_online_exam", "selected"].includes(statusKey(a.status))).length;
-        const interview = analysesList.filter((a) => ["got_interview", "selected"].includes(statusKey(a.status))).length;
-        const selected = analysesList.filter((a) => statusKey(a.status) === "selected").length;
-        return [
-          { name: "Applied", value: applied, fill: "hsl(var(--info))" },
-          { name: "Interview", value: interview, fill: "hsl(var(--warning))" },
-          { name: "Selected", value: selected, fill: "hsl(var(--success))" },
-        ].filter((d) => d.value > 0);
-      })()
-    : [];
+  const pipelineData =
+    analysesList.length > 0
+      ? (() => {
+          const applied = analysesList.filter((a) =>
+            [
+              "applied",
+              "got_interview",
+              "got_online_exam",
+              "selected",
+            ].includes(statusKey(a.status)),
+          ).length;
+          const interview = analysesList.filter((a) =>
+            ["got_interview", "selected"].includes(statusKey(a.status)),
+          ).length;
+          const selected = analysesList.filter(
+            (a) => statusKey(a.status) === "selected",
+          ).length;
+          return [
+            { name: "Applied", value: applied, fill: "hsl(var(--info))" },
+            {
+              name: "Interview",
+              value: interview,
+              fill: "hsl(var(--warning))",
+            },
+            { name: "Selected", value: selected, fill: "hsl(var(--success))" },
+          ].filter((d) => d.value > 0);
+        })()
+      : [];
 
-  const topMatchedKeywords = analysesList.length > 0
-    ? (() => {
-        const keywords = analysesList.flatMap((a) => stringArray(a.atsKeywordsMatched));
-        return keywordTrendRows(keywords, 15)
-          .map(([kw]) => kw);
-      })()
-    : [];
+  const topMatchedKeywords =
+    analysesList.length > 0
+      ? (() => {
+          const keywords = analysesList.flatMap((a) =>
+            stringArray(a.atsKeywordsMatched),
+          );
+          return keywordTrendRows(keywords, 15).map(([kw]) => kw);
+        })()
+      : [];
 
   const interviewRate =
     analysesList.filter((a) => statusKey(a.status) !== "not_applied").length > 0
       ? Math.round(
-          (analysesList.filter((a) => ["got_interview", "selected"].includes(statusKey(a.status))).length /
-            analysesList.filter((a) => statusKey(a.status) !== "not_applied").length) *
-            100
+          (analysesList.filter((a) =>
+            ["got_interview", "selected"].includes(statusKey(a.status)),
+          ).length /
+            analysesList.filter((a) => statusKey(a.status) !== "not_applied")
+              .length) *
+            100,
         )
       : null;
 
   // T004: Keyword Trends
-  const keywordTrends = analysesList.length > 0
-    ? (() => {
-        const keywords = analysesList.flatMap((a) => [
-          ...stringArray(a.atsKeywordsMatched),
-          ...stringArray(a.atsKeywordsMissing),
-        ]);
-        return keywordTrendRows(keywords, 10)
-          .map(([name, count]) => ({ name, count }));
-      })()
-    : [];
+  const keywordTrends =
+    analysesList.length > 0
+      ? (() => {
+          const keywords = analysesList.flatMap((a) => [
+            ...stringArray(a.atsKeywordsMatched),
+            ...stringArray(a.atsKeywordsMissing),
+          ]);
+          return keywordTrendRows(keywords, 10).map(([name, count]) => ({
+            name,
+            count,
+          }));
+        })()
+      : [];
 
   // T004: Time-in-Stage (Estimate from createdAt to now)
-  const timeInStage = analysesList.length > 0
-    ? (() => {
-        const now = new Date().getTime();
-        const stageTotals: Record<string, number> = {};
-        const stageCounts: Record<string, number> = {};
-        
-        for (const a of analysesList) {
-          const created = dateMs(a.createdAt);
-          if (created === null) continue;
-          const days = Math.max(0, (now - created) / (1000 * 60 * 60 * 24));
-          const status = statusKey(a.status);
-          stageTotals[status] = (stageTotals[status] ?? 0) + days;
-          stageCounts[status] = (stageCounts[status] ?? 0) + 1;
-        }
+  const timeInStage =
+    analysesList.length > 0
+      ? (() => {
+          const now = new Date().getTime();
+          const stageTotals: Record<string, number> = {};
+          const stageCounts: Record<string, number> = {};
 
-        return ["not_applied", "applied", "got_interview", "got_online_exam", "selected", "rejected"]
-          .map(status => ({
-            status: statusLabel(status),
-            avgDays: stageCounts[status] ? Math.round(stageTotals[status] / stageCounts[status]) : 0,
-            fill: STATUS_COLORS[status] || "hsl(var(--muted-foreground))"
-          }))
-          .filter(d => d.avgDays > 0);
-      })()
-    : [];
+          for (const a of analysesList) {
+            const created = dateMs(a.createdAt);
+            if (created === null) continue;
+            const days = Math.max(0, (now - created) / (1000 * 60 * 60 * 24));
+            const status = statusKey(a.status);
+            stageTotals[status] = (stageTotals[status] ?? 0) + days;
+            stageCounts[status] = (stageCounts[status] ?? 0) + 1;
+          }
+
+          return [
+            "not_applied",
+            "applied",
+            "got_interview",
+            "got_online_exam",
+            "selected",
+            "rejected",
+          ]
+            .map((status) => ({
+              status: statusLabel(status),
+              avgDays: stageCounts[status]
+                ? Math.round(stageTotals[status] / stageCounts[status])
+                : 0,
+              fill: STATUS_COLORS[status] || "hsl(var(--muted-foreground))",
+            }))
+            .filter((d) => d.avgDays > 0);
+        })()
+      : [];
 
   // T004: Success Rate (Interview+ and Selected)
-  const successMetrics = analysesList.length > 0
-    ? (() => {
-        const total = analysesList.length;
-        if (total === 0) return { interviewRate: 0, offerRate: 0 };
-        const interviewPlus = analysesList.filter(a => ["got_interview", "selected"].includes(statusKey(a.status))).length;
-        const offers = analysesList.filter(a => statusKey(a.status) === "selected").length;
-        return {
-          interviewRate: Math.round((interviewPlus / total) * 100),
-          offerRate: Math.round((offers / total) * 100),
-        };
-      })()
-    : { interviewRate: 0, offerRate: 0 };
+  const successMetrics =
+    analysesList.length > 0
+      ? (() => {
+          const total = analysesList.length;
+          if (total === 0) return { interviewRate: 0, offerRate: 0 };
+          const interviewPlus = analysesList.filter((a) =>
+            ["got_interview", "selected"].includes(statusKey(a.status)),
+          ).length;
+          const offers = analysesList.filter(
+            (a) => statusKey(a.status) === "selected",
+          ).length;
+          return {
+            interviewRate: Math.round((interviewPlus / total) * 100),
+            offerRate: Math.round((offers / total) * 100),
+          };
+        })()
+      : { interviewRate: 0, offerRate: 0 };
 
   // T004: Score Momentum
-  const momentum = analysesList.length >= 2
-    ? (() => {
-        const sorted = [...analysesList].sort((a, b) => (dateMs(a.createdAt) ?? 0) - (dateMs(b.createdAt) ?? 0));
-        const first5 = sorted.slice(0, 5);
-        const last5 = sorted.slice(-5);
-        const firstAvg = first5.reduce((sum, a) => sum + safeScore(a.fitScore), 0) / first5.length;
-        const lastAvg = last5.reduce((sum, a) => sum + safeScore(a.fitScore), 0) / last5.length;
-        return {
-          improvement: Math.round(lastAvg - firstAvg),
-          firstAvg: Math.round(firstAvg),
-          lastAvg: Math.round(lastAvg),
-        };
-      })()
-    : null;
+  const momentum =
+    analysesList.length >= 2
+      ? (() => {
+          const sorted = [...analysesList].sort(
+            (a, b) => (dateMs(a.createdAt) ?? 0) - (dateMs(b.createdAt) ?? 0),
+          );
+          const first5 = sorted.slice(0, 5);
+          const last5 = sorted.slice(-5);
+          const firstAvg =
+            first5.reduce((sum, a) => sum + a.fitScore, 0) / first5.length;
+          const lastAvg =
+            last5.reduce((sum, a) => sum + a.fitScore, 0) / last5.length;
+          return {
+            improvement: Math.round(lastAvg - firstAvg),
+            firstAvg: Math.round(firstAvg),
+            lastAvg: Math.round(lastAvg),
+          };
+        })()
+      : null;
 
   const drillAnalyses = drillBucket
     ? analysesList.filter((a) => drillBucket.ids.includes(a.id))
     : [];
 
   // Application timeline — scatter plot
-  const timelineData = analysesList.length > 0
-    ? analysesList.flatMap((a) => {
-        const created = dateMs(a.createdAt);
-        if (created === null) return [];
-        return [{
-          date: created,
-          fit: safeScore(a.fitScore),
-          label: a.jobTitle,
-          status: statusKey(a.status),
-          id: a.id,
-        }];
-      })
-    : [];
+  const timelineData =
+    analysesList.length > 0
+      ? analysesList.flatMap((a) => {
+          const created = dateMs(a.createdAt);
+          if (created === null) return [];
+          return [
+            {
+              date: created,
+              fit: a.fitScore,
+              label: a.jobTitle,
+              status: statusKey(a.status),
+              id: a.id,
+            },
+          ];
+        })
+      : [];
 
   // Success rate by role (top job titles with >1 application)
-  const roleSuccessData = analysesList.length > 0
-    ? (() => {
-        const roles: Record<string, { total: number; interview: number; offer: number }> = {};
-        for (const a of analysesList) {
-          const title = a.jobTitle;
-          if (!roles[title]) roles[title] = { total: 0, interview: 0, offer: 0 };
-          roles[title].total += 1;
-          if (["got_interview", "selected"].includes(statusKey(a.status))) roles[title].interview += 1;
-          if (statusKey(a.status) === "selected") roles[title].offer += 1;
-        }
-        return Object.entries(roles)
-          .filter(([, v]) => v.total >= 1 && (v.interview > 0 || v.offer > 0))
-          .sort((a, b) => b[1].interview - a[1].interview)
-          .slice(0, 6);
-      })()
-    : [];
+  const roleSuccessData =
+    analysesList.length > 0
+      ? (() => {
+          const roles: Record<
+            string,
+            { total: number; interview: number; offer: number }
+          > = {};
+          for (const a of analysesList) {
+            const title = a.jobTitle;
+            if (!roles[title])
+              roles[title] = { total: 0, interview: 0, offer: 0 };
+            roles[title].total += 1;
+            if (["got_interview", "selected"].includes(statusKey(a.status)))
+              roles[title].interview += 1;
+            if (statusKey(a.status) === "selected") roles[title].offer += 1;
+          }
+          return Object.entries(roles)
+            .filter(([, v]) => v.total >= 1 && (v.interview > 0 || v.offer > 0))
+            .sort((a, b) => b[1].interview - a[1].interview)
+            .slice(0, 6);
+        })()
+      : [];
 
   // Benchmark message
   const avgFit = safeScore(stats?.averageFitScore);
   const avgAts = safeScore(stats?.averageAtsScore);
   const topMissingKeywords = stringArray(stats?.topMissingKeywords);
   const benchmarkMsg =
-    avgFit >= 80 ? "Excellent — your resume matches these roles very well."
-    : avgFit >= 65 ? "Good — you're competitive. A few targeted improvements could help."
-    : avgFit >= 50 ? "Room to grow — focus on the skill gaps and ATS keywords."
-    : "Getting started — tailor your resume more closely to each job description.";
+    avgFit >= 80
+      ? "Excellent — your resume matches these roles very well."
+      : avgFit >= 65
+        ? "Good — you're competitive. A few targeted improvements could help."
+        : avgFit >= 50
+          ? "Room to grow — focus on the skill gaps and ATS keywords."
+          : "Getting started — tailor your resume more closely to each job description.";
 
   return (
     <div className="space-y-8">
@@ -357,7 +511,8 @@ export function Stats() {
         <div>
           <h1 className="text-2xl font-semibold tracking-[-0.02em]">Stats</h1>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Aggregate insights across all resume targets, score movement, and application outcomes.
+            Aggregate insights across all resume targets, score movement, and
+            application outcomes.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -389,7 +544,9 @@ export function Stats() {
             </EmptyMedia>
             <EmptyTitle>Could not load stats</EmptyTitle>
             <EmptyDescription>
-              {error instanceof Error ? error.message : "Refresh the page or try again in a moment."}
+              {error instanceof Error
+                ? error.message
+                : "Refresh the page or try again in a moment."}
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
@@ -398,7 +555,7 @@ export function Stats() {
             </Button>
           </EmptyContent>
         </Empty>
-      ) : !stats || stats.totalAnalyses === 0 ? (
+      ) : totalAnalyses === 0 && analysesList.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -418,11 +575,18 @@ export function Stats() {
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard title="Total Analyses" value={stats.totalAnalyses} icon={FileText} sub="all time" />
+            <StatCard
+              title="Total Analyses"
+              value={totalAnalyses}
+              icon={FileText}
+              sub="all time"
+            />
             <div className="col-span-1">
               <Card className="h-full shadow-sm">
                 <CardContent className="pt-6 pb-5 flex flex-col items-center">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Avg Fit Score</p>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                    Avg Fit Score
+                  </p>
                   <ScoreCircle score={avgFit} size="md" />
                 </CardContent>
               </Card>
@@ -430,7 +594,9 @@ export function Stats() {
             <div className="col-span-1">
               <Card className="h-full shadow-sm">
                 <CardContent className="pt-6 pb-5 flex flex-col items-center">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Avg ATS Score</p>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                    Avg ATS Score
+                  </p>
                   <ScoreCircle score={avgAts} size="md" />
                 </CardContent>
               </Card>
@@ -454,44 +620,58 @@ export function Stats() {
 
           {/* T004: Success Rate Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <Card className="shadow-sm">
-                <CardContent className="pt-6 pb-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Interview Conversion</p>
-                      <p className="text-3xl font-bold mt-1 tabular-nums">{successMetrics.interviewRate}%</p>
-                      <p className="text-xs text-muted-foreground mt-1">Analyses reaching Interview or Offer</p>
-                    </div>
-                    <div className="rounded-md bg-warning/10 p-2.5">
-                      <Target className="w-5 h-5 text-warning" />
-                    </div>
+            <Card className="shadow-sm">
+              <CardContent className="pt-6 pb-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                      Interview Conversion
+                    </p>
+                    <p className="text-3xl font-bold mt-1 tabular-nums">
+                      {successMetrics.interviewRate}%
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Analyses reaching Interview or Offer
+                    </p>
                   </div>
-                </CardContent>
-             </Card>
-             <Card className="shadow-sm">
-                <CardContent className="pt-6 pb-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Offer Conversion</p>
-                      <p className="text-3xl font-bold mt-1 tabular-nums">{successMetrics.offerRate}%</p>
-                      <p className="text-xs text-muted-foreground mt-1">Analyses resulting in an Offer</p>
-                    </div>
-                    <div className="rounded-md bg-success/10 p-2.5">
-                      <Trophy className="w-5 h-5 text-success" />
-                    </div>
+                  <div className="rounded-md bg-warning/10 p-2.5">
+                    <Target className="w-5 h-5 text-warning" />
                   </div>
-                </CardContent>
-             </Card>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="shadow-sm">
+              <CardContent className="pt-6 pb-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                      Offer Conversion
+                    </p>
+                    <p className="text-3xl font-bold mt-1 tabular-nums">
+                      {successMetrics.offerRate}%
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Analyses resulting in an Offer
+                    </p>
+                  </div>
+                  <div className="rounded-md bg-success/10 p-2.5">
+                    <Trophy className="w-5 h-5 text-success" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Benchmark message */}
-          {stats.totalAnalyses >= 1 && (
+          {totalAnalyses >= 1 && (
             <Card className="border-accent/30 bg-accent/5 shadow-sm">
               <CardContent className="pt-4 pb-4 flex items-center gap-3">
                 <Trophy className="w-5 h-5 text-accent shrink-0" />
                 <div>
                   <p className="text-sm font-semibold">Performance Insight</p>
-                  <p className="text-sm text-muted-foreground">{benchmarkMsg}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {benchmarkMsg}
+                  </p>
                 </div>
                 <div className="ml-auto shrink-0 text-right">
                   <p className="text-xs text-muted-foreground">Avg fit score</p>
@@ -509,30 +689,49 @@ export function Stats() {
               <Card className="shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Target className="w-4 h-4 text-accent" /> Top Keyword Trends
+                    <Target className="w-4 h-4 text-accent" /> Top Keyword
+                    Trends
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Most frequent keywords across all targeted jobs (matched & missing).
+                    Most frequent keywords across all targeted jobs (matched &
+                    missing).
                   </p>
                   <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={keywordTrends} layout="vertical" margin={{ left: 40 }}>
+                    <BarChart
+                      data={keywordTrends}
+                      layout="vertical"
+                      margin={{ left: 40 }}
+                    >
                       <XAxis type="number" hide />
-                      <YAxis 
-                        dataKey="name" 
-                        type="category" 
-                        tick={{ fontSize: 11 }} 
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        tick={{ fontSize: 11 }}
                         width={100}
                         axisLine={false}
                         tickLine={false}
                       />
                       <Tooltip
-                        cursor={{ fill: 'transparent' }}
-                        contentStyle={{ backgroundColor: 'hsl(var(--surface-3))', border: '1px solid hsl(var(--border-strong))', borderRadius: '6px', fontSize: '12px', color: 'hsl(var(--foreground))' }}
-                        labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
+                        cursor={{ fill: "transparent" }}
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--surface-3))",
+                          border: "1px solid hsl(var(--border-strong))",
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                          color: "hsl(var(--foreground))",
+                        }}
+                        labelStyle={{
+                          color: "hsl(var(--foreground))",
+                          fontWeight: 600,
+                        }}
                       />
-                      <Bar dataKey="count" fill="hsl(var(--accent))" radius={[0, 4, 4, 0]} />
+                      <Bar
+                        dataKey="count"
+                        fill="hsl(var(--accent))"
+                        radius={[0, 4, 4, 0]}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -543,7 +742,8 @@ export function Stats() {
               <Card className="shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-accent" /> Avg Days in Stage
+                    <Calendar className="w-4 h-4 text-accent" /> Avg Days in
+                    Stage
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -552,11 +752,30 @@ export function Stats() {
                   </p>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={timeInStage}>
-                      <XAxis dataKey="status" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={30} />
+                      <XAxis
+                        dataKey="status"
+                        tick={{ fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={30}
+                      />
                       <Tooltip
-                        contentStyle={{ backgroundColor: 'hsl(var(--surface-3))', border: '1px solid hsl(var(--border-strong))', borderRadius: '6px', fontSize: '12px', color: 'hsl(var(--foreground))' }}
-                        labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--surface-3))",
+                          border: "1px solid hsl(var(--border-strong))",
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                          color: "hsl(var(--foreground))",
+                        }}
+                        labelStyle={{
+                          color: "hsl(var(--foreground))",
+                          fontWeight: 600,
+                        }}
                         formatter={(val: number) => [`${val} days`, "Avg Time"]}
                       />
                       <Bar dataKey="avgDays" radius={[4, 4, 0, 0]}>
@@ -579,7 +798,9 @@ export function Stats() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-xs text-muted-foreground mb-3">Click any bar to open that analysis.</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Click any bar to open that analysis.
+                </p>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart
                     data={trendData}
@@ -589,17 +810,50 @@ export function Stats() {
                       if (id) setLocation(`/analysis/${id}`);
                     }}
                   >
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={30} />
-                    <Tooltip
-                      formatter={(val: number, name: string) => [`${val}`, name === "fit" ? "Fit Score" : "ATS Score"]}
-                      labelFormatter={(label, payload) => payload?.[0]?.payload?.label ?? label}
-                      contentStyle={{ backgroundColor: 'hsl(var(--surface-3))', border: '1px solid hsl(var(--border-strong))', borderRadius: '6px', fontSize: '12px', color: 'hsl(var(--foreground))' }}
-                      labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
                     />
-                    <Bar dataKey="fit" radius={[4, 4, 0, 0]} name="fit" cursor="pointer">
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={30}
+                    />
+                    <Tooltip
+                      formatter={(val: number, name: string) => [
+                        `${val}`,
+                        name === "fit" ? "Fit Score" : "ATS Score",
+                      ]}
+                      labelFormatter={(label, payload) =>
+                        payload?.[0]?.payload?.label ?? label
+                      }
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--surface-3))",
+                        border: "1px solid hsl(var(--border-strong))",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        color: "hsl(var(--foreground))",
+                      }}
+                      labelStyle={{
+                        color: "hsl(var(--foreground))",
+                        fontWeight: 600,
+                      }}
+                    />
+                    <Bar
+                      dataKey="fit"
+                      radius={[4, 4, 0, 0]}
+                      name="fit"
+                      cursor="pointer"
+                    >
                       {trendData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={getFitColor(entry.fit)} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={getFitColor(entry.fit)}
+                        />
                       ))}
                     </Bar>
                   </BarChart>
@@ -613,19 +867,28 @@ export function Stats() {
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-accent" /> Application Timeline
+                  <Calendar className="w-4 h-4 text-accent" /> Application
+                  Timeline
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-xs text-muted-foreground mb-3">Each dot is an analysis. Color = status. Click to open.</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Each dot is an analysis. Color = status. Click to open.
+                </p>
                 <ResponsiveContainer width="100%" height={200}>
-                  <ScatterChart margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
+                  <ScatterChart
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      stroke="hsl(var(--border))"
+                      strokeDasharray="3 3"
+                      vertical={false}
+                    />
                     <XAxis
                       dataKey="date"
                       type="number"
                       domain={["dataMin", "dataMax"]}
-                      tickFormatter={(v) => format(new Date(v), "MMM d")}
+                      tickFormatter={(v) => formatDate(v, "MMM d")}
                       tick={{ fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
@@ -637,7 +900,13 @@ export function Stats() {
                       axisLine={false}
                       tickLine={false}
                       width={28}
-                      label={{ value: "Fit", angle: -90, position: "insideLeft", fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                      label={{
+                        value: "Fit",
+                        angle: -90,
+                        position: "insideLeft",
+                        fontSize: 10,
+                        fill: "hsl(var(--muted-foreground))",
+                      }}
                     />
                     <Tooltip
                       content={({ payload }) => {
@@ -646,8 +915,12 @@ export function Stats() {
                         return (
                           <div className="bg-card border rounded-lg p-2.5 text-xs shadow-lg">
                             <p className="font-semibold">{d.label}</p>
-                            <p className="text-muted-foreground">{format(new Date(d.date), "MMM d, yyyy")}</p>
-                            <p>Fit: <span className="font-bold">{d.fit}</span></p>
+                            <p className="text-muted-foreground">
+                              {formatDate(d.date, "MMM d, yyyy")}
+                            </p>
+                            <p>
+                              Fit: <span className="font-bold">{d.fit}</span>
+                            </p>
                             <p>Status: {statusLabel(d.status)}</p>
                           </div>
                         );
@@ -659,7 +932,14 @@ export function Stats() {
                       onClick={(d) => setLocation(`/analysis/${d.id}`)}
                     >
                       {timelineData.map((entry, i) => (
-                        <Cell key={i} fill={STATUS_COLORS[entry.status] ?? "hsl(var(--muted-foreground))"} r={7} />
+                        <Cell
+                          key={i}
+                          fill={
+                            STATUS_COLORS[entry.status] ??
+                            "hsl(var(--muted-foreground))"
+                          }
+                          r={7}
+                        />
                       ))}
                     </Scatter>
                   </ScatterChart>
@@ -667,8 +947,13 @@ export function Stats() {
                 <div className="flex flex-wrap gap-3 mt-2">
                   {Object.entries(STATUS_COLORS).map(([status, color]) => (
                     <div key={status} className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                      <span className="text-xs text-muted-foreground">{statusLabel(status)}</span>
+                      <div
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {statusLabel(status)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -681,7 +966,8 @@ export function Stats() {
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-warning" /> Success Rate by Role
+                  <Trophy className="w-4 h-4 text-warning" /> Success Rate by
+                  Role
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -692,7 +978,9 @@ export function Stats() {
                   {roleSuccessData.map(([role, data]) => (
                     <div key={role} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium truncate flex-1 mr-2">{role}</span>
+                        <span className="font-medium truncate flex-1 mr-2">
+                          {role}
+                        </span>
                         <span className="text-xs text-muted-foreground shrink-0">
                           {data.interview}/{data.total} to interview
                           {data.offer > 0 && ` · ${data.offer} offer`}
@@ -701,7 +989,9 @@ export function Stats() {
                       <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full bg-warning transition-all"
-                          style={{ width: `${(data.interview / data.total) * 100}%` }}
+                          style={{
+                            width: `${(data.interview / data.total) * 100}%`,
+                          }}
                         />
                       </div>
                     </div>
@@ -715,7 +1005,8 @@ export function Stats() {
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Target className="w-4 h-4 text-accent" /> Fit Score Distribution
+                  <Target className="w-4 h-4 text-accent" /> Fit Score
+                  Distribution
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -738,19 +1029,43 @@ export function Stats() {
                       }
                     }}
                   >
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={25} />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={25}
+                    />
                     <Tooltip
                       formatter={(val: number) => [`${val} analyses`, "Count"]}
-                      contentStyle={{ backgroundColor: 'hsl(var(--surface-3))', border: '1px solid hsl(var(--border-strong))', borderRadius: '6px', fontSize: '12px', color: 'hsl(var(--foreground))' }}
-                      labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--surface-3))",
+                        border: "1px solid hsl(var(--border-strong))",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        color: "hsl(var(--foreground))",
+                      }}
+                      labelStyle={{
+                        color: "hsl(var(--foreground))",
+                        fontWeight: 600,
+                      }}
                     />
                     <Bar dataKey="count" radius={[4, 4, 0, 0]} cursor="pointer">
                       {scoreDistData.map((entry, index) => (
                         <Cell
                           key={`dist-${index}`}
                           fill={entry.color}
-                          opacity={drillBucket && drillBucket.label !== entry.label ? 0.35 : 1}
+                          opacity={
+                            drillBucket && drillBucket.label !== entry.label
+                              ? 0.35
+                              : 1
+                          }
                         />
                       ))}
                     </Bar>
@@ -761,7 +1076,8 @@ export function Stats() {
                   <div className="mt-5 border-t pt-4">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-semibold">
-                        {drillBucket.label} — {drillAnalyses.length} {drillAnalyses.length === 1 ? "analysis" : "analyses"}
+                        {drillBucket.label} — {drillAnalyses.length}{" "}
+                        {drillAnalyses.length === 1 ? "analysis" : "analyses"}
                       </p>
                       <button
                         className="text-xs text-muted-foreground hover:text-foreground"
@@ -777,10 +1093,16 @@ export function Stats() {
                           onClick={() => setLocation(`/analysis/${a.id}`)}
                           className="w-full text-left flex items-center gap-3 p-2.5 rounded-lg border hover:bg-muted/60 transition-colors"
                         >
-                          <span className="font-bold tabular-nums text-sm w-8 shrink-0">{safeScore(a.fitScore)}</span>
-                          <span className="flex-1 text-sm font-medium truncate">{a.jobTitle}</span>
+                          <span className="font-bold tabular-nums text-sm w-8 shrink-0">
+                            {a.fitScore}
+                          </span>
+                          <span className="flex-1 text-sm font-medium truncate">
+                            {a.jobTitle}
+                          </span>
                           {a.companyName && (
-                            <span className="text-xs text-muted-foreground truncate hidden sm:block">{a.companyName}</span>
+                            <span className="text-xs text-muted-foreground truncate hidden sm:block">
+                              {a.companyName}
+                            </span>
                           )}
                         </button>
                       ))}
@@ -795,7 +1117,8 @@ export function Stats() {
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <GitBranch className="w-4 h-4 text-accent" /> Application Pipeline
+                  <GitBranch className="w-4 h-4 text-accent" /> Application
+                  Pipeline
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -808,18 +1131,28 @@ export function Stats() {
                     const pct = max > 0 ? (stage.value / max) * 100 : 0;
                     return (
                       <div key={stage.name} className="flex items-center gap-3">
-                        <div className="w-20 shrink-0 text-sm font-medium text-right">{stage.name}</div>
+                        <div className="w-20 shrink-0 text-sm font-medium text-right">
+                          {stage.name}
+                        </div>
                         <div className="flex-1 bg-surface-2 rounded-full h-7 overflow-hidden">
                           <div
                             className="h-full rounded-full flex items-center px-3 transition-all"
-                            style={{ width: `${Math.max(pct, 8)}%`, backgroundColor: stage.fill }}
+                            style={{
+                              width: `${Math.max(pct, 8)}%`,
+                              backgroundColor: stage.fill,
+                            }}
                           >
-                            <span className="text-white text-xs font-bold">{stage.value}</span>
+                            <span className="text-white text-xs font-bold">
+                              {stage.value}
+                            </span>
                           </div>
                         </div>
                         {i > 0 && pipelineData[i - 1].value > 0 && (
                           <div className="w-12 shrink-0 text-xs text-muted-foreground tabular-nums">
-                            {Math.round((stage.value / pipelineData[i - 1].value) * 100)}%
+                            {Math.round(
+                              (stage.value / pipelineData[i - 1].value) * 100,
+                            )}
+                            %
                           </div>
                         )}
                         {i === 0 && <div className="w-12 shrink-0" />}
@@ -835,12 +1168,14 @@ export function Stats() {
             <Card className="shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-success" /> Most Frequent Matched Skills
+                  <CheckCircle2 className="w-4 h-4 text-success" /> Most
+                  Frequent Matched Skills
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Skills and keywords you consistently have — your core strengths.
+                  Skills and keywords you consistently have — your core
+                  strengths.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {topMatchedKeywords.map((kw, i) => (
@@ -861,12 +1196,14 @@ export function Stats() {
             <Card className="shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Target className="w-4 h-4 text-destructive" /> Most Missing ATS Keywords
+                  <Target className="w-4 h-4 text-destructive" /> Most Missing
+                  ATS Keywords
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-3">
-                  These keywords appear most in job descriptions but are missing from your resumes.
+                  These keywords appear most in job descriptions but are missing
+                  from your resumes.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {topMissingKeywords.map((kw, i) => (
