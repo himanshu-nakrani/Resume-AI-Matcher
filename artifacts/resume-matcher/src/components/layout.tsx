@@ -18,13 +18,20 @@ import {
   MoreHorizontal,
   ServerCog,
 } from "lucide-react";
-import { getGetSystemStatusQueryKey, useGetSystemStatus } from "@workspace/api-client-react";
+import {
+  getGetSystemStatusQueryKey,
+  useGetSystemStatus,
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 import { CommandPalette } from "@/components/command-palette";
 import { NotificationsPanel } from "@/components/notifications-panel";
 import { PageTransition } from "@/components/page-transition";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Sheet,
   SheetContent,
@@ -34,7 +41,10 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-function routeBreadcrumb(location: string): { group: string | null; label: string } {
+function routeBreadcrumb(location: string): {
+  group: string | null;
+  label: string;
+} {
   const ROUTE_INDEX: Record<string, { group: string | null; label: string }> = {
     "/": { group: "Core", label: "Optimize" },
     "/tracker": { group: "Core", label: "Tracker" },
@@ -49,7 +59,8 @@ function routeBreadcrumb(location: string): { group: string | null; label: strin
     "/alerts": { group: "Jobs", label: "Alerts" },
   };
   if (ROUTE_INDEX[location]) return ROUTE_INDEX[location];
-  if (location.startsWith("/analysis/")) return { group: "Insights", label: "Analysis" };
+  if (location.startsWith("/analysis/"))
+    return { group: "Insights", label: "Analysis" };
   return { group: null, label: "" };
 }
 
@@ -79,7 +90,12 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/history", label: "History", icon: History, kbd: "G H" },
       { href: "/stats", label: "Stats", icon: BarChart2, kbd: "G S" },
-      { href: "/compare", label: "Compare", icon: GitCompareArrows, kbd: "G C" },
+      {
+        href: "/compare",
+        label: "Compare",
+        icon: GitCompareArrows,
+        kbd: "G C",
+      },
       { href: "/brand", label: "Brand", icon: Fingerprint, kbd: "G B" },
     ],
   },
@@ -123,12 +139,105 @@ const SHORTCUTS = [
   { keys: ["Esc"], description: "Close dialogs" },
 ];
 
+type ServiceStatusView = {
+  key: "ai" | "jobSearch" | "pdfExport";
+  configured: boolean;
+  label: string;
+  detail: string;
+};
+
+type SystemStatusView = {
+  state: "operational" | "degraded" | "offline" | "checking";
+  services: ServiceStatusView[];
+  malformed: boolean;
+};
+
+const DEFAULT_SERVICES: ServiceStatusView[] = [
+  {
+    key: "ai",
+    configured: false,
+    label: "AI",
+    detail: "Waiting for API status",
+  },
+  {
+    key: "jobSearch",
+    configured: false,
+    label: "Job search",
+    detail: "Waiting for API status",
+  },
+  {
+    key: "pdfExport",
+    configured: false,
+    label: "PDF export",
+    detail: "Waiting for API status",
+  },
+];
+
+function cleanText(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function normalizeServiceStatus(
+  key: ServiceStatusView["key"],
+  value: unknown,
+  fallback: ServiceStatusView,
+): ServiceStatusView {
+  if (!value || typeof value !== "object") return fallback;
+  const service = value as Record<string, unknown>;
+  return {
+    key,
+    configured: service.configured === true,
+    label: cleanText(service.label, fallback.label),
+    detail: cleanText(service.detail, fallback.detail),
+  };
+}
+
+function normalizeSystemStatus(value: unknown): SystemStatusView {
+  if (!value || typeof value !== "object") {
+    return { state: "checking", services: DEFAULT_SERVICES, malformed: true };
+  }
+
+  const source = value as Record<string, unknown>;
+  const servicesSource =
+    source.services && typeof source.services === "object"
+      ? (source.services as Record<string, unknown>)
+      : {};
+  const services = DEFAULT_SERVICES.map((fallback) =>
+    normalizeServiceStatus(fallback.key, servicesSource[fallback.key], {
+      ...fallback,
+      detail: "Status unavailable",
+    }),
+  );
+  const state =
+    source.status === "operational" || source.status === "degraded"
+      ? source.status
+      : services.some((service) => !service.configured)
+        ? "degraded"
+        : "checking";
+
+  return {
+    state,
+    services,
+    malformed:
+      !source.services ||
+      typeof source.services !== "object" ||
+      services.some((service) => service.detail === "Status unavailable"),
+  };
+}
+
 function isActive(location: string, href: string) {
-  if (href === "/") return location === "/" || location.startsWith("/analysis/");
+  if (href === "/")
+    return location === "/" || location.startsWith("/analysis/");
   return location === href || location.startsWith(`${href}/`);
 }
 
-function ShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function ShortcutsModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -164,8 +273,13 @@ function ShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
         <ul className="space-y-2">
           {SHORTCUTS.map((shortcut, i) => (
-            <li key={i} className="flex items-center justify-between gap-4 text-[12.5px]">
-              <span className="text-muted-foreground">{shortcut.description}</span>
+            <li
+              key={i}
+              className="flex items-center justify-between gap-4 text-[12.5px]"
+            >
+              <span className="text-muted-foreground">
+                {shortcut.description}
+              </span>
               <div className="flex shrink-0 items-center gap-1">
                 {shortcut.keys.map((key, j) => (
                   <kbd
@@ -196,17 +310,20 @@ function SystemStatusIndicator({ compact = false }: { compact?: boolean }) {
       retry: 1,
     },
   });
-  const services = data
-    ? [data.services.ai, data.services.jobSearch, data.services.pdfExport]
-    : [];
-  const configuredCount = services.filter((service) => service.configured).length;
-  const totalCount = services.length || 3;
-  const state = isError ? "offline" : data?.status ?? "checking";
+  const statusView = normalizeSystemStatus(data);
+  const services = statusView.services;
+  const configuredCount = services.filter(
+    (service) => service.configured,
+  ).length;
+  const totalCount = services.length;
+  const state = isError ? "offline" : isLoading ? "checking" : statusView.state;
   const label = isError
     ? "API offline"
     : isLoading
       ? "Checking services"
-      : `${configuredCount}/${totalCount} services`;
+      : statusView.malformed
+        ? "Status partial"
+        : `${configuredCount}/${totalCount} services`;
   const dotClass = cn(
     "h-1.5 w-1.5 rounded-full",
     state === "operational" && "bg-accent",
@@ -233,7 +350,11 @@ function SystemStatusIndicator({ compact = false }: { compact?: boolean }) {
           )}
           aria-label={`System status: ${label}`}
         >
-          {compact ? <ServerCog className={iconClass} /> : <span className={dotClass} aria-hidden />}
+          {compact ? (
+            <ServerCog className={iconClass} />
+          ) : (
+            <span className={dotClass} aria-hidden />
+          )}
           {!compact && <span>{label}</span>}
         </button>
       </TooltipTrigger>
@@ -247,12 +368,19 @@ function SystemStatusIndicator({ compact = false }: { compact?: boolean }) {
           </div>
           {isError ? (
             <p className="text-[12px] leading-5 text-muted-foreground">
-              The API status endpoint is not reachable. Check that the backend is running.
+              The API status endpoint is not reachable. Check that the backend
+              is running.
             </p>
           ) : (
             <div className="space-y-2">
+              {statusView.malformed && !isLoading ? (
+                <p className="rounded-md border border-warning/25 bg-warning/10 px-2 py-1.5 text-[11px] leading-4 text-muted-foreground">
+                  The status response was incomplete, so unavailable services
+                  are shown with safe defaults.
+                </p>
+              ) : null}
               {services.map((service) => (
-                <div key={service.label} className="flex gap-2">
+                <div key={service.key} className="flex gap-2">
                   <span
                     className={cn(
                       "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
@@ -262,7 +390,9 @@ function SystemStatusIndicator({ compact = false }: { compact?: boolean }) {
                   />
                   <div className="min-w-0">
                     <p className="text-[12px] font-medium">{service.label}</p>
-                    <p className="text-[11px] leading-4 text-muted-foreground">{service.detail}</p>
+                    <p className="text-[11px] leading-4 text-muted-foreground">
+                      {service.detail}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -285,7 +415,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isInput =
-        target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable;
       if (isInput) return;
 
       if ((e.metaKey || e.ctrlKey) && e.key === "?") {
@@ -347,7 +479,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen w-full bg-background">
       <CommandPalette />
-      <ShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      <ShortcutsModal
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
 
       <aside
         className={cn(
@@ -386,7 +521,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
 
-        <nav className="flex flex-1 flex-col overflow-y-auto px-2 pb-3" aria-label="Main">
+        <nav
+          className="flex flex-1 flex-col overflow-y-auto px-2 pb-3"
+          aria-label="Main"
+        >
           {navGroups.map((group, groupIdx) => (
             <div key={group.label}>
               {!sidebarCollapsed && (
@@ -416,7 +554,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       title={sidebarCollapsed ? item.label : undefined}
                     >
                       <item.icon
-                        className={cn("h-3.5 w-3.5 shrink-0", active && "text-accent")}
+                        className={cn(
+                          "h-3.5 w-3.5 shrink-0",
+                          active && "text-accent",
+                        )}
                         aria-hidden
                       />
                       {!sidebarCollapsed && (
@@ -447,7 +588,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             onClick={toggle}
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
           >
-            {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+            {isDark ? (
+              <Sun className="h-3.5 w-3.5" />
+            ) : (
+              <Moon className="h-3.5 w-3.5" />
+            )}
           </Button>
           <button
             type="button"
@@ -463,8 +608,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-surface-1 px-4 py-3 md:hidden">
-          <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <Link
+            href="/"
+            className="flex items-center gap-2 font-semibold text-foreground"
+          >
+            <svg
+              className="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M12 2L2 7l10 5 10-5-10-5z" />
               <path d="M2 17l10 5 10-5" />
               <path d="M2 12l10 5 10-5" />
@@ -474,8 +630,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-1">
             <SystemStatusIndicator compact />
             <NotificationsPanel />
-            <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle color mode">
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggle}
+              aria-label="Toggle color mode"
+            >
+              {isDark ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </header>
@@ -520,7 +685,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <div
                   className={cn(
                     "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
-                    active ? "text-foreground font-semibold" : "text-muted-foreground",
+                    active
+                      ? "text-foreground font-semibold"
+                      : "text-muted-foreground",
                   )}
                 >
                   <item.icon className="h-5 w-5" />
@@ -535,7 +702,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <div
                   className={cn(
                     "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
-                    mobileMoreItems.some((item) => isActive(location, item.href))
+                    mobileMoreItems.some((item) =>
+                      isActive(location, item.href),
+                    )
                       ? "text-foreground font-semibold"
                       : "text-muted-foreground",
                   )}
@@ -553,10 +722,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {mobileMoreItems.map((item) => {
                   const active = isActive(location, item.href);
                   return (
-                    <Link key={item.href} href={item.href} className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                      active ? "bg-muted text-foreground" : "text-foreground hover:bg-muted",
-                    )}>
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                        active
+                          ? "bg-muted text-foreground"
+                          : "text-foreground hover:bg-muted",
+                      )}
+                    >
                       <item.icon className="h-5 w-5 shrink-0" />
                       {item.label}
                     </Link>
