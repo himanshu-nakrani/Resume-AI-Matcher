@@ -705,8 +705,6 @@ components:
           enum: [pdf, latex, text]
         sourceLatex:
           type: string
-        deepseekApiKey:
-          type: string
         jobDescriptionText:
           type: string
       required:

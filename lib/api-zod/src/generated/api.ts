@@ -101,7 +101,6 @@ export const CreateAnalysisBody = zod.object({
   originalFileName: zod.string().optional(),
   originalFileType: zod.enum(["pdf", "latex", "text"]).optional(),
   sourceLatex: zod.string().optional(),
-  deepseekApiKey: zod.string().optional(),
   jobDescriptionText: zod.string(),
 });
 

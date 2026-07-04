@@ -14,6 +14,5 @@ export interface CreateAnalysisBody {
   originalFileName?: string;
   originalFileType?: CreateAnalysisBodyOriginalFileType;
   sourceLatex?: string;
-  deepseekApiKey?: string;
   jobDescriptionText: string;
 }

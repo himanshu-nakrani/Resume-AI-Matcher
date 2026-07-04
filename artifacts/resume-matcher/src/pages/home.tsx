@@ -101,7 +101,6 @@ export function Home() {
   const [detailHit, setDetailHit] = useState<JobSearchHit | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [preScreening, setPreScreening] = useState<Set<string>>(new Set());
   const [matchScores, setMatchScores] = useState<Map<string, { score: number; loading: boolean }>>(new Map());
 
   const savedUser = useMemo(() => {
@@ -295,15 +294,25 @@ export function Home() {
           ...(Object.keys(filters).length > 0 ? { filters } : {}),
         }),
       });
-      const data = await res.json();
-      if (res.ok) {
+      const data = await res.json().catch(() => null) as (JobSearchResponse & { error?: string }) | null;
+      if (!res.ok) {
+        throw new Error(data?.error ?? "Could not load more job results.");
+      }
+      if (data) {
         setExaResults((prev) => prev ? {
           ...data,
           results: [...prev.results, ...data.results],
         } : data);
       }
-    } catch { /* ignore */ }
-    setLoadingMore(false);
+    } catch (err) {
+      toast({
+        title: "Could not load more jobs",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   const saveJob = async (hit: JobSearchHit) => {
