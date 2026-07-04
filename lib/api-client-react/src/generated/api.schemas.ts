@@ -50,8 +50,16 @@ export interface SystemStatus {
   services: SystemStatusServices;
 }
 
+export interface ApiErrorDetail {
+  code: string;
+  message: string;
+  requestId?: string;
+  retryable?: boolean;
+  retryAfterMs?: number;
+}
+
 export interface ErrorResponse {
-  error: string;
+  error: string | ApiErrorDetail;
 }
 
 export type AnalysisOriginalFileType =
