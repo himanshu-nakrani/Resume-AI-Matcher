@@ -148,10 +148,10 @@ export function SavedJobsPage() {
           </div>
           <div>
             <h1 className="text-4xl font-bold tracking-tight">Saved Jobs</h1>
-            <p className="text-muted-foreground text-lg mt-1">
+            <div className="mt-1 flex items-center gap-2 text-lg text-muted-foreground">
               <Badge variant="secondary" className="mr-2">{savedJobs.length}</Badge>
-              bookmarked listings
-            </p>
+              <span>bookmarked listings</span>
+            </div>
           </div>
         </div>
       </div>
@@ -171,6 +171,7 @@ export function SavedJobsPage() {
               size="sm"
               className="absolute right-2 top-2"
               onClick={() => setSearchTerm("")}
+              aria-label="Clear saved job search"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -224,8 +225,13 @@ export function SavedJobsPage() {
                     {job.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {job.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-[11px] gap-1 cursor-pointer" onClick={() => removeTag(job.id, tag)}>
-                            {tag} <X className="w-2.5 h-2.5" />
+                          <Badge
+                            key={tag}
+                            variant="secondary"
+                            className="text-[11px]"
+                            onRemove={() => removeTag(job.id, tag)}
+                          >
+                            {tag}
                           </Badge>
                         ))}
                       </div>
@@ -244,7 +250,13 @@ export function SavedJobsPage() {
                         </div>
                       </div>
                     ) : job.notes ? (
-                      <p className="text-sm text-muted-foreground line-clamp-2 cursor-pointer" onClick={() => { setEditingNotes(job.id); setNotesDraft(job.notes ?? ""); }}>{job.notes}</p>
+                      <button
+                        type="button"
+                        className="line-clamp-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+                        onClick={() => { setEditingNotes(job.id); setNotesDraft(job.notes ?? ""); }}
+                      >
+                        {job.notes}
+                      </button>
                     ) : null}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -253,7 +265,13 @@ export function SavedJobsPage() {
                         <Save className="w-3.5 h-3.5 mr-1" /> Notes
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => deleteJob(job.id)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => deleteJob(job.id)}
+                      aria-label={`Remove saved job ${job.title}`}
+                    >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
