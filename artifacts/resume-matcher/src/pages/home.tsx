@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as pdfjsLib from "pdfjs-dist";
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 import {
   useCreateAnalysis,
   useListAnalyses,
@@ -45,8 +43,6 @@ import {
 import type { FormValues, JobSearchHit } from "./home/helpers";
 import { RecentAnalysesStrip, JobSearchSection } from "./home/sections";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-
 type ResumeFileType = "pdf" | "latex" | "text";
 
 function stripLatexToText(source: string) {
@@ -60,8 +56,13 @@ function stripLatexToText(source: string) {
 }
 
 async function parsePdf(file: File) {
+  const [{ GlobalWorkerOptions, getDocument }, { default: pdfWorkerUrl }] = await Promise.all([
+    import("pdfjs-dist"),
+    import("pdfjs-dist/build/pdf.worker.mjs?url"),
+  ]);
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+  GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+  const pdf = await getDocument({ data: bytes }).promise;
   const pages: string[] = [];
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
