@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { getListNotificationsQueryKey, useListNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const ICON_MAP = {
   deadline: CalendarClock,
@@ -26,21 +27,40 @@ type NotificationsPanelProps = {
 export function NotificationsPanel({ triggerClassName }: NotificationsPanelProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  const { data: notifications = [] } = useListNotifications({
-    query: { queryKey: getListNotificationsQueryKey(), refetchInterval: 60_000 },
+  const notificationsQueryKey = getListNotificationsQueryKey();
+  const { data: notifications = [], isLoading, error } = useListNotifications({
+    query: { queryKey: notificationsQueryKey, refetchInterval: 60_000 },
   });
 
   const markAll = useMarkAllNotificationsRead({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ["listNotifications"] }),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
+        toast({ title: "Notifications marked read" });
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not update notifications",
+          description: err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
     },
   });
 
   const markOne = useMarkNotificationRead({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ["listNotifications"] }),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: notificationsQueryKey }),
+      onError: (err) => {
+        toast({
+          title: "Could not mark notification read",
+          description: err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
     },
   });
 
@@ -76,7 +96,7 @@ export function NotificationsPanel({ triggerClassName }: NotificationsPanelProps
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-10 z-50 w-80 bg-card border rounded-xl shadow-xl overflow-hidden">
+          <div className="fixed left-3 right-3 top-14 z-50 overflow-hidden rounded-xl border bg-card shadow-xl md:bottom-14 md:right-auto md:top-auto md:w-80">
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <span className="text-sm font-semibold">Notifications</span>
               <div className="flex items-center gap-1">
@@ -85,20 +105,41 @@ export function NotificationsPanel({ triggerClassName }: NotificationsPanelProps
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2 text-xs"
+                    disabled={markAll.isPending}
                     onClick={() => markAll.mutate()}
                   >
                     <CheckCheck className="w-3.5 h-3.5 mr-1" />
                     Mark all read
                   </Button>
                 )}
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(false)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close notifications"
+                >
                   <X className="w-3.5 h-3.5" />
                 </Button>
               </div>
             </div>
 
-            <div className="max-h-80 overflow-y-auto">
-              {notifications.length === 0 ? (
+            <div className="max-h-[min(20rem,calc(100vh-10rem))] overflow-y-auto md:max-h-[min(20rem,calc(100vh-8rem))]">
+              {isLoading ? (
+                <div className="space-y-3 p-4">
+                  {[1, 2, 3].map((item) => (
+                    <div key={item} className="h-12 animate-pulse rounded-md bg-muted" />
+                  ))}
+                </div>
+              ) : error ? (
+                <div className="px-4 py-10 text-center text-destructive">
+                  <Bell className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs font-medium">Could not load notifications</p>
+                  <p className="mt-1 text-[11px] text-destructive/80">
+                    {error instanceof Error ? error.message : "Try again in a moment."}
+                  </p>
+                </div>
+              ) : notifications.length === 0 ? (
                 <div className="py-10 text-center text-muted-foreground">
                   <Bell className="w-6 h-6 mx-auto mb-2 opacity-30" />
                   <p className="text-xs">No notifications yet</p>
@@ -135,6 +176,7 @@ export function NotificationsPanel({ triggerClassName }: NotificationsPanelProps
                           variant="ghost"
                           size="icon"
                           className="w-5 h-5 shrink-0 mt-0.5 opacity-50 hover:opacity-100"
+                          disabled={markOne.isPending}
                           onClick={(e) => {
                             e.stopPropagation();
                             markOne.mutate({ id: n.id });

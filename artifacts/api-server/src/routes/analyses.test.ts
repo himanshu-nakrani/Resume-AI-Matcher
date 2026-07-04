@@ -82,6 +82,21 @@ describe("DELETE /api/analyses/:id", () => {
   });
 });
 
+describe("GET /api/notifications", () => {
+  it("returns ISO timestamps when SQLite stores createdAt as Unix seconds", async () => {
+    const sqliteClient = (db as unknown as { $client: { exec: (sql: string) => void } }).$client;
+    sqliteClient.exec(`
+      INSERT INTO notifications (type, title, body, read, created_at)
+      VALUES ('info', 'Timestamp check', 'Ensure notification dates render correctly.', 0, 1700000000);
+    `);
+
+    const response = await request(app).get("/api/notifications");
+
+    expect(response.status).toBe(200);
+    expect(response.body[0].createdAt).toBe("2023-11-14T22:13:20.000Z");
+  });
+});
+
 describe("PATCH /api/analyses/:id", () => {
   it("updates editable fields", async () => {
     const inserted = insertAnalysis({ jobTitle: "Patchable" });

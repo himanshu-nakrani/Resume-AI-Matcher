@@ -258,6 +258,20 @@ function formatLatexCompileError(err: unknown): string {
     : "Could not compile optimized resume PDF.";
 }
 
+function formatNotificationCreatedAt(value: Date | number | string): string {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "number") {
+    const milliseconds = value < 10_000_000_000 ? value * 1000 : value;
+    return new Date(milliseconds).toISOString();
+  }
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) {
+    const milliseconds = numeric < 10_000_000_000 ? numeric * 1000 : numeric;
+    return new Date(milliseconds).toISOString();
+  }
+  return new Date(value).toISOString();
+}
+
 function isLatexCompileFailure(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   return err.message.includes("LaTeX compilation failed") || err.message.includes("No LaTeX compiler found");
@@ -1155,7 +1169,7 @@ router.get("/notifications", async (req, res): Promise<void> => {
     body: n.body,
     analysisId: n.analysisId,
     read: n.read,
-    createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : String(n.createdAt),
+    createdAt: formatNotificationCreatedAt(n.createdAt),
   })));
   return;
 });
@@ -1184,7 +1198,7 @@ router.patch("/notifications/:id/read", async (req, res): Promise<void> => {
     body: updated.body,
     analysisId: updated.analysisId,
     read: updated.read,
-    createdAt: updated.createdAt instanceof Date ? updated.createdAt.toISOString() : String(updated.createdAt),
+    createdAt: formatNotificationCreatedAt(updated.createdAt),
   });
   return;
 });
