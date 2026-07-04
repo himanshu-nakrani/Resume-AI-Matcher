@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, and, like, or } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db, savedJobs } from "@workspace/db";
 import { z } from "zod";
+import { sendApiError } from "../lib/api-error";
 
 const router: IRouter = Router();
 
@@ -19,55 +20,109 @@ const SavedJobBody = z.object({
 });
 
 router.get("/saved-jobs", async (req, res) => {
-  const rows = await db.select().from(savedJobs).orderBy(desc(savedJobs.savedAt));
+  const rows = await db
+    .select()
+    .from(savedJobs)
+    .orderBy(desc(savedJobs.savedAt));
   res.json(rows);
 });
 
 router.post("/saved-jobs", async (req, res) => {
   const parsed = SavedJobBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    sendApiError(
+      req,
+      res,
+      400,
+      "invalid_saved_job",
+      "Saved job payload is invalid.",
+      { issues: parsed.error.issues },
+    );
     return;
   }
 
-  const existing = await db.select().from(savedJobs).where(eq(savedJobs.url, parsed.data.url));
+  const existing = await db
+    .select()
+    .from(savedJobs)
+    .where(eq(savedJobs.url, parsed.data.url));
   if (existing.length > 0) {
-    res.status(409).json({ error: "Job already saved", existing: existing[0] });
+    sendApiError(req, res, 409, "saved_job_exists", "Job already saved.", {
+      existing: existing[0],
+    });
     return;
   }
 
-  const [row] = await db.insert(savedJobs).values({
-    ...parsed.data,
-    publishedDate: parsed.data.publishedDate ?? undefined,
-  }).returning();
+  const [row] = await db
+    .insert(savedJobs)
+    .values({
+      ...parsed.data,
+      publishedDate: parsed.data.publishedDate ?? undefined,
+    })
+    .returning();
   res.status(201).json(row);
 });
 
 router.delete("/saved-jobs/:id", async (req, res) => {
   const id = Number(req.params.id);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const [row] = await db.delete(savedJobs).where(eq(savedJobs.id, id)).returning();
-  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  if (!Number.isInteger(id) || id <= 0) {
+    sendApiError(req, res, 400, "invalid_id", "Invalid saved job id.");
+    return;
+  }
+  const [row] = await db
+    .delete(savedJobs)
+    .where(eq(savedJobs.id, id))
+    .returning();
+  if (!row) {
+    sendApiError(req, res, 404, "saved_job_not_found", "Saved job not found.");
+    return;
+  }
   res.sendStatus(204);
 });
 
 router.patch("/saved-jobs/:id", async (req, res) => {
   const id = Number(req.params.id);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const [existing] = await db.select().from(savedJobs).where(eq(savedJobs.id, id));
-  if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+  if (!Number.isInteger(id) || id <= 0) {
+    sendApiError(req, res, 400, "invalid_id", "Invalid saved job id.");
+    return;
+  }
+  const [existing] = await db
+    .select()
+    .from(savedJobs)
+    .where(eq(savedJobs.id, id));
+  if (!existing) {
+    sendApiError(req, res, 404, "saved_job_not_found", "Saved job not found.");
+    return;
+  }
 
-  const body = z.object({
-    notes: z.string().optional(),
-    tags: z.array(z.string()).optional(),
-  }).safeParse(req.body);
-  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+  const body = z
+    .object({
+      notes: z.string().optional(),
+      tags: z.array(z.string()).optional(),
+    })
+    .safeParse(req.body);
+  if (!body.success) {
+    sendApiError(
+      req,
+      res,
+      400,
+      "invalid_saved_job_update",
+      "Saved job update is invalid.",
+      {
+        issues: body.error.issues,
+      },
+    );
+    return;
+  }
 
   const updates: Record<string, unknown> = {};
   if (body.data.notes !== undefined) updates.notes = body.data.notes;
   if (body.data.tags !== undefined) updates.tags = body.data.tags;
 
-  const [updated] = await db.update(savedJobs).set(updates).where(eq(savedJobs.id, id)).returning();
+  const [updated] = await db
+    .update(savedJobs)
+    .set(updates)
+    .where(eq(savedJobs.id, id))
+    .returning();
   res.json(updated);
 });
 

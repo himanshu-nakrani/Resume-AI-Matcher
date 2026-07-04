@@ -32,6 +32,7 @@ import {
   FIREWORKS_DEFAULT_MODEL,
 } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
+import { sendApiError } from "../lib/api-error";
 import { sendAiError } from "../lib/send-ai-error";
 import { parseAiJson } from "../lib/parse-ai-json";
 import { optimizeLatexResume, canOptimizeLatex } from "../lib/latex-optimizer";
@@ -50,6 +51,35 @@ function safeDownloadName(parts: Array<string | null | undefined>, extension: st
     .replace(/^-|-$/g, "")
     .slice(0, 80);
   return `${base || "optimized-resume"}.${extension}`;
+}
+
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function safeScore(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
 async function tryCompileLatex(
@@ -256,6 +286,20 @@ function formatLatexCompileError(err: unknown): string {
   return detail
     ? `Could not compile optimized resume PDF. ${detail}`.slice(0, 700)
     : "Could not compile optimized resume PDF.";
+}
+
+function formatNotificationCreatedAt(value: Date | number | string): string {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "number") {
+    const milliseconds = value < 10_000_000_000 ? value * 1000 : value;
+    return new Date(milliseconds).toISOString();
+  }
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) {
+    const milliseconds = numeric < 10_000_000_000 ? numeric * 1000 : numeric;
+    return new Date(milliseconds).toISOString();
+  }
+  return new Date(value).toISOString();
 }
 
 function isLatexCompileFailure(err: unknown): boolean {
@@ -560,7 +604,7 @@ router.post("/analyses/:id/validate-latex", async (req, res): Promise<void> => {
 router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
   const params = GetAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", "The analysis id is invalid.");
     return;
   }
 
@@ -569,13 +613,19 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
   });
 
   if (!analysis) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
   const latex = analysis.optimizedLatex?.trim();
   if (!latex) {
-    res.status(400).json({ error: "No optimized LaTeX is available for this analysis." });
+    sendApiError(
+      req,
+      res,
+      400,
+      "optimized_latex_missing",
+      "No optimized LaTeX is available for this analysis.",
+    );
     return;
   }
 
@@ -600,7 +650,7 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
     } catch (compileErr) {
       if (!isPdfRepairRequested(req)) {
         req.log.warn({ err: compileErr, id: params.data.id }, "Optimized resume PDF compilation failed");
-        res.status(422).json({ error: formatLatexCompileError(compileErr) });
+        sendApiError(req, res, 422, "optimized_pdf_compile_failed", formatLatexCompileError(compileErr));
         return;
       }
       req.log.warn({ err: compileErr, id: params.data.id }, "Initial LaTeX compilation failed; attempting AI repair");
@@ -630,10 +680,10 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
     if (isAiError(err)) {
       sendAiError(res, err);
     } else if (isLatexCompileFailure(err)) {
-      res.status(422).json({ error: formatLatexCompileError(err) });
+      sendApiError(req, res, 422, "optimized_pdf_compile_failed", formatLatexCompileError(err));
     } else {
       const message = err instanceof Error ? err.message : "Could not compile optimized resume PDF.";
-      res.status(500).json({ error: message });
+      sendApiError(req, res, 500, "optimized_pdf_export_failed", message);
     }
   }
 });
@@ -654,12 +704,12 @@ router.get("/analyses/stats", async (req, res): Promise<void> => {
     return;
   }
 
-  const avgFit = rows.reduce((sum, r) => sum + r.fitScore, 0) / total;
-  const avgAts = rows.reduce((sum, r) => sum + r.atsScore, 0) / total;
+  const avgFit = rows.reduce((sum, r) => sum + safeScore(r.fitScore), 0) / total;
+  const avgAts = rows.reduce((sum, r) => sum + safeScore(r.atsScore), 0) / total;
 
   const keywordCounts: Record<string, number> = {};
   for (const row of rows) {
-    const missing = (row.atsKeywordsMissing as string[]) ?? [];
+    const missing = stringArray(row.atsKeywordsMissing);
     for (const kw of missing) {
       keywordCounts[kw] = (keywordCounts[kw] ?? 0) + 1;
     }
@@ -793,11 +843,11 @@ router.post("/analyses/:id/duplicate", async (req, res): Promise<void> => {
       jobDescriptionText: original.jobDescriptionText,
       fitScore: original.fitScore,
       fitRationale: original.fitRationale,
-      strengths: (original.strengths as string[]) ?? [],
-      gaps: (original.gaps as string[]) ?? [],
-      improvements: (original.improvements as string[]) ?? [],
-      atsKeywordsMatched: (original.atsKeywordsMatched as string[]) ?? [],
-      atsKeywordsMissing: (original.atsKeywordsMissing as string[]) ?? [],
+      strengths: stringArray(original.strengths),
+      gaps: stringArray(original.gaps),
+      improvements: stringArray(original.improvements),
+      atsKeywordsMatched: stringArray(original.atsKeywordsMatched),
+      atsKeywordsMissing: stringArray(original.atsKeywordsMissing),
       atsScore: original.atsScore,
       coverLetter: null,
       linkedinPost: null,
@@ -1103,8 +1153,8 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
 
   req.log.info({ id: params.data.id }, "Rewriting resume bullet");
 
-  const missingKeywords = (analysis.atsKeywordsMissing as string[]).slice(0, 10).join(", ");
-  const gaps = (analysis.gaps as string[]).slice(0, 5).join("; ");
+  const missingKeywords = stringArray(analysis.atsKeywordsMissing).slice(0, 10).join(", ");
+  const gaps = stringArray(analysis.gaps).slice(0, 5).join("; ");
 
   const prompt =
     "You are an expert resume writer. Rewrite the following resume bullet point to be stronger, more impactful, and to naturally incorporate relevant keywords from the job description.\n\n" +
@@ -1155,7 +1205,7 @@ router.get("/notifications", async (req, res): Promise<void> => {
     body: n.body,
     analysisId: n.analysisId,
     read: n.read,
-    createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : String(n.createdAt),
+    createdAt: formatNotificationCreatedAt(n.createdAt),
   })));
   return;
 });
@@ -1184,7 +1234,7 @@ router.patch("/notifications/:id/read", async (req, res): Promise<void> => {
     body: updated.body,
     analysisId: updated.analysisId,
     read: updated.read,
-    createdAt: updated.createdAt instanceof Date ? updated.createdAt.toISOString() : String(updated.createdAt),
+    createdAt: formatNotificationCreatedAt(updated.createdAt),
   });
   return;
 });

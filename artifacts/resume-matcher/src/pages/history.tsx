@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   useListAnalyses,
@@ -15,6 +15,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,9 +54,8 @@ import {
   Copy,
   Bookmark,
   BookmarkCheck,
-  Pencil,
-  Check,
   MoreHorizontal,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -52,18 +69,58 @@ import {
 import { formatDistanceToNow, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
-type Status = "not_applied" | "applied" | "got_interview" | "got_online_exam" | "selected" | "rejected";
+type Status =
+  | "not_applied"
+  | "applied"
+  | "got_interview"
+  | "got_online_exam"
+  | "selected"
+  | "rejected";
 
-const STATUS_CONFIG: Record<Status, { label: string; className: string; icon?: string }> = {
-  not_applied: { label: "Not Applied", className: "bg-muted text-muted-foreground border-muted-foreground/30 hover:bg-muted/80 transition-colors" },
-  applied: { label: "Applied", className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800 transition-colors" },
-  got_interview: { label: "Got Interview", className: "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800 transition-colors" },
-  got_online_exam: { label: "Got Online Exam", className: "bg-secondary text-secondary-foreground border-border dark:bg-secondary dark:text-secondary-foreground dark:border-border transition-colors" },
-  selected: { label: "Selected", className: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800 transition-colors" },
-  rejected: { label: "Rejected", className: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800 transition-colors" },
+const STATUS_CONFIG: Record<
+  Status,
+  { label: string; className: string; icon?: string }
+> = {
+  not_applied: {
+    label: "Not Applied",
+    className:
+      "bg-muted text-muted-foreground border-muted-foreground/30 hover:bg-muted/80 transition-colors",
+  },
+  applied: {
+    label: "Applied",
+    className:
+      "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800 transition-colors",
+  },
+  got_interview: {
+    label: "Got Interview",
+    className:
+      "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800 transition-colors",
+  },
+  got_online_exam: {
+    label: "Got Online Exam",
+    className:
+      "bg-secondary text-secondary-foreground border-border dark:bg-secondary dark:text-secondary-foreground dark:border-border transition-colors",
+  },
+  selected: {
+    label: "Selected",
+    className:
+      "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800 transition-colors",
+  },
+  rejected: {
+    label: "Rejected",
+    className:
+      "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800 transition-colors",
+  },
 };
 
-const ALL_STATUSES: Status[] = ["not_applied", "applied", "got_interview", "got_online_exam", "selected", "rejected"];
+const ALL_STATUSES: Status[] = [
+  "not_applied",
+  "applied",
+  "got_interview",
+  "got_online_exam",
+  "selected",
+  "rejected",
+];
 const SAVED_SEARCHES_KEY = "optimatch_saved_searches";
 
 type SavedSearch = {
@@ -74,9 +131,102 @@ type SavedSearch = {
   favoritesOnly: boolean;
 };
 
+type DeleteRequest =
+  | { kind: "single"; ids: number[] }
+  | { kind: "bulk"; ids: number[] };
+
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function safeScore(value: unknown): number {
+  const score = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(score)
+    ? Math.max(0, Math.min(100, Math.round(score)))
+    : 0;
+}
+
+function scoreColor(score: number): string {
+  if (score >= 80) return "hsl(var(--success))";
+  if (score >= 60) return "hsl(var(--warning))";
+  return "hsl(var(--destructive))";
+}
+
+function dateValue(value: unknown): Date | null {
+  if (
+    typeof value !== "string" &&
+    typeof value !== "number" &&
+    !(value instanceof Date)
+  ) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function relativeDate(value: unknown): string {
+  const date = dateValue(value);
+  return date
+    ? formatDistanceToNow(date, { addSuffix: true })
+    : "Date unavailable";
+}
+
+function fullDate(value: unknown): string {
+  const date = dateValue(value);
+  return date ? format(date, "PPp") : "Date unavailable";
+}
+
+function exportDate(value: unknown): string {
+  const date = dateValue(value);
+  return date ? format(date, "yyyy-MM-dd") : "";
+}
+
+function csvCell(value: unknown): string {
+  const text = value == null ? "" : String(value);
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+
+function isSavedSearch(value: unknown): value is SavedSearch {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<SavedSearch>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.name === "string" &&
+    typeof candidate.query === "string" &&
+    typeof candidate.favoritesOnly === "boolean" &&
+    (candidate.status === "all" ||
+      ALL_STATUSES.includes(candidate.status as Status))
+  );
+}
+
 function loadSavedSearches(): SavedSearch[] {
   try {
-    return JSON.parse(localStorage.getItem(SAVED_SEARCHES_KEY) ?? "[]");
+    const parsed = JSON.parse(
+      localStorage.getItem(SAVED_SEARCHES_KEY) ?? "[]",
+    ) as unknown;
+    return Array.isArray(parsed) ? parsed.filter(isSavedSearch) : [];
   } catch {
     return [];
   }
@@ -86,14 +236,35 @@ function saveSavedSearches(searches: SavedSearch[]) {
   localStorage.setItem(SAVED_SEARCHES_KEY, JSON.stringify(searches));
 }
 
-function StatusPicker({ analysisId, currentStatus }: { analysisId: number; currentStatus: string }) {
+function StatusPicker({
+  analysisId,
+  currentStatus,
+}: {
+  analysisId: number;
+  currentStatus: string;
+}) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const updateAnalysis = useUpdateAnalysis({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
+        toast({ title: "Status updated" });
+      },
+      onError: (error) => {
+        toast({
+          title: "Could not update status",
+          description:
+            error instanceof Error ? error.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
     },
   });
-  const status = (currentStatus as Status) in STATUS_CONFIG ? (currentStatus as Status) : "not_applied";
+  const status =
+    (currentStatus as Status) in STATUS_CONFIG
+      ? (currentStatus as Status)
+      : "not_applied";
   const config = STATUS_CONFIG[status];
   return (
     <DropdownMenu>
@@ -101,6 +272,7 @@ function StatusPicker({ analysisId, currentStatus }: { analysisId: number; curre
         <button
           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border transition-opacity hover:opacity-80 ${config.className}`}
           data-testid={`status-picker-${analysisId}`}
+          disabled={updateAnalysis.isPending}
         >
           {config.label}
           <ChevronDown className="w-3 h-3" />
@@ -111,10 +283,16 @@ function StatusPicker({ analysisId, currentStatus }: { analysisId: number; curre
           <DropdownMenuItem
             key={s}
             className="cursor-pointer"
-            onSelect={() => updateAnalysis.mutate({ id: analysisId, data: { status: s } })}
+            disabled={updateAnalysis.isPending || s === status}
+            onSelect={() => {
+              if (s !== status)
+                updateAnalysis.mutate({ id: analysisId, data: { status: s } });
+            }}
             data-testid={`status-option-${s}`}
           >
-            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border ${STATUS_CONFIG[s].className}`}>
+            <span
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border ${STATUS_CONFIG[s].className}`}
+            >
               {STATUS_CONFIG[s].label}
             </span>
           </DropdownMenuItem>
@@ -124,84 +302,47 @@ function StatusPicker({ analysisId, currentStatus }: { analysisId: number; curre
   );
 }
 
-function FavoriteButton({ analysisId, isFavorite }: { analysisId: number; isFavorite: boolean }) {
+function FavoriteButton({
+  analysisId,
+  isFavorite,
+}: {
+  analysisId: number;
+  isFavorite: boolean;
+}) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const update = useUpdateAnalysis({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
+        toast({
+          title: isFavorite ? "Removed from favorites" : "Added to favorites",
+        });
+      },
+      onError: (error) => {
+        toast({
+          title: "Could not update favorite",
+          description:
+            error instanceof Error ? error.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
     },
   });
   return (
     <button
       onClick={(e) => {
         e.stopPropagation();
+        if (update.isPending) return;
         update.mutate({ id: analysisId, data: { isFavorite: !isFavorite } });
       }}
-      className={`p-1 rounded transition-colors ${isFavorite ? "text-pink-500" : "text-muted-foreground hover:text-pink-400"}`}
+      disabled={update.isPending}
+      className={`p-1 rounded transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isFavorite ? "text-pink-500" : "text-muted-foreground hover:text-pink-400"}`}
       title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+      aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
     >
       <Heart className={`w-3.5 h-3.5 ${isFavorite ? "fill-pink-500" : ""}`} />
     </button>
-  );
-}
-
-function InlineEdit({
-  value,
-  onSave,
-  className,
-}: {
-  value: string;
-  onSave: (v: string) => void;
-  className?: string;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const start = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setDraft(value);
-    setEditing(true);
-    setTimeout(() => inputRef.current?.focus(), 0);
-  };
-
-  const commit = () => {
-    const trimmed = draft.trim();
-    if (trimmed && trimmed !== value) onSave(trimmed);
-    setEditing(false);
-  };
-
-  if (editing) {
-    return (
-      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-        <input
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commit();
-            if (e.key === "Escape") setEditing(false);
-          }}
-          onBlur={commit}
-          className="text-sm font-semibold bg-transparent border-b border-primary outline-none w-full"
-        />
-        <button onClick={commit} className="text-primary shrink-0"><Check className="w-3.5 h-3.5" /></button>
-        <button onClick={() => setEditing(false)} className="text-muted-foreground shrink-0"><X className="w-3.5 h-3.5" /></button>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`flex items-center gap-1.5 group/edit ${className}`}>
-      <span>{value}</span>
-      <button
-        onClick={start}
-        className="opacity-0 group-hover/edit:opacity-100 transition-opacity text-muted-foreground hover:text-foreground p-0.5 rounded"
-        title="Edit"
-      >
-        <Pencil className="w-3 h-3" />
-      </button>
-    </div>
   );
 }
 
@@ -212,27 +353,54 @@ export function History() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(loadSavedSearches);
+  const [savedSearches, setSavedSearches] =
+    useState<SavedSearch[]>(loadSavedSearches);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isSaveSearchOpen, setIsSaveSearchOpen] = useState(false);
+  const [savedSearchName, setSavedSearchName] = useState("");
+  const [deleteRequest, setDeleteRequest] = useState<DeleteRequest | null>(
+    null,
+  );
 
-  const { data: analyses, isLoading } = useListAnalyses();
+  const {
+    data: analyses,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useListAnalyses();
   const deleteAnalysis = useDeleteAnalysis({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
-    },
-  });
-  const updateAnalysis = useUpdateAnalysis({
-    mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
+      onError: (err) => {
+        toast({
+          title: "Could not delete analysis",
+          description:
+            err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
     },
   });
   const duplicateAnalysis = useDuplicateAnalysis({
     mutation: {
       onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
-        toast({ title: "Analysis duplicated", description: "Opening the duplicate now." });
+        toast({
+          title: "Analysis duplicated",
+          description: "Opening the duplicate now.",
+        });
         setLocation(`/analysis/${data.id}`);
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not duplicate analysis",
+          description:
+            err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
       },
     },
   });
@@ -263,50 +431,77 @@ export function History() {
   }, [filtered]);
 
   const statusCounts = analyses
-    ? ALL_STATUSES.reduce((acc, s) => {
-        acc[s] = analyses.filter((a) => a.status === s).length;
-        return acc;
-      }, {} as Record<Status, number>)
+    ? ALL_STATUSES.reduce(
+        (acc, s) => {
+          acc[s] = analyses.filter((a) => a.status === s).length;
+          return acc;
+        },
+        {} as Record<Status, number>,
+      )
     : null;
 
   const hasFilters = search || statusFilter !== "all" || favoritesOnly;
 
   const exportCSV = useCallback(() => {
     if (!filtered.length) return;
-    const headers = ["ID", "Job Title", "Company", "Fit Score", "ATS Score", "Status", "Favorite", "Deadline", "Notes", "Created At"];
+    const headers = [
+      "ID",
+      "Job Title",
+      "Company",
+      "Fit Score",
+      "ATS Score",
+      "Status",
+      "Favorite",
+      "Deadline",
+      "Notes",
+      "Created At",
+    ];
     const rows = filtered.map((a) => [
       a.id,
-      '"' + a.jobTitle.replace(/"/g, '""') + '"',
-      '"' + (a.companyName ?? "").replace(/"/g, '""') + '"',
-      a.fitScore,
-      a.atsScore,
+      csvCell(a.jobTitle),
+      csvCell(a.companyName),
+      safeScore(a.fitScore),
+      safeScore(a.atsScore),
       a.status,
       a.isFavorite ? "Yes" : "No",
       a.deadline ?? "",
-      '"' + (a.notes ?? "").replace(/"/g, '""') + '"',
-      format(new Date(a.createdAt), "yyyy-MM-dd"),
+      csvCell(a.notes),
+      exportDate(a.createdAt),
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "optimatch-analyses-" + format(new Date(), "yyyy-MM-dd") + ".csv";
+    a.download =
+      "optimatch-analyses-" + format(new Date(), "yyyy-MM-dd") + ".csv";
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: "CSV exported", description: `${filtered.length} analyses downloaded.` });
+    toast({
+      title: "CSV exported",
+      description: `${filtered.length} analyses downloaded.`,
+    });
   }, [filtered, toast]);
 
   const saveCurrentSearch = useCallback(() => {
     if (!hasFilters) {
-      toast({ title: "Nothing to save", description: "Set a search or filter first.", variant: "destructive" });
+      toast({
+        title: "Nothing to save",
+        description: "Set a search or filter first.",
+        variant: "destructive",
+      });
       return;
     }
-    const name = window.prompt("Name this saved search:");
-    if (!name?.trim()) return;
+    setSavedSearchName(search.trim() || "Filtered analyses");
+    setIsSaveSearchOpen(true);
+  }, [hasFilters, search, toast]);
+
+  const confirmSaveSearch = useCallback(() => {
+    const trimmedName = savedSearchName.trim();
+    if (!trimmedName) return;
     const newSearch: SavedSearch = {
       id: crypto.randomUUID(),
-      name: name.trim(),
+      name: trimmedName,
       query: search,
       status: statusFilter,
       favoritesOnly,
@@ -314,8 +509,20 @@ export function History() {
     const updated = [...savedSearches, newSearch];
     setSavedSearches(updated);
     saveSavedSearches(updated);
-    toast({ title: "Search saved", description: `"${newSearch.name}" saved for quick access.` });
-  }, [hasFilters, search, statusFilter, favoritesOnly, savedSearches, toast]);
+    setIsSaveSearchOpen(false);
+    setSavedSearchName("");
+    toast({
+      title: "Search saved",
+      description: `"${newSearch.name}" saved for quick access.`,
+    });
+  }, [
+    favoritesOnly,
+    savedSearchName,
+    savedSearches,
+    search,
+    statusFilter,
+    toast,
+  ]);
 
   const applySavedSearch = useCallback((s: SavedSearch) => {
     setSearch(s.query);
@@ -324,11 +531,14 @@ export function History() {
     setShowSavedSearches(false);
   }, []);
 
-  const deleteSavedSearch = useCallback((id: string) => {
-    const updated = savedSearches.filter((s) => s.id !== id);
-    setSavedSearches(updated);
-    saveSavedSearches(updated);
-  }, [savedSearches]);
+  const deleteSavedSearch = useCallback(
+    (id: string) => {
+      const updated = savedSearches.filter((s) => s.id !== id);
+      setSavedSearches(updated);
+      saveSavedSearches(updated);
+    },
+    [savedSearches],
+  );
 
   const toggleSelect = useCallback((id: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -357,16 +567,45 @@ export function History() {
 
   const deleteSelected = useCallback(() => {
     if (selectedIds.size === 0) return;
-    const count = selectedIds.size;
-    const confirmed = window.confirm(`Delete ${count} selected ${count === 1 ? "analysis" : "analyses"}? This cannot be undone.`);
-    if (!confirmed) return;
-    Promise.all(Array.from(selectedIds).map((id) => deleteAnalysis.mutateAsync({ id })))
+    setDeleteRequest({ kind: "bulk", ids: Array.from(selectedIds) });
+  }, [selectedIds]);
+
+  const deleteOne = useCallback((id: number) => {
+    setDeleteRequest({ kind: "single", ids: [id] });
+  }, []);
+
+  const confirmDeleteRequest = useCallback(() => {
+    if (!deleteRequest) return;
+    const ids = deleteRequest.ids;
+    const count = ids.length;
+    Promise.all(ids.map((id) => deleteAnalysis.mutateAsync({ id })))
       .then(() => {
-        setSelectedIds(new Set());
-        toast({ title: `${count} ${count === 1 ? "analysis" : "analyses"} deleted` });
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          ids.forEach((id) => next.delete(id));
+          return next;
+        });
+        setDeleteRequest(null);
+        toast({
+          title: `${count} ${count === 1 ? "analysis" : "analyses"} deleted`,
+        });
       })
-      .catch(() => toast({ title: "Some deletions failed", variant: "destructive" }));
-  }, [selectedIds, deleteAnalysis, toast]);
+      .catch((err) =>
+        toast({
+          title: "Some deletions failed",
+          description:
+            err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        }),
+      );
+  }, [deleteAnalysis, deleteRequest, toast]);
+
+  const deleteCount = deleteRequest?.ids.length ?? 0;
+  const deleteTitle =
+    deleteRequest?.kind === "single"
+      ? analyses?.find((analysis) => analysis.id === deleteRequest.ids[0])
+          ?.jobTitle
+      : null;
 
   return (
     <div className="space-y-6">
@@ -387,7 +626,10 @@ export function History() {
         </div>
         <div className="flex items-center gap-2">
           {savedSearches.length > 0 && (
-            <DropdownMenu open={showSavedSearches} onOpenChange={setShowSavedSearches}>
+            <DropdownMenu
+              open={showSavedSearches}
+              onOpenChange={setShowSavedSearches}
+            >
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm">
                   <BookmarkCheck className="w-3.5 h-3.5 mr-1.5" />
@@ -407,7 +649,10 @@ export function History() {
                     <span className="flex-1 truncate text-sm">{s.name}</span>
                     <button
                       className="shrink-0 text-muted-foreground hover:text-destructive p-0.5 rounded"
-                      onClick={(e) => { e.stopPropagation(); deleteSavedSearch(s.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteSavedSearch(s.id);
+                      }}
                       aria-label="Delete saved search"
                     >
                       <X className="w-3 h-3" />
@@ -429,13 +674,17 @@ export function History() {
       {/* BULK SELECTION BAR */}
       {selectedIds.size > 0 && (
         <div className="sticky top-12 z-20 -mx-6 -my-2 flex items-center justify-between gap-3 border-b border-border bg-surface-1 px-6 py-2 backdrop-blur-md">
-          <span className="text-[13px] text-muted-foreground">{selectedIds.size} selected</span>
+          <span className="text-[13px] text-muted-foreground">
+            {selectedIds.size} selected
+          </span>
           <div className="flex items-center gap-2">
             <Button variant="destructive" size="sm" onClick={deleteSelected}>
               <Trash2 className="w-3.5 h-3.5 mr-1.5" />
               Delete {selectedIds.size}
             </Button>
-            <Button variant="ghost" size="sm" onClick={clearSelection}>Clear</Button>
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              Clear
+            </Button>
           </div>
         </div>
       )}
@@ -468,7 +717,9 @@ export function History() {
               {ALL_STATUSES.map((s) => (
                 <button
                   key={s}
-                  onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
+                  onClick={() =>
+                    setStatusFilter(statusFilter === s ? "all" : s)
+                  }
                   className={cn(
                     "h-7 rounded-[4px] px-2 text-[11px] font-medium tracking-[0.04em] transition-colors",
                     statusFilter === s
@@ -485,17 +736,37 @@ export function History() {
               size="sm"
               onClick={() => setFavoritesOnly(!favoritesOnly)}
             >
-              <Heart className={cn("w-3.5 h-3.5 mr-1.5", favoritesOnly && "fill-current")} />
+              <Heart
+                className={cn(
+                  "w-3.5 h-3.5 mr-1.5",
+                  favoritesOnly && "fill-current",
+                )}
+              />
               Favorites
             </Button>
             {hasFilters && (
-              <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); setFavoritesOnly(false); }}>
-                <X className="w-3.5 h-3.5 mr-1.5" />Clear
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
+                  setFavoritesOnly(false);
+                }}
+              >
+                <X className="w-3.5 h-3.5 mr-1.5" />
+                Clear
               </Button>
             )}
             {hasFilters && (
-              <Button variant="ghost" size="sm" onClick={saveCurrentSearch} title="Save this search">
-                <Bookmark className="w-3.5 h-3.5 mr-1.5" />Save
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={saveCurrentSearch}
+                title="Save this search"
+              >
+                <Bookmark className="w-3.5 h-3.5 mr-1.5" />
+                Save
               </Button>
             )}
           </CardContent>
@@ -511,8 +782,33 @@ export function History() {
         </div>
       )}
 
+      {!isLoading && error && (
+        <div className="flex flex-col gap-3 rounded-md border border-destructive/25 bg-destructive/10 px-3 py-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-medium">Could not load analyses.</p>
+            <p className="mt-1 text-[12px] text-destructive/85">
+              {error instanceof Error
+                ? error.message
+                : "Try again in a moment."}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-destructive/30 bg-background/50 text-destructive hover:bg-destructive/10"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw
+              className={`mr-1.5 h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`}
+            />
+            {isFetching ? "Retrying..." : "Retry"}
+          </Button>
+        </div>
+      )}
+
       {/* EMPTY: NO ANALYSES AT ALL */}
-      {!isLoading && analyses && analyses.length === 0 && (
+      {!isLoading && !error && analyses && analyses.length === 0 && (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -520,11 +816,15 @@ export function History() {
             </EmptyMedia>
             <EmptyTitle>No analyses yet</EmptyTitle>
             <EmptyDescription>
-              Paste a resume and a job description on the home page to see your first analysis.
+              Paste a resume and a job description on the home page to see your
+              first analysis.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button onClick={() => setLocation("/")} data-testid="button-new-analysis">
+            <Button
+              onClick={() => setLocation("/")}
+              data-testid="button-new-analysis"
+            >
               Start a new analysis
             </Button>
           </EmptyContent>
@@ -532,19 +832,32 @@ export function History() {
       )}
 
       {/* EMPTY: NO MATCHES FOR CURRENT FILTERS */}
-      {!isLoading && analyses && analyses.length > 0 && filtered.length === 0 && (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>No matches</EmptyTitle>
-            <EmptyDescription>No analyses match your filters.</EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button variant="secondary" onClick={() => { setSearch(""); setStatusFilter("all"); setFavoritesOnly(false); }}>
-              Clear filters
-            </Button>
-          </EmptyContent>
-        </Empty>
-      )}
+      {!isLoading &&
+        !error &&
+        analyses &&
+        analyses.length > 0 &&
+        filtered.length === 0 && (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>No matches</EmptyTitle>
+              <EmptyDescription>
+                No analyses match your filters.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
+                  setFavoritesOnly(false);
+                }}
+              >
+                Clear filters
+              </Button>
+            </EmptyContent>
+          </Empty>
+        )}
 
       {/* DESKTOP TABLE (md+) */}
       {!isLoading && filtered.length > 0 && (
@@ -553,26 +866,43 @@ export function History() {
             <thead>
               <tr className="border-b border-border">
                 <th className="w-8 px-3 py-2"></th>
-                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Title</th>
-                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Company</th>
-                <th className="w-16 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Fit</th>
-                <th className="w-16 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">ATS</th>
-                <th className="w-32 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Status</th>
-                <th className="hidden lg:table-cell w-28 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Created</th>
+                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                  Title
+                </th>
+                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                  Company
+                </th>
+                <th className="w-16 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                  Fit
+                </th>
+                <th className="w-16 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                  ATS
+                </th>
+                <th className="w-32 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                  Status
+                </th>
+                <th className="hidden lg:table-cell w-28 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                  Created
+                </th>
                 <th className="w-12 px-3 py-2"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((a) => {
-                const isSampled = (a.tags ?? []).includes("sample");
+                const fitScore = safeScore(a.fitScore);
+                const atsScore = safeScore(a.atsScore);
+                const isSampled = stringArray(a.tags).includes("sample");
                 return (
                   <tr
                     key={a.id}
                     className="border-b border-border hover:bg-surface-2 cursor-pointer group"
                     onClick={() => setLocation(`/analysis/${a.id}`)}
-                    title={`Created ${format(new Date(a.createdAt), "PPp")}`}
+                    title={`Created ${fullDate(a.createdAt)}`}
                   >
-                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="px-3 py-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <input
                         type="checkbox"
                         className="h-3.5 w-3.5 rounded border-border"
@@ -583,40 +913,76 @@ export function History() {
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <FavoriteButton analysisId={a.id} isFavorite={a.isFavorite} />
-                        <span className="text-[13px] font-medium truncate">{a.jobTitle}</span>
-                        {isSampled && <Badge variant="soft" size="sm">Sample</Badge>}
+                        <FavoriteButton
+                          analysisId={a.id}
+                          isFavorite={a.isFavorite}
+                        />
+                        <span className="text-[13px] font-medium truncate">
+                          {a.jobTitle}
+                        </span>
+                        {isSampled && (
+                          <Badge variant="soft" size="sm">
+                            Sample
+                          </Badge>
+                        )}
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-[13px] text-muted-foreground truncate">{a.companyName ?? "—"}</td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[13px]" style={{ color: a.fitScore >= 80 ? "hsl(var(--success))" : a.fitScore >= 60 ? "hsl(var(--warning))" : "hsl(var(--destructive))" }}>
-                      {a.fitScore}
+                    <td className="px-3 py-2 text-[13px] text-muted-foreground truncate">
+                      {a.companyName ?? "—"}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[13px] text-muted-foreground">{a.atsScore}</td>
-                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                      <StatusPicker analysisId={a.id} currentStatus={a.status} />
+                    <td
+                      className="px-3 py-2 text-right font-mono tabular-nums text-[13px]"
+                      style={{ color: scoreColor(fitScore) }}
+                    >
+                      {fitScore}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-[13px] text-muted-foreground">
+                      {atsScore}
+                    </td>
+                    <td
+                      className="px-3 py-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <StatusPicker
+                        analysisId={a.id}
+                        currentStatus={a.status}
+                      />
                     </td>
                     <td className="hidden lg:table-cell px-3 py-2 text-[12px] text-muted-foreground">
-                      {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
+                      {relativeDate(a.createdAt)}
                     </td>
-                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="px-3 py-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover:opacity-100">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="opacity-0 group-hover:opacity-100"
+                            aria-label={`More actions for ${a.jobTitle}`}
+                          >
                             <MoreHorizontal className="w-3.5 h-3.5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => setLocation(`/analysis/${a.id}`)}>
+                          <DropdownMenuItem
+                            onSelect={() => setLocation(`/analysis/${a.id}`)}
+                          >
                             Open
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => duplicateAnalysis.mutate({ id: a.id })}>
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              duplicateAnalysis.mutate({ id: a.id })
+                            }
+                          >
                             Duplicate
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"
-                            onSelect={() => deleteAnalysis.mutate({ id: a.id })}
+                            onSelect={() => deleteOne(a.id)}
                           >
                             Delete
                           </DropdownMenuItem>
@@ -635,7 +1001,9 @@ export function History() {
       {!isLoading && filtered.length > 0 && (
         <div className="md:hidden space-y-3">
           {filtered.map((a) => {
-            const isSampled = (a.tags ?? []).includes("sample");
+            const fitScore = safeScore(a.fitScore);
+            const atsScore = safeScore(a.atsScore);
+            const isSampled = stringArray(a.tags).includes("sample");
             return (
               <Card
                 key={a.id}
@@ -648,7 +1016,10 @@ export function History() {
                     type="checkbox"
                     className="mt-0.5 h-3.5 w-3.5 rounded border-border shrink-0"
                     checked={selectedIds.has(a.id)}
-                    onChange={(e) => { e.stopPropagation(); toggleId(a.id); }}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleId(a.id);
+                    }}
                     onClick={(e) => e.stopPropagation()}
                     aria-label="Select row"
                   />
@@ -656,24 +1027,45 @@ export function History() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-[13px] font-medium truncate">{a.jobTitle}</p>
-                          {isSampled && <Badge variant="soft" size="sm">Sample</Badge>}
+                          <p className="text-[13px] font-medium truncate">
+                            {a.jobTitle}
+                          </p>
+                          {isSampled && (
+                            <Badge variant="soft" size="sm">
+                              Sample
+                            </Badge>
+                          )}
                         </div>
-                        {a.companyName && <p className="text-[12px] text-muted-foreground truncate">{a.companyName}</p>}
+                        {a.companyName && (
+                          <p className="text-[12px] text-muted-foreground truncate">
+                            {a.companyName}
+                          </p>
+                        )}
                       </div>
-                      <FavoriteButton analysisId={a.id} isFavorite={a.isFavorite} />
+                      <FavoriteButton
+                        analysisId={a.id}
+                        isFavorite={a.isFavorite}
+                      />
                     </div>
                     <div className="flex items-center gap-3 text-[12px]">
-                      <span className="font-mono tabular-nums" style={{ color: a.fitScore >= 80 ? "hsl(var(--success))" : a.fitScore >= 60 ? "hsl(var(--warning))" : "hsl(var(--destructive))" }}>
-                        Fit {a.fitScore}
+                      <span
+                        className="font-mono tabular-nums"
+                        style={{ color: scoreColor(fitScore) }}
+                      >
+                        Fit {fitScore}
                       </span>
-                      <span className="font-mono tabular-nums text-muted-foreground">ATS {a.atsScore}</span>
+                      <span className="font-mono tabular-nums text-muted-foreground">
+                        ATS {atsScore}
+                      </span>
                       <span className="text-muted-foreground ml-auto">
-                        {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
+                        {relativeDate(a.createdAt)}
                       </span>
                     </div>
                     <div onClick={(e) => e.stopPropagation()}>
-                      <StatusPicker analysisId={a.id} currentStatus={a.status} />
+                      <StatusPicker
+                        analysisId={a.id}
+                        currentStatus={a.status}
+                      />
                     </div>
                   </div>
                 </CardContent>
@@ -682,6 +1074,87 @@ export function History() {
           })}
         </div>
       )}
+
+      <Dialog open={isSaveSearchOpen} onOpenChange={setIsSaveSearchOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save current search</DialogTitle>
+            <DialogDescription>
+              Name this filter set so it is easy to reopen from the Saved menu.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label
+              htmlFor="saved-search-name"
+              className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground"
+            >
+              Search name
+            </label>
+            <Input
+              id="saved-search-name"
+              value={savedSearchName}
+              onChange={(event) => setSavedSearchName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && savedSearchName.trim()) {
+                  confirmSaveSearch();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsSaveSearchOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmSaveSearch}
+              disabled={!savedSearchName.trim()}
+            >
+              Save search
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={deleteRequest != null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteRequest(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete{" "}
+              {deleteCount === 1 ? "analysis" : `${deleteCount} analyses`}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTitle
+                ? `"${deleteTitle}" will be permanently removed.`
+                : "Selected analyses will be permanently removed."}{" "}
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteAnalysis.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteAnalysis.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                confirmDeleteRequest();
+              }}
+            >
+              {deleteAnalysis.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

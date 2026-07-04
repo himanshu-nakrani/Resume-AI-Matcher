@@ -2,9 +2,18 @@ import { useParams } from "wouter";
 import { useGetSharedAnalysis } from "@workspace/api-client-react";
 import { ScoreCircle } from "@/components/score-circle";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  AlertCircle,
   CheckCircle2,
   XCircle,
   Lightbulb,
@@ -13,6 +22,125 @@ import {
   Sparkles,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function safeScore(value: unknown): number {
+  const score = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return Math.min(100, Math.max(0, score));
+}
+
+function formatAnalyzedAt(value: unknown): string {
+  if (typeof value !== "string" && !(value instanceof Date)) {
+    return "Analysis date unavailable";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Analysis date unavailable";
+  }
+
+  return `Analyzed ${formatDistanceToNow(date, { addSuffix: true })}`;
+}
+
+function EmptyLine({ children }: { children: string }) {
+  return (
+    <p className="rounded-md bg-surface-2 px-3 py-2 text-[13px] text-muted-foreground">
+      {children}
+    </p>
+  );
+}
+
+function InsightList({
+  items,
+  empty,
+  icon,
+}: {
+  items: string[];
+  empty: string;
+  icon: "success" | "danger" | "accent";
+}) {
+  if (items.length === 0) return <EmptyLine>{empty}</EmptyLine>;
+
+  const Icon = icon === "danger" ? XCircle : icon === "success" ? CheckCircle2 : ChevronRight;
+  const color =
+    icon === "danger"
+      ? "text-destructive"
+      : icon === "success"
+        ? "text-success"
+        : "text-accent";
+
+  return (
+    <div className="space-y-2">
+      {items.map((item, index) => (
+        <div key={`${item}-${index}`} className="flex items-start gap-2 text-[13px] leading-6">
+          <Icon className={`mt-1 h-3.5 w-3.5 shrink-0 ${color}`} />
+          <span>{item}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function KeywordGroup({
+  label,
+  keywords,
+  empty,
+  tone,
+}: {
+  label: string;
+  keywords: string[];
+  empty: string;
+  tone: "success" | "danger";
+}) {
+  const labelClass = tone === "success" ? "text-success" : "text-destructive";
+  const badgeClass =
+    tone === "success"
+      ? "border-success/30 bg-success/10 text-success"
+      : "border-destructive/30 bg-destructive/10 text-destructive";
+
+  return (
+    <div>
+      <p className={`mb-2 text-[11px] font-semibold uppercase tracking-wider ${labelClass}`}>
+        {label}
+      </p>
+      {keywords.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {keywords.map((keyword, index) => (
+            <Badge key={`${keyword}-${index}`} variant="outline" className={badgeClass}>
+              {keyword}
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <EmptyLine>{empty}</EmptyLine>
+      )}
+    </div>
+  );
+}
 
 export function SharedAnalysis() {
   const params = useParams<{ token: string }>();
@@ -24,185 +152,212 @@ export function SharedAnalysis() {
 
   if (isLoading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
-        <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-2 gap-4">
-          <Skeleton className="h-40" />
-          <Skeleton className="h-40" />
+      <div className="min-h-screen bg-background px-4 py-8 text-foreground">
+        <div className="mx-auto max-w-5xl space-y-6">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-7 w-28" />
+          </div>
+          <Skeleton className="h-36 w-full" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <Skeleton className="h-52" />
+            <Skeleton className="h-52" />
+          </div>
+          <Skeleton className="h-48" />
         </div>
-        <Skeleton className="h-48" />
-        <Skeleton className="h-48" />
       </div>
     );
   }
 
   if (isError || !analysis) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-        <Sparkles className="w-10 h-10 mx-auto mb-4 text-muted-foreground opacity-30" />
-        <h2 className="text-xl font-semibold">Analysis Not Found</h2>
-        <p className="text-muted-foreground mt-2 text-sm">
-          This shared analysis is either no longer public or the link is invalid.
-        </p>
+      <div className="min-h-screen bg-background px-4 py-10 text-foreground">
+        <div className="mx-auto max-w-xl">
+          <Empty className="bg-surface-1">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <AlertCircle />
+              </EmptyMedia>
+              <EmptyTitle>Analysis not found</EmptyTitle>
+              <EmptyDescription>
+                This shared analysis is no longer public, or the link is invalid.
+              </EmptyDescription>
+            </EmptyHeader>
+            <Button asChild variant="outline">
+              <a href="/">Open OptiMatch</a>
+            </Button>
+          </Empty>
+        </div>
       </div>
     );
   }
 
-  const strengths = (analysis.strengths as string[]) ?? [];
-  const gaps = (analysis.gaps as string[]) ?? [];
-  const improvements = (analysis.improvements as string[]) ?? [];
-  const atsMatched = (analysis.atsKeywordsMatched as string[]) ?? [];
-  const atsMissing = (analysis.atsKeywordsMissing as string[]) ?? [];
+  const strengths = stringArray(analysis.strengths);
+  const gaps = stringArray(analysis.gaps);
+  const improvements = stringArray(analysis.improvements);
+  const atsMatched = stringArray(analysis.atsKeywordsMatched);
+  const atsMissing = stringArray(analysis.atsKeywordsMissing);
+  const fitScore = safeScore(analysis.fitScore);
+  const atsScore = safeScore(analysis.atsScore);
+  const analyzedAt = formatAnalyzedAt(analysis.createdAt);
+  const company = typeof analysis.companyName === "string" ? analysis.companyName.trim() : "";
+  const fitRationale =
+    typeof analysis.fitRationale === "string" && analysis.fitRationale.trim()
+      ? analysis.fitRationale.trim()
+      : "No fit rationale was returned for this shared analysis.";
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      {/* Top bar */}
-      <header className="bg-card border-b px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2 font-bold text-lg text-primary">
-          <Sparkles className="w-4 h-4" />
-          <span>OptiMatch</span>
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-10 border-b border-border bg-surface-1/95 px-4 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2 text-[15px] font-semibold text-foreground">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+              <Sparkles className="h-3.5 w-3.5" />
+            </span>
+            <span className="truncate">OptiMatch</span>
+          </div>
+          <Badge variant="secondary" className="shrink-0 text-[11px]">
+            Public analysis
+          </Badge>
         </div>
-        <Badge variant="secondary" className="text-xs">Shared Analysis</Badge>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{analysis.jobTitle}</h1>
-          {analysis.companyName && (
-            <p className="text-muted-foreground mt-0.5">{analysis.companyName}</p>
-          )}
-          <p className="text-xs text-muted-foreground mt-1">
-            Analyzed {formatDistanceToNow(new Date(analysis.createdAt), { addSuffix: true })}
-          </p>
-        </div>
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
+        <section className="mb-5 rounded-lg border border-border bg-surface-1 p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0 space-y-2">
+              <Badge variant="outline" className="w-fit text-[11px]">
+                Shared resume match
+              </Badge>
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                  {analysis.jobTitle || "Untitled role"}
+                </h1>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  {company ? `${company} · ${analyzedAt}` : analyzedAt}
+                </p>
+              </div>
+              <p className="max-w-3xl text-[13px] leading-6 text-muted-foreground">
+                Public snapshot of the resume fit, ATS readiness, gaps, and next edits for this job target.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:w-[300px]">
+              <div className="rounded-lg border border-border bg-card p-4 text-center">
+                <ScoreCircle score={fitScore} size="md" label="Fit score" />
+              </div>
+              <div className="rounded-lg border border-border bg-card p-4 text-center">
+                <ScoreCircle score={atsScore} size="md" label="ATS score" />
+              </div>
+            </div>
+          </div>
+        </section>
 
-        {/* Scores */}
-        <div className="grid grid-cols-2 gap-4">
-          <Card className="border shadow-sm">
-            <CardContent className="pt-6 flex flex-col items-center gap-2 pb-6">
-              <ScoreCircle score={analysis.fitScore} size="lg" label="Fit Score" />
-              <p className="text-sm text-muted-foreground text-center max-w-xs mt-2">{analysis.fitRationale}</p>
+        <div className="mb-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_320px]">
+          <Card className="shadow-sm">
+            <CardHeader className="border-b border-border bg-surface-1 pb-3">
+              <CardTitle>Fit rationale</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <p className="text-[13px] leading-6 text-muted-foreground">{fitRationale}</p>
             </CardContent>
           </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="pt-6 flex flex-col items-center gap-2 pb-6">
-              <ScoreCircle score={analysis.atsScore} size="lg" label="ATS Score" />
-              <p className="text-sm text-muted-foreground text-center max-w-xs mt-2">
-                How well the resume passes automated applicant tracking systems.
+          <Card className="shadow-sm">
+            <CardHeader className="border-b border-border bg-surface-1 pb-3">
+              <CardTitle>ATS readiness</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <p className="text-[13px] leading-6 text-muted-foreground">
+                The ATS score estimates how well this resume aligns with automated screening signals for the role.
               </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Strengths & Gaps */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="border shadow-sm">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Card className="shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" /> Strengths
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-success" /> Strengths
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {strengths.map((s, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" />
-                  <span>{s}</span>
-                </div>
-              ))}
+            <CardContent>
+              <InsightList
+                items={strengths}
+                empty="No strengths were returned for this shared analysis."
+                icon="success"
+              />
             </CardContent>
           </Card>
-          <Card className="border shadow-sm">
+          <Card className="shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <XCircle className="w-4 h-4 text-destructive" /> Gaps
+              <CardTitle className="flex items-center gap-2">
+                <XCircle className="h-4 w-4 text-destructive" /> Gaps
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {gaps.map((g, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm">
-                  <XCircle className="w-3.5 h-3.5 text-destructive mt-0.5 shrink-0" />
-                  <span>{g}</span>
-                </div>
-              ))}
+            <CardContent>
+              <InsightList
+                items={gaps}
+                empty="No gaps were returned for this shared analysis."
+                icon="danger"
+              />
             </CardContent>
           </Card>
         </div>
 
-        {/* Improvements */}
-        <Card className="border shadow-sm">
+        <Card className="mt-4 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-yellow-500" /> Resume Improvements
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-warning" /> Resume improvements
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {improvements.map((imp, i) => (
-              <div key={i} className="flex items-start gap-3 text-sm p-3 rounded-lg bg-muted/50">
-                <ChevronRight className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
-                <span>{imp}</span>
-              </div>
-            ))}
+          <CardContent>
+            <InsightList
+              items={improvements}
+              empty="No improvement recommendations were returned for this shared analysis."
+              icon="accent"
+            />
           </CardContent>
         </Card>
 
-        {/* ATS Keywords */}
-        <Card className="border shadow-sm">
+        <Card className="mt-4 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">ATS Keywords</CardTitle>
+            <CardTitle>ATS keywords</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-200 mb-2">Matched</p>
-              <div className="flex flex-wrap gap-2">
-                {atsMatched.map((kw, i) => (
-                  <Badge
-                    key={i}
-                    variant="outline"
-                    className="border-emerald-300 bg-emerald-50 text-emerald-950 shadow-none dark:border-emerald-600 dark:bg-emerald-950/45 dark:text-emerald-50"
-                  >
-                    {kw}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-rose-800 dark:text-rose-200 mb-2">Missing</p>
-              <div className="flex flex-wrap gap-2">
-                {atsMissing.map((kw, i) => (
-                  <Badge
-                    key={i}
-                    variant="outline"
-                    className="border-rose-300 bg-rose-50 text-rose-950 shadow-none dark:border-rose-600 dark:bg-rose-950/45 dark:text-rose-50"
-                  >
-                    {kw}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <KeywordGroup
+              label="Matched"
+              keywords={atsMatched}
+              empty="No matched ATS keywords were returned."
+              tone="success"
+            />
+            <KeywordGroup
+              label="Missing"
+              keywords={atsMissing}
+              empty="No missing ATS keywords were returned."
+              tone="danger"
+            />
           </CardContent>
         </Card>
 
-        {/* Cover Letter */}
         {analysis.coverLetter && (
-          <Card className="border shadow-sm">
+          <Card className="mt-4 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="w-4 h-4 text-primary" /> Cover Letter
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-accent" /> Cover letter
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="whitespace-pre-wrap text-sm font-mono bg-muted/30 rounded-lg p-4">
+              <div className="whitespace-pre-wrap rounded-md bg-surface-2 p-4 font-mono text-[12px] leading-6 text-muted-foreground">
                 {analysis.coverLetter}
               </div>
             </CardContent>
           </Card>
         )}
 
-        <p className="text-center text-xs text-muted-foreground pb-4">
-          Created with <span className="font-semibold text-primary">OptiMatch</span> · AI Resume & Job Matcher
+        <p className="py-6 text-center text-xs text-muted-foreground">
+          Created with <span className="font-semibold text-foreground">OptiMatch</span>
         </p>
-      </div>
+      </main>
     </div>
   );
 }

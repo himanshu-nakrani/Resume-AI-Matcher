@@ -9,6 +9,47 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface SystemServiceStatus {
+  configured: boolean;
+  label: string;
+  detail: string;
+}
+
+export type PdfExportStatusAvailableCompilersItem =
+  (typeof PdfExportStatusAvailableCompilersItem)[keyof typeof PdfExportStatusAvailableCompilersItem];
+
+export const PdfExportStatusAvailableCompilersItem = {
+  tectonic: "tectonic",
+  latexmk: "latexmk",
+  pdflatex: "pdflatex",
+} as const;
+
+export interface PdfExportStatus {
+  configured: boolean;
+  label: string;
+  detail: string;
+  availableCompilers: PdfExportStatusAvailableCompilersItem[];
+}
+
+export type SystemStatusStatus =
+  (typeof SystemStatusStatus)[keyof typeof SystemStatusStatus];
+
+export const SystemStatusStatus = {
+  operational: "operational",
+  degraded: "degraded",
+} as const;
+
+export type SystemStatusServices = {
+  ai: SystemServiceStatus;
+  jobSearch: SystemServiceStatus;
+  pdfExport: PdfExportStatus;
+};
+
+export interface SystemStatus {
+  status: SystemStatusStatus;
+  services: SystemStatusServices;
+}
+
 export interface ErrorResponse {
   error: string;
 }

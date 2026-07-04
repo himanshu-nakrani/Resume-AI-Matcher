@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as pdfjsLib from "pdfjs-dist";
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 import {
   useCreateAnalysis,
   useListAnalyses,
@@ -14,19 +12,44 @@ import {
 } from "@workspace/api-client-react";
 import type { JobSearchResponse } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, BriefcaseBusiness, FileText, Link2, Upload, UserRound, X } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  CheckCircle2,
+  Circle,
+  ClipboardCheck,
+  FileText,
+  Link2,
+  Upload,
+  UserRound,
+  X,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiErrorMessage, type ApiErrorPayload } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 
 import {
   USER_STORAGE_KEY,
   formSchema,
-  jobSearchResponseWithAnalysis,
+  normalizeJobSearchResponse,
   fallbackJobDescriptionFromHit,
   inferRoleAndCompany,
   getHostname,
@@ -34,14 +57,15 @@ import {
 import type { FormValues, JobSearchHit } from "./home/helpers";
 import { RecentAnalysesStrip, JobSearchSection } from "./home/sections";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-
 type ResumeFileType = "pdf" | "latex" | "text";
 
 function stripLatexToText(source: string) {
   return source
     .replace(/%.*$/gm, " ")
-    .replace(/\\(section|subsection|textbf|textit|emph|item)\*?\{([^}]*)\}/g, "$2")
+    .replace(
+      /\\(section|subsection|textbf|textit|emph|item)\*?\{([^}]*)\}/g,
+      "$2",
+    )
     .replace(/\\[a-zA-Z]+\*?(\[[^\]]*\])?(\{[^}]*\})?/g, " ")
     .replace(/[{}]/g, " ")
     .replace(/\s+/g, " ")
@@ -49,17 +73,28 @@ function stripLatexToText(source: string) {
 }
 
 async function parsePdf(file: File) {
+  const [{ GlobalWorkerOptions, getDocument }, { default: pdfWorkerUrl }] =
+    await Promise.all([
+      import("pdfjs-dist"),
+      import("pdfjs-dist/build/pdf.worker.mjs?url"),
+    ]);
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+  GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+  const pdf = await getDocument({ data: bytes }).promise;
   const pages: string[] = [];
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
     const content = await page.getTextContent();
-    pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join(" "));
+    pages.push(
+      content.items.map((item) => ("str" in item ? item.str : "")).join(" "),
+    );
   }
 
-  return pages.join("\n\n").replace(/\s{3,}/g, " ").trim();
+  return pages
+    .join("\n\n")
+    .replace(/\s{3,}/g, " ")
+    .trim();
 }
 
 export function Home() {
@@ -75,7 +110,9 @@ export function Home() {
   const [exaQuery, setExaQuery] = useState("");
   const [exaRecent, setExaRecent] = useState(true);
   const [exaSkipHeuristics, setExaSkipHeuristics] = useState(false);
-  const [exaType, setExaType] = useState<JobSearchBodySearchType>(JobSearchBodySearchType.auto);
+  const [exaType, setExaType] = useState<JobSearchBodySearchType>(
+    JobSearchBodySearchType.auto,
+  );
   const [exaNumResults, setExaNumResults] = useState(10);
   const [exaUserLocation, setExaUserLocation] = useState("");
   const [exaResults, setExaResults] = useState<JobSearchResponse | null>(null);
@@ -89,12 +126,15 @@ export function Home() {
   const [detailHit, setDetailHit] = useState<JobSearchHit | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [preScreening, setPreScreening] = useState<Set<string>>(new Set());
-  const [matchScores, setMatchScores] = useState<Map<string, { score: number; loading: boolean }>>(new Map());
+  const [matchScores, setMatchScores] = useState<
+    Map<string, { score: number; loading: boolean }>
+  >(new Map());
 
   const savedUser = useMemo(() => {
     try {
-      return JSON.parse(localStorage.getItem(USER_STORAGE_KEY) ?? "{}") as Partial<FormValues>;
+      return JSON.parse(
+        localStorage.getItem(USER_STORAGE_KEY) ?? "{}",
+      ) as Partial<FormValues>;
     } catch {
       return {};
     }
@@ -112,13 +152,38 @@ export function Home() {
       jobDescriptionText: "",
     },
   });
+  const watchedValues = form.watch();
+  const profileReady = Boolean(
+    watchedValues.userName?.trim() && watchedValues.userEmail?.trim(),
+  );
+  const resumeCharacterCount = watchedValues.resumeText?.trim().length ?? 0;
+  const jobDescriptionCharacterCount =
+    watchedValues.jobDescriptionText?.trim().length ?? 0;
+  const resumeReady = resumeCharacterCount >= 50;
+  const roleReady = Boolean(
+    watchedValues.jobTitle?.trim() && watchedValues.companyName?.trim(),
+  );
+  const jobReady = jobDescriptionCharacterCount >= 50;
+  const readinessSteps = [
+    { label: "Profile", complete: profileReady },
+    { label: "Resume", complete: resumeReady },
+    { label: "Role", complete: roleReady },
+    { label: "JD", complete: jobReady },
+  ];
+  const completedStepCount = readinessSteps.filter(
+    (step) => step.complete,
+  ).length;
+  const readyToAnalyze = completedStepCount === readinessSteps.length;
 
   useEffect(() => {
     const subscription = form.watch((values) => {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify({
-        userName: values.userName ?? "",
-        userEmail: values.userEmail ?? "",
-      }));
+      localStorage.setItem(
+        USER_STORAGE_KEY,
+        JSON.stringify({
+          userName: values.userName ?? "",
+          userEmail: values.userEmail ?? "",
+        }),
+      );
     });
     return () => subscription.unsubscribe();
   }, [form]);
@@ -129,13 +194,18 @@ export function Home() {
         queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
         toast({
           title: "Resume optimized",
-          description: "A tracker entry was created automatically. Add deadlines or status next.",
+          description:
+            "A tracker entry was created automatically. Add deadlines or status next.",
         });
         setLocation(`/analysis/${data.id}`);
       },
       onError: (error) => {
-        const envelope =
-          (error as { data?: { error?: { message?: string } } } | null | undefined)?.data?.error;
+        const envelope = (
+          error as
+            | { data?: { error?: { message?: string } } }
+            | null
+            | undefined
+        )?.data?.error;
         toast({
           title: "Optimization failed",
           description:
@@ -151,12 +221,20 @@ export function Home() {
   const fetchJob = useFetchJobDescription({
     mutation: {
       onSuccess: (data) => {
-        form.setValue("jobDescriptionText", data.jobDescription, { shouldDirty: true, shouldValidate: true });
-        if (data.jobTitle && !form.getValues("jobTitle")) form.setValue("jobTitle", data.jobTitle);
-        if (data.companyName && !form.getValues("companyName")) form.setValue("companyName", data.companyName);
+        form.setValue("jobDescriptionText", data.jobDescription, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+        if (data.jobTitle && !form.getValues("jobTitle"))
+          form.setValue("jobTitle", data.jobTitle);
+        if (data.companyName && !form.getValues("companyName"))
+          form.setValue("companyName", data.companyName);
         setShowUrlInput(false);
         setJobUrlInput("");
-        toast({ title: "Job description imported", description: "Company, role, and JD were extracted from the URL." });
+        toast({
+          title: "Job description imported",
+          description: "Company, role, and JD were extracted from the URL.",
+        });
       },
       onError: (_err, variables) => {
         const url = variables?.data.url;
@@ -164,18 +242,24 @@ export function Home() {
         if (hit) {
           const fallbackText = fallbackJobDescriptionFromHit(hit);
           const { jobTitle, companyName } = inferRoleAndCompany(hit);
-          form.setValue("jobDescriptionText", fallbackText, { shouldDirty: true, shouldValidate: true });
+          form.setValue("jobDescriptionText", fallbackText, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
           if (!form.getValues("jobTitle")) form.setValue("jobTitle", jobTitle);
-          if (!form.getValues("companyName")) form.setValue("companyName", companyName);
+          if (!form.getValues("companyName"))
+            form.setValue("companyName", companyName);
           toast({
             title: "Imported search preview",
-            description: "The source blocked full extraction, so we filled the form from the processed search result.",
+            description:
+              "The source blocked full extraction, so we filled the form from the processed search result.",
           });
           return;
         }
         toast({
           title: "Could not import",
-          description: "That page blocked extraction. Paste the JD manually or use a result from job search.",
+          description:
+            "That page blocked extraction. Paste the JD manually or use a result from job search.",
           variant: "destructive",
         });
       },
@@ -185,7 +269,7 @@ export function Home() {
   const jobSearchExa = useSearchJobs({
     mutation: {
       onSuccess: (data, variables) => {
-        const payload = jobSearchResponseWithAnalysis(data, variables.data.query);
+        const payload = normalizeJobSearchResponse(data, variables.data.query);
         setExaResults(payload);
         const { analysis } = payload;
         toast({
@@ -194,8 +278,13 @@ export function Home() {
         });
       },
       onError: (err: unknown) => {
-        const message = err instanceof Error ? err.message : "Job search failed.";
-        toast({ title: "Job search failed", description: message, variant: "destructive" });
+        const message =
+          err instanceof Error ? err.message : "Job search failed.";
+        toast({
+          title: "Job search failed",
+          description: message,
+          variant: "destructive",
+        });
       },
     },
   });
@@ -205,7 +294,8 @@ export function Home() {
     if (q.length < 2) {
       toast({
         title: "Add a search query",
-        description: "Describe the role, level, location, or company you want (at least 2 characters).",
+        description:
+          "Describe the role, level, location, or company you want (at least 2 characters).",
         variant: "destructive",
       });
       return;
@@ -214,7 +304,8 @@ export function Home() {
     if (loc.length > 0 && loc.length !== 2) {
       toast({
         title: "Use a 2-letter country code",
-        description: "Examples: US, IN, GB, CA. Leave it blank to let the prompt decide.",
+        description:
+          "Examples: US, IN, GB, CA. Leave it blank to let the prompt decide.",
         variant: "destructive",
       });
       return;
@@ -268,15 +359,36 @@ export function Home() {
           ...(Object.keys(filters).length > 0 ? { filters } : {}),
         }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setExaResults((prev) => prev ? {
-          ...data,
-          results: [...prev.results, ...data.results],
-        } : data);
+      const data = (await res.json().catch(() => null)) as unknown;
+      if (!res.ok) {
+        throw new Error(
+          apiErrorMessage(
+            data as ApiErrorPayload | null,
+            "Could not load more job results.",
+          ),
+        );
       }
-    } catch { /* ignore */ }
-    setLoadingMore(false);
+      if (data) {
+        const payload = normalizeJobSearchResponse(data, exaQuery.trim());
+        setExaResults((prev) =>
+          prev
+            ? {
+                ...payload,
+                results: [...prev.results, ...payload.results],
+              }
+            : payload,
+        );
+      }
+    } catch (err) {
+      toast({
+        title: "Could not load more jobs",
+        description:
+          err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   const saveJob = async (hit: JobSearchHit) => {
@@ -297,40 +409,79 @@ export function Home() {
       if (res.ok) {
         toast({ title: "Job saved", description: "View in Saved Jobs." });
       } else if (res.status === 409) {
-        toast({ title: "Already saved", description: "This job is already in your saved list." });
+        toast({
+          title: "Already saved",
+          description: "This job is already in your saved list.",
+        });
+      } else {
+        const data = (await res
+          .json()
+          .catch(() => null)) as ApiErrorPayload | null;
+        throw new Error(apiErrorMessage(data, "Could not save this job."));
       }
-    } catch {
-      toast({ title: "Could not save", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: "Could not save",
+        description:
+          err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
     }
   };
 
   const preScreenHit = async (hit: JobSearchHit) => {
     const resumeText = form.getValues("resumeText");
     if (!resumeText || resumeText.length < 50) {
-      toast({ title: "Upload a resume first", description: "Upload your resume to see match estimates." });
+      toast({
+        title: "Upload a resume first",
+        description: "Upload your resume to see match estimates.",
+      });
       return;
     }
-    setMatchScores((prev) => new Map(prev).set(hit.url, { score: 0, loading: true }));
+    setMatchScores((prev) =>
+      new Map(prev).set(hit.url, { score: 0, loading: true }),
+    );
     try {
       const res = await fetch("/api/job-search/pre-screen", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resumeText, jobUrl: hit.url }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setMatchScores((prev) => new Map(prev).set(hit.url, { score: data.matchScore, loading: false }));
-      } else {
-        setMatchScores((prev) => new Map(prev).set(hit.url, { score: 0, loading: false }));
+      const data = (await res.json().catch(() => null)) as
+        | ({ matchScore?: unknown } & ApiErrorPayload)
+        | null;
+      if (!res.ok) {
+        throw new Error(
+          apiErrorMessage(data, "Could not estimate this job match."),
+        );
       }
-    } catch {
-      setMatchScores((prev) => new Map(prev).set(hit.url, { score: 0, loading: false }));
+      const matchScore = Number(data?.matchScore);
+      if (!Number.isFinite(matchScore)) {
+        throw new Error(
+          "The pre-screen response did not include a match score.",
+        );
+      }
+      setMatchScores((prev) =>
+        new Map(prev).set(hit.url, { score: matchScore, loading: false }),
+      );
+    } catch (err) {
+      setMatchScores((prev) =>
+        new Map(prev).set(hit.url, { score: 0, loading: false }),
+      );
+      toast({
+        title: "Could not estimate match",
+        description:
+          err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
     }
   };
 
   const { data: analyses } = useListAnalyses();
 
-  const onResumeFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const onResumeFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const ext = file.name.toLowerCase().split(".").pop();
@@ -343,23 +494,34 @@ export function Home() {
       if (ext === "pdf") {
         const text = await parsePdf(file);
         setResumeFileType("pdf");
-        form.setValue("resumeText", text, { shouldDirty: true, shouldValidate: true });
+        form.setValue("resumeText", text, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
         form.setValue("sourceLatex", "", { shouldDirty: true });
       } else if (ext === "tex" || ext === "latex") {
         const latex = await file.text();
         setResumeFileType("latex");
         form.setValue("sourceLatex", latex, { shouldDirty: true });
-        form.setValue("resumeText", stripLatexToText(latex), { shouldDirty: true, shouldValidate: true });
+        form.setValue("resumeText", stripLatexToText(latex), {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
       } else if (ext === "txt") {
         const text = await file.text();
         setResumeFileType("text");
-        form.setValue("resumeText", text.trim(), { shouldDirty: true, shouldValidate: true });
+        form.setValue("resumeText", text.trim(), {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
         form.setValue("sourceLatex", "", { shouldDirty: true });
       } else {
         throw new Error("Unsupported file");
       }
     } catch {
-      setResumeFileError("Could not read that resume. Upload a PDF, .tex, .latex, or TXT file.");
+      setResumeFileError(
+        "Could not read that resume. Upload a PDF, .tex, .latex, or TXT file.",
+      );
       setResumeFileName("");
     } finally {
       setIsParsingResume(false);
@@ -368,7 +530,8 @@ export function Home() {
   };
 
   const handleImportUrl = () => {
-    if (jobUrlInput.trim()) fetchJob.mutate({ data: { url: jobUrlInput.trim() } });
+    if (jobUrlInput.trim())
+      fetchJob.mutate({ data: { url: jobUrlInput.trim() } });
   };
 
   const onSubmit = (values: FormValues) => {
@@ -386,75 +549,184 @@ export function Home() {
   };
 
   return (
-    <div className="space-y-0 max-w-5xl mx-auto">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-[-0.02em]">Optimize your resume</h1>
-        <p className="text-[13px] text-muted-foreground mt-1">
-          Paste your resume and a job to see your fit score and improvement plan.
-        </p>
-      </header>
+    <div className="mx-auto max-w-6xl space-y-0">
+      <section className="mb-6 overflow-hidden rounded-lg border border-border bg-surface-1 shadow-sm">
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="p-5 sm:p-6">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-accent/20 bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent">
+                <ClipboardCheck className="h-3 w-3" />
+                {readyToAnalyze
+                  ? "Ready to optimize"
+                  : `${completedStepCount}/4 ready`}
+              </span>
+              {resumeFileName && (
+                <span className="truncate text-[11px] text-muted-foreground">
+                  {resumeFileName}
+                </span>
+              )}
+            </div>
+            <div className="max-w-2xl">
+              <h1 className="text-2xl font-semibold tracking-[-0.02em]">
+                Optimize your resume
+              </h1>
+              <p className="mt-2 text-[13px] leading-6 text-muted-foreground">
+                Build one targeted version for the role, then use the analysis
+                to track follow-up work.
+              </p>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {readinessSteps.map((step) => {
+                const Icon = step.complete ? CheckCircle2 : Circle;
+                return (
+                  <div
+                    key={step.label}
+                    className={cn(
+                      "flex h-10 items-center gap-2 rounded-md border px-3 text-[12px] transition-colors",
+                      step.complete
+                        ? "border-accent/25 bg-accent/10 text-foreground"
+                        : "border-border bg-surface-2 text-muted-foreground",
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "h-3.5 w-3.5",
+                        step.complete && "text-accent",
+                      )}
+                    />
+                    <span className="truncate font-medium">{step.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="border-t border-border bg-surface-2/70 p-5 lg:border-l lg:border-t-0">
+            <div className="grid grid-cols-3 gap-3 lg:grid-cols-1">
+              <div>
+                <p className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-subtle-foreground">
+                  Resume
+                </p>
+                <p className="mt-1 text-lg font-semibold tabular">
+                  {resumeCharacterCount.toLocaleString()}
+                </p>
+                <p className="text-[11px] text-muted-foreground">characters</p>
+              </div>
+              <div>
+                <p className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-subtle-foreground">
+                  Job brief
+                </p>
+                <p className="mt-1 text-lg font-semibold tabular">
+                  {jobDescriptionCharacterCount.toLocaleString()}
+                </p>
+                <p className="text-[11px] text-muted-foreground">characters</p>
+              </div>
+              <div>
+                <p className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-subtle-foreground">
+                  Run state
+                </p>
+                <p className="mt-1 text-sm font-semibold">
+                  {createAnalysis.isPending
+                    ? "Optimizing"
+                    : readyToAnalyze
+                      ? "Ready"
+                      : "Draft"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {readyToAnalyze ? "All inputs set" : "Missing inputs"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-24 md:pb-0" data-testid="form-analysis">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-6 pb-24 md:pb-0"
+          data-testid="form-analysis"
+        >
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
             {/* LEFT column */}
             <div className="space-y-6">
-              <Card className="border">
+              <Card className="border shadow-sm">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                    <UserRound className="h-4 w-4 text-muted-foreground" /> User Information
+                    <UserRound className="h-4 w-4 text-accent" /> Candidate
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField control={form.control} name="userName" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl><Input placeholder="Your name" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="userEmail" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl><Input placeholder="you@example.com" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  <FormField
+                    control={form.control}
+                    name="userName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Your name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="userEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="you@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </CardContent>
               </Card>
 
-              <Card className="border">
+              <Card className="border shadow-sm">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                    <FileText className="h-4 w-4 text-muted-foreground" /> Resume Upload
+                    <FileText className="h-4 w-4 text-accent" /> Resume
                   </CardTitle>
                   <CardDescription className="text-sm">
-                    Upload your resume in PDF, LaTeX, or TXT format. We'll parse it automatically.
+                    PDF, LaTeX, and TXT are supported.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div
                     className={cn(
-                      "relative rounded-lg border border-dashed p-8 text-center transition-all duration-200",
-                      isParsingResume ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/50"
+                      "relative rounded-lg border border-dashed p-6 text-center transition-all duration-200",
+                      isParsingResume
+                        ? "border-accent bg-accent/5"
+                        : "border-border bg-surface-2/60 hover:border-accent/50 hover:bg-surface-2",
                     )}
                   >
                     <div className="flex flex-col items-center gap-4">
-                      <div className={cn(
-                        "rounded-lg p-3 transition-all duration-200",
-                        isParsingResume ? "bg-primary/10" : "bg-muted"
-                      )}>
-                        <Upload className={cn(
-                          "h-6 w-6 transition-colors",
-                          isParsingResume ? "text-primary" : "text-muted-foreground"
-                        )} />
+                      <div
+                        className={cn(
+                          "rounded-lg p-3 transition-all duration-200",
+                          isParsingResume ? "bg-accent/10" : "bg-surface-3",
+                        )}
+                      >
+                        <Upload
+                          className={cn(
+                            "h-6 w-6 transition-colors",
+                            isParsingResume
+                              ? "text-accent"
+                              : "text-muted-foreground",
+                          )}
+                        />
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm font-medium">
-                          {isParsingResume ? "Reading your resume..." : "Drag & drop your resume here"}
+                          {isParsingResume
+                            ? "Reading your resume..."
+                            : "Drop in a resume file"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          or click to browse files
+                          Browse files or paste text below
                         </p>
                       </div>
                       <Button
@@ -466,15 +738,23 @@ export function Home() {
                       >
                         <label className="cursor-pointer">
                           {isParsingResume ? "Processing..." : "Choose File"}
-                          <Input type="file" accept=".pdf,.tex,.latex,.txt" className="hidden" onChange={onResumeFileChange} />
+                          <Input
+                            type="file"
+                            accept=".pdf,.tex,.latex,.txt"
+                            className="hidden"
+                            onChange={onResumeFileChange}
+                          />
                         </label>
                       </Button>
-                      <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-                        <span>PDF</span>
-                        <span>•</span>
-                        <span>LaTeX</span>
-                        <span>•</span>
-                        <span>TXT</span>
+                      <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                        {["PDF", "LaTeX", "TXT"].map((type) => (
+                          <span
+                            key={type}
+                            className="rounded border border-border bg-background px-1.5 py-0.5"
+                          >
+                            {type}
+                          </span>
+                        ))}
                       </div>
                     </div>
                     {resumeFileName && (
@@ -483,12 +763,26 @@ export function Home() {
                           <FileText className="h-4 w-4 text-success" />
                         </div>
                         <div className="flex-1 text-left min-w-0">
-                          <p className="font-medium text-sm truncate">{resumeFileName}</p>
-                          <p className="text-xs text-muted-foreground">Successfully uploaded</p>
+                          <p className="font-medium text-sm truncate">
+                            {resumeFileName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Successfully uploaded
+                          </p>
                         </div>
                         <div className="flex items-center gap-1 text-xs text-success font-medium">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
                           </svg>
                           Ready
                         </div>
@@ -501,78 +795,142 @@ export function Home() {
                     )}
                   </div>
 
-                  <FormField control={form.control} name="resumeText" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Parsed Resume Text</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          className="min-h-[200px] font-mono text-sm rounded-md border focus:border-primary transition-colors"
-                          placeholder="Your resume content will appear here after upload..."
-                          {...field}
-                          data-testid="textarea-resume"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Tip: PDFs are converted to LaTeX during optimization. LaTeX files preserve structure perfectly.
-                      </p>
-                    </FormItem>
-                  )} />
+                  <FormField
+                    control={form.control}
+                    name="resumeText"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">
+                          Parsed Resume Text
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea
+                            className="min-h-[200px] font-mono text-sm rounded-md border focus:border-primary transition-colors"
+                            placeholder="Your resume content will appear here after upload..."
+                            {...field}
+                            data-testid="textarea-resume"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                        <p className="text-xs text-muted-foreground mt-2 tabular">
+                          {resumeCharacterCount.toLocaleString()} characters
+                          parsed
+                        </p>
+                      </FormItem>
+                    )}
+                  />
                 </CardContent>
               </Card>
             </div>
 
             {/* RIGHT column */}
             <div className="space-y-6">
-              <Card className="border">
+              <Card className="border shadow-sm lg:sticky lg:top-16">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                    <BriefcaseBusiness className="h-4 w-4 text-muted-foreground" /> Target Job
+                    <BriefcaseBusiness className="h-4 w-4 text-accent" /> Target
+                    role
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="companyName" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Company Name</FormLabel>
-                        <FormControl><Input placeholder="e.g. Acme Corp" {...field} data-testid="input-company-name" /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="jobTitle" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Role</FormLabel>
-                        <FormControl><Input placeholder="e.g. Backend Engineer" {...field} data-testid="input-job-title" /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                    <FormField
+                      control={form.control}
+                      name="companyName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Name</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g. Acme Corp"
+                              {...field}
+                              data-testid="input-company-name"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="jobTitle"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Role</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g. Backend Engineer"
+                              {...field}
+                              data-testid="input-job-title"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex flex-wrap gap-2 items-center">
-                      <Button type="button" variant="secondary" size="sm" onClick={() => setShowUrlInput((v) => !v)}>
-                        <Link2 className="h-3.5 w-3.5 mr-1.5" /> Import JD from URL
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setShowUrlInput((v) => !v)}
+                      >
+                        <Link2 className="h-3.5 w-3.5 mr-1.5" /> Import JD from
+                        URL
                       </Button>
-                      <span className="text-xs text-muted-foreground">or paste the job description below</span>
+                      <span className="text-xs text-muted-foreground">
+                        or paste the JD
+                      </span>
                     </div>
                     {showUrlInput && (
                       <div className="flex gap-2">
-                        <Input value={jobUrlInput} onChange={(e) => setJobUrlInput(e.target.value)} placeholder="https://company.com/jobs/role" />
-                        <Button type="button" onClick={handleImportUrl} disabled={fetchJob.isPending || !jobUrlInput.trim()}>
+                        <Input
+                          value={jobUrlInput}
+                          onChange={(e) => setJobUrlInput(e.target.value)}
+                          placeholder="https://company.com/jobs/role"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleImportUrl}
+                          disabled={fetchJob.isPending || !jobUrlInput.trim()}
+                        >
                           {fetchJob.isPending ? "Importing..." : "Import"}
                         </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setShowUrlInput(false)}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setShowUrlInput(false)}
+                        >
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     )}
-                    <FormField control={form.control} name="jobDescriptionText" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Job Description</FormLabel>
-                        <FormControl><Textarea className="min-h-[220px] font-mono text-sm" placeholder="Paste the full JD here..." {...field} data-testid="textarea-jd" /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                    <FormField
+                      control={form.control}
+                      name="jobDescriptionText"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Job Description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              className="min-h-[248px] font-mono text-sm"
+                              placeholder="Paste the full JD here..."
+                              {...field}
+                              data-testid="textarea-jd"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                          <p className="text-xs text-muted-foreground mt-2 tabular">
+                            {jobDescriptionCharacterCount.toLocaleString()}{" "}
+                            characters
+                          </p>
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -580,8 +938,26 @@ export function Home() {
           </div>
 
           {/* Submit button — desktop in-flow */}
-          <div className="hidden md:flex justify-end">
-            <Button type="submit" size="lg" disabled={createAnalysis.isPending} loading={createAnalysis.isPending}>
+          <div className="hidden items-center justify-between rounded-lg border border-border bg-surface-1 p-3 shadow-sm md:flex">
+            <div className="flex min-w-0 items-center gap-2 text-[13px] text-muted-foreground">
+              <ClipboardCheck
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  readyToAnalyze && "text-accent",
+                )}
+              />
+              <span className="truncate">
+                {readyToAnalyze
+                  ? "Inputs are ready for optimization."
+                  : `Complete ${readinessSteps.length - completedStepCount} sections to run analysis.`}
+              </span>
+            </div>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={createAnalysis.isPending || !readyToAnalyze}
+              loading={createAnalysis.isPending}
+            >
               Analyze
               <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
@@ -589,7 +965,13 @@ export function Home() {
 
           {/* Submit button — mobile sticky */}
           <div className="fixed md:hidden bottom-16 left-0 right-0 z-30 border-t border-border bg-surface-1 p-4">
-            <Button type="submit" size="lg" className="w-full" disabled={createAnalysis.isPending} loading={createAnalysis.isPending}>
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={createAnalysis.isPending || !readyToAnalyze}
+              loading={createAnalysis.isPending}
+            >
               Analyze
             </Button>
           </div>

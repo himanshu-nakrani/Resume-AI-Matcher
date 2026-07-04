@@ -7,8 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCopy } from "@/hooks/use-copy";
 import { useToast } from "@/hooks/use-toast";
+import { apiErrorMessage } from "@/lib/api-error";
 import {
-  CheckCircle2, XCircle, Lightbulb, ChevronRight, FileText, Copy, Check, Download,
+  CheckCircle2,
+  XCircle,
+  Lightbulb,
+  ChevronRight,
+  FileText,
+  Copy,
+  Check,
+  Download,
 } from "lucide-react";
 import { BulletRewriter, InterviewChecklist } from "./shared";
 
@@ -17,7 +25,10 @@ interface TabProps {
   id: number;
 }
 
-function safeFileName(parts: Array<string | null | undefined>, ext: string): string {
+function safeFileName(
+  parts: Array<string | null | undefined>,
+  ext: string,
+): string {
   const base = parts
     .filter(Boolean)
     .join("-")
@@ -37,17 +48,59 @@ function downloadTextFile(content: string, fileName: string): void {
   URL.revokeObjectURL(url);
 }
 
-type ErrorPayload = {
-  error?: string | { message?: string; code?: string };
-  message?: string;
-};
+async function pdfErrorMessageFromResponse(
+  response: Response,
+): Promise<string> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const payload = await response.json().catch(() => null);
+    return apiErrorMessage(payload, "Could not compile optimized resume PDF.");
+  }
 
-function errorMessageFromPayload(payload: ErrorPayload | null): string {
-  if (!payload) return "Could not compile optimized resume PDF.";
-  if (typeof payload.error === "string") return payload.error;
-  if (payload.error?.message) return payload.error.message;
-  if (payload.message) return payload.message;
-  return "Could not compile optimized resume PDF.";
+  const text = await response.text().catch(() => "");
+  const message = text.trim();
+  return (
+    message ||
+    `Could not compile optimized resume PDF. Server returned ${response.status}.`
+  );
+}
+
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function safeScore(value: unknown): number {
+  const score = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return Math.min(100, Math.max(0, Math.round(score)));
+}
+
+function EmptyLine({ children }: { children: string }) {
+  return (
+    <p className="rounded-md bg-surface-2 px-3 py-2 text-[13px] text-muted-foreground">
+      {children}
+    </p>
+  );
 }
 
 export function OverviewTab({ analysis, id }: TabProps) {
@@ -55,11 +108,17 @@ export function OverviewTab({ analysis, id }: TabProps) {
   const { toast } = useToast();
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
-  const strengths = (analysis.strengths as string[]) ?? [];
-  const gaps = (analysis.gaps as string[]) ?? [];
-  const improvements = (analysis.improvements as string[]) ?? [];
-  const atsMatched = (analysis.atsKeywordsMatched as string[]) ?? [];
-  const atsMissing = (analysis.atsKeywordsMissing as string[]) ?? [];
+  const strengths = stringArray(analysis.strengths);
+  const gaps = stringArray(analysis.gaps);
+  const improvements = stringArray(analysis.improvements);
+  const atsMatched = stringArray(analysis.atsKeywordsMatched);
+  const atsMissing = stringArray(analysis.atsKeywordsMissing);
+  const fitScore = safeScore(analysis.fitScore);
+  const atsScore = safeScore(analysis.atsScore);
+  const fitRationale =
+    typeof analysis.fitRationale === "string" && analysis.fitRationale.trim()
+      ? analysis.fitRationale.trim()
+      : "No fit rationale was returned for this analysis.";
   const optimizedLatex =
     (analysis as { optimizedLatex?: string | null }).optimizedLatex ?? null;
 
@@ -74,22 +133,31 @@ export function OverviewTab({ analysis, id }: TabProps) {
     }
     setIsDownloadingPdf(true);
     try {
-      const response = await fetch(`/api/analyses/${id}/resume.pdf`, {
+      const response = await fetch(`/api/analyses/${id}/resume.pdf?repair=1`, {
         headers: {
           Accept: "application/pdf, application/json",
         },
       });
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as ErrorPayload | null;
-        throw new Error(errorMessageFromPayload(payload));
+        throw new Error(await pdfErrorMessageFromResponse(response));
       }
+
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/pdf")) {
+        throw new Error(await pdfErrorMessageFromResponse(response));
+      }
+
       const blob = await response.blob();
-      const fileName = safeFileName([analysis.companyName, analysis.jobTitle], "pdf");
+      const fileName = safeFileName(
+        [analysis.companyName, analysis.jobTitle],
+        "pdf",
+      );
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
+      a.href = url;
       a.download = fileName;
       a.click();
-      URL.revokeObjectURL(a.href);
+      URL.revokeObjectURL(url);
       toast({
         title: "PDF downloaded",
         description: "Compiled from optimized LaTeX.",
@@ -98,7 +166,9 @@ export function OverviewTab({ analysis, id }: TabProps) {
       toast({
         title: "Could not download PDF",
         description:
-          err instanceof Error ? err.message : "Could not compile optimized resume PDF.",
+          err instanceof Error
+            ? err.message
+            : "Could not compile optimized resume PDF.",
         variant: "destructive",
       });
     } finally {
@@ -111,17 +181,22 @@ export function OverviewTab({ analysis, id }: TabProps) {
       {optimizedLatex && (
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[15px] flex items-center gap-2">
-                <FileText className="w-3.5 h-3.5 text-accent" /> Optimized resume LaTeX
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="text-[15px] flex min-w-0 items-center gap-2">
+                <FileText className="w-3.5 h-3.5 text-accent" /> Optimized
+                resume LaTeX
               </CardTitle>
-              <div className="flex gap-2 no-print">
+              <div className="flex flex-wrap gap-2 no-print sm:justify-end">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => copy(optimizedLatex, "Optimized LaTeX copied")}
                 >
-                  {isCopied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                  {isCopied ? (
+                    <Check className="w-3.5 h-3.5 mr-1" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 mr-1" />
+                  )}
                   Copy
                 </Button>
                 <Button
@@ -130,7 +205,10 @@ export function OverviewTab({ analysis, id }: TabProps) {
                   onClick={() =>
                     downloadTextFile(
                       optimizedLatex,
-                      safeFileName([analysis.companyName, analysis.jobTitle], "tex"),
+                      safeFileName(
+                        [analysis.companyName, analysis.jobTitle],
+                        "tex",
+                      ),
                     )
                   }
                 >
@@ -148,7 +226,8 @@ export function OverviewTab({ analysis, id }: TabProps) {
               </div>
             </div>
             <p className="text-[12px] text-muted-foreground mt-1">
-              AI-tailored LaTeX resume for {analysis.companyName ?? "this company"} and {analysis.jobTitle}.
+              AI-tailored LaTeX resume for{" "}
+              {analysis.companyName ?? "this company"} and {analysis.jobTitle}.
             </p>
           </CardHeader>
           <CardContent>
@@ -158,26 +237,27 @@ export function OverviewTab({ analysis, id }: TabProps) {
               className="min-h-[360px] font-mono text-[12px] resize-none"
             />
             <p className="text-[11px] text-muted-foreground mt-3 no-print">
-              Download PDF validates and repairs this optimized LaTeX with AI, then compiles it on the API server.
+              Download PDF validates and repairs this optimized LaTeX with AI,
+              then compiles it on the API server.
             </p>
           </CardContent>
         </Card>
       )}
 
       {/* Scores */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-6 flex flex-col items-center gap-2">
-            <ScoreCircle score={analysis.fitScore} size="lg" label="Fit Score" />
-            <p className="text-[13px] text-muted-foreground text-center max-w-xs mt-2">
-              {analysis.fitRationale}
+      <div className="grid grid-cols-2 gap-4 md:gap-5">
+        <Card className="overflow-hidden">
+          <CardContent className="flex min-h-[15rem] flex-col items-center justify-center gap-3 p-6 md:min-h-[17rem] md:p-8">
+            <ScoreCircle score={fitScore} size="lg" label="Fit Score" />
+            <p className="mt-1 max-w-sm text-center text-[13px] leading-5 text-muted-foreground">
+              {fitRationale}
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-6 flex flex-col items-center gap-2">
-            <ScoreCircle score={analysis.atsScore} size="lg" label="ATS Score" />
-            <p className="text-[13px] text-muted-foreground text-center max-w-xs mt-2">
+        <Card className="overflow-hidden">
+          <CardContent className="flex min-h-[15rem] flex-col items-center justify-center gap-3 p-6 md:min-h-[17rem] md:p-8">
+            <ScoreCircle score={atsScore} size="lg" label="ATS Score" />
+            <p className="mt-1 max-w-sm text-center text-[13px] leading-5 text-muted-foreground">
               How well your resume passes automated applicant tracking systems.
             </p>
           </CardContent>
@@ -194,11 +274,13 @@ export function OverviewTab({ analysis, id }: TabProps) {
           </CardHeader>
           <CardContent className="space-y-2">
             {strengths.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">No strengths identified.</p>
+              <EmptyLine>
+                No strengths were returned for this analysis.
+              </EmptyLine>
             ) : (
               strengths.map((s, i) => (
                 <div
-                  key={i}
+                  key={`${s}-${i}`}
                   className="flex items-start gap-2 text-[13px]"
                   data-testid={`strength-${i}`}
                 >
@@ -217,11 +299,13 @@ export function OverviewTab({ analysis, id }: TabProps) {
           </CardHeader>
           <CardContent className="space-y-2">
             {gaps.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">No critical gaps identified.</p>
+              <EmptyLine>
+                No critical gaps were returned for this analysis.
+              </EmptyLine>
             ) : (
               gaps.map((g, i) => (
                 <div
-                  key={i}
+                  key={`${g}-${i}`}
                   className="flex items-start gap-2 text-[13px]"
                   data-testid={`gap-${i}`}
                 >
@@ -238,16 +322,19 @@ export function OverviewTab({ analysis, id }: TabProps) {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-[15px] flex items-center gap-2">
-            <Lightbulb className="w-3.5 h-3.5 text-warning" /> Resume improvements
+            <Lightbulb className="w-3.5 h-3.5 text-warning" /> Resume
+            improvements
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {improvements.length === 0 ? (
-            <p className="text-[13px] text-muted-foreground">No improvement suggestions.</p>
+            <EmptyLine>
+              No improvement suggestions were returned for this analysis.
+            </EmptyLine>
           ) : (
             improvements.map((imp, i) => (
               <div
-                key={i}
+                key={`${imp}-${i}`}
                 className="flex items-start gap-3 text-[13px] p-3 rounded-md bg-surface-2"
                 data-testid={`improvement-${i}`}
               >
@@ -271,11 +358,11 @@ export function OverviewTab({ analysis, id }: TabProps) {
             </p>
             <div className="flex flex-wrap gap-2">
               {atsMatched.length === 0 ? (
-                <p className="text-[13px] text-muted-foreground">None matched</p>
+                <EmptyLine>No matched ATS keywords were returned.</EmptyLine>
               ) : (
                 atsMatched.map((kw, i) => (
                   <Badge
-                    key={i}
+                    key={`${kw}-${i}`}
                     variant="success"
                     size="sm"
                     data-testid={`keyword-matched-${i}`}
@@ -292,11 +379,11 @@ export function OverviewTab({ analysis, id }: TabProps) {
             </p>
             <div className="flex flex-wrap gap-2">
               {atsMissing.length === 0 ? (
-                <p className="text-[13px] text-muted-foreground">No missing keywords</p>
+                <EmptyLine>No missing ATS keywords were returned.</EmptyLine>
               ) : (
                 atsMissing.map((kw, i) => (
                   <Badge
-                    key={i}
+                    key={`${kw}-${i}`}
                     variant="outline"
                     size="sm"
                     data-testid={`keyword-missing-${i}`}

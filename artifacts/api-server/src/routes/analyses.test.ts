@@ -41,6 +41,36 @@ describe("GET /api/analyses", () => {
   });
 });
 
+describe("GET /api/analyses/stats", () => {
+  it("normalizes legacy keyword JSON shapes when aggregating stats", async () => {
+    const legacyString = insertAnalysis({ jobTitle: "Legacy string keywords" });
+    const legacyObject = insertAnalysis({ jobTitle: "Legacy object keywords" });
+    insertAnalysis({
+      jobTitle: "Normal keywords",
+      atsKeywordsMissing: ["GraphQL", "Rust"],
+    });
+
+    const sqliteClient = (db as unknown as { $client: { exec: (sql: string) => void } }).$client;
+    sqliteClient.exec(`
+      UPDATE analyses
+      SET ats_keywords_missing = '"GraphQL"'
+      WHERE id = ${legacyString.id};
+
+      UPDATE analyses
+      SET ats_keywords_missing = '{"bad": true}'
+      WHERE id = ${legacyObject.id};
+    `);
+
+    const response = await request(app).get("/api/analyses/stats");
+
+    expect(response.status).toBe(200);
+    expect(response.body.totalAnalyses).toBe(3);
+    expect(response.body.topMissingKeywords).toContain("GraphQL");
+    expect(response.body.topMissingKeywords).toContain("Rust");
+    expect(response.body.topMissingKeywords).not.toContain("bad");
+  });
+});
+
 describe("GET /api/analyses/:id", () => {
   it("returns 404 when the analysis does not exist", async () => {
     const response = await request(app).get("/api/analyses/9999");
@@ -56,6 +86,24 @@ describe("GET /api/analyses/:id", () => {
 });
 
 describe("GET /api/analyses/:id/resume.pdf", () => {
+  it("returns a structured error when optimized LaTeX is missing", async () => {
+    const inserted = insertAnalysis({ optimizedLatex: null });
+
+    const response = await request(app)
+      .get(`/api/analyses/${inserted.id}/resume.pdf`)
+      .set("X-Request-Id", "pdf-missing-latex")
+      .set("Accept", "application/pdf, application/json");
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      error: {
+        code: "optimized_latex_missing",
+        message: "No optimized LaTeX is available for this analysis.",
+        requestId: "pdf-missing-latex",
+      },
+    });
+  });
+
   it("returns a readable error when optimized LaTeX cannot compile", async () => {
     const inserted = insertAnalysis({
       optimizedLatex: "\\documentclass{article}\n\\begin{document}\n\\undefinedResumeCommand\n\\end{document}",
@@ -63,11 +111,16 @@ describe("GET /api/analyses/:id/resume.pdf", () => {
 
     const response = await request(app)
       .get(`/api/analyses/${inserted.id}/resume.pdf`)
+      .set("X-Request-Id", "pdf-compile-failed")
       .set("Accept", "application/pdf, application/json");
 
     expect(response.status).toBe(422);
-    expect(response.body.error).toContain("Could not compile optimized resume PDF.");
-    expect(response.body.error).not.toBe("[object Object]");
+    expect(response.body.error).toMatchObject({
+      code: "optimized_pdf_compile_failed",
+      requestId: "pdf-compile-failed",
+    });
+    expect(response.body.error.message).toContain("Could not compile optimized resume PDF.");
+    expect(response.body.error.message).not.toBe("[object Object]");
   });
 });
 
@@ -79,6 +132,21 @@ describe("DELETE /api/analyses/:id", () => {
 
     const getResponse = await request(app).get(`/api/analyses/${inserted.id}`);
     expect(getResponse.status).toBe(404);
+  });
+});
+
+describe("GET /api/notifications", () => {
+  it("returns ISO timestamps when SQLite stores createdAt as Unix seconds", async () => {
+    const sqliteClient = (db as unknown as { $client: { exec: (sql: string) => void } }).$client;
+    sqliteClient.exec(`
+      INSERT INTO notifications (type, title, body, read, created_at)
+      VALUES ('info', 'Timestamp check', 'Ensure notification dates render correctly.', 0, 1700000000);
+    `);
+
+    const response = await request(app).get("/api/notifications");
+
+    expect(response.status).toBe(200);
+    expect(response.body[0].createdAt).toBe("2023-11-14T22:13:20.000Z");
   });
 });
 
@@ -104,6 +172,29 @@ describe("POST /api/analyses/:id/duplicate", () => {
     expect(response.body.id).not.toBe(inserted.id);
     // The duplicate route appends " (copy)" to the job title.
     expect(response.body.jobTitle).toBe("Original (copy)");
+  });
+
+  it("normalizes legacy JSON array fields while cloning", async () => {
+    const inserted = insertAnalysis({ jobTitle: "Legacy fields" });
+    const sqliteClient = (db as unknown as { $client: { exec: (sql: string) => void } }).$client;
+    sqliteClient.exec(`
+      UPDATE analyses
+      SET strengths = '"Single strength"',
+          gaps = '{"bad": true}',
+          improvements = '["Improve one", ""]',
+          ats_keywords_matched = '"TypeScript"',
+          ats_keywords_missing = '["GraphQL", 42]'
+      WHERE id = ${inserted.id};
+    `);
+
+    const response = await request(app).post(`/api/analyses/${inserted.id}/duplicate`);
+
+    expect(response.status).toBe(201);
+    expect(response.body.strengths).toEqual(["Single strength"]);
+    expect(response.body.gaps).toEqual([]);
+    expect(response.body.improvements).toEqual(["Improve one"]);
+    expect(response.body.atsKeywordsMatched).toEqual(["TypeScript"]);
+    expect(response.body.atsKeywordsMissing).toEqual(["GraphQL"]);
   });
 });
 

@@ -16,6 +16,34 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * Returns non-secret server capability flags for AI, job search, and PDF export.
+ * @summary System capability status
+ */
+export const GetSystemStatusResponse = zod.object({
+  status: zod.enum(["operational", "degraded"]),
+  services: zod.object({
+    ai: zod.object({
+      configured: zod.boolean(),
+      label: zod.string(),
+      detail: zod.string(),
+    }),
+    jobSearch: zod.object({
+      configured: zod.boolean(),
+      label: zod.string(),
+      detail: zod.string(),
+    }),
+    pdfExport: zod.object({
+      configured: zod.boolean(),
+      label: zod.string(),
+      detail: zod.string(),
+      availableCompilers: zod.array(
+        zod.enum(["tectonic", "latexmk", "pdflatex"]),
+      ),
+    }),
+  }),
+});
+
+/**
  * @summary List all analyses
  */
 export const ListAnalysesResponseItem = zod.object({
