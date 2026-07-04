@@ -48,7 +48,10 @@ function isRequest(input: RequestInfo | URL): input is Request {
   return typeof Request !== "undefined" && input instanceof Request;
 }
 
-function resolveMethod(input: RequestInfo | URL, explicitMethod?: string): string {
+function resolveMethod(
+  input: RequestInfo | URL,
+  explicitMethod?: string,
+): string {
   if (explicitMethod) return explicitMethod.toUpperCase();
   if (isRequest(input)) return input.method.toUpperCase();
   return "GET";
@@ -97,17 +100,19 @@ function getMediaType(headers: Headers): string | null {
 }
 
 function isJsonMediaType(mediaType: string | null): boolean {
-  return mediaType === "application/json" || Boolean(mediaType?.endsWith("+json"));
+  return (
+    mediaType === "application/json" || Boolean(mediaType?.endsWith("+json"))
+  );
 }
 
 function isTextMediaType(mediaType: string | null): boolean {
   return Boolean(
     mediaType &&
-      (mediaType.startsWith("text/") ||
-        mediaType === "application/xml" ||
-        mediaType === "text/xml" ||
-        mediaType.endsWith("+xml") ||
-        mediaType === "application/x-www-form-urlencoded"),
+    (mediaType.startsWith("text/") ||
+      mediaType === "application/xml" ||
+      mediaType === "text/xml" ||
+      mediaType.endsWith("+xml") ||
+      mediaType === "application/x-www-form-urlencoded"),
   );
 }
 
@@ -144,31 +149,59 @@ function getStringField(value: unknown, key: string): string | undefined {
   return trimmed === "" ? undefined : trimmed;
 }
 
+function getObjectField(
+  value: unknown,
+  key: string,
+): Record<string, unknown> | undefined {
+  if (!value || typeof value !== "object") return undefined;
+
+  const candidate = (value as Record<string, unknown>)[key];
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+    return undefined;
+  }
+
+  return candidate as Record<string, unknown>;
+}
+
 function truncate(text: string, maxLength = 300): string {
   return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
 }
 
+function appendRequestId(message: string, requestId?: string): string {
+  return requestId ? `${message} (request ${requestId})` : message;
+}
+
 function buildErrorMessage(response: Response, data: unknown): string {
   const prefix = `HTTP ${response.status} ${response.statusText}`;
+  const nestedError = getObjectField(data, "error");
+  const requestId =
+    getStringField(nestedError, "requestId") ??
+    getStringField(data, "requestId");
 
   if (typeof data === "string") {
     const text = data.trim();
     return text ? `${prefix}: ${truncate(text)}` : prefix;
   }
 
-  const title = getStringField(data, "title");
-  const detail = getStringField(data, "detail");
+  const title =
+    getStringField(data, "title") ?? getStringField(nestedError, "title");
+  const detail =
+    getStringField(data, "detail") ?? getStringField(nestedError, "detail");
   const message =
+    getStringField(nestedError, "message") ??
     getStringField(data, "message") ??
     getStringField(data, "error_description") ??
-    getStringField(data, "error");
+    getStringField(data, "error") ??
+    getStringField(nestedError, "error_description") ??
+    getStringField(nestedError, "error");
 
-  if (title && detail) return `${prefix}: ${title} — ${detail}`;
-  if (detail) return `${prefix}: ${detail}`;
-  if (message) return `${prefix}: ${message}`;
-  if (title) return `${prefix}: ${title}`;
+  if (title && detail)
+    return appendRequestId(`${prefix}: ${title} — ${detail}`, requestId);
+  if (detail) return appendRequestId(`${prefix}: ${detail}`, requestId);
+  if (message) return appendRequestId(`${prefix}: ${message}`, requestId);
+  if (title) return appendRequestId(`${prefix}: ${title}`, requestId);
 
-  return prefix;
+  return appendRequestId(prefix, requestId);
 }
 
 export class ApiError<T = unknown> extends Error {
@@ -251,7 +284,10 @@ async function parseJsonBody(
   }
 }
 
-async function parseErrorBody(response: Response, method: string): Promise<unknown> {
+async function parseErrorBody(
+  response: Response,
+  method: string,
+): Promise<unknown> {
   if (hasNoBody(response, method)) {
     return null;
   }
@@ -260,7 +296,9 @@ async function parseErrorBody(response: Response, method: string): Promise<unkno
 
   // Fall back to text when blob() is unavailable (e.g. some React Native builds).
   if (mediaType && !isJsonMediaType(mediaType) && !isTextMediaType(mediaType)) {
-    return typeof response.blob === "function" ? response.blob() : response.text();
+    return typeof response.blob === "function"
+      ? response.blob()
+      : response.text();
   }
 
   const raw = await response.text();
@@ -315,7 +353,7 @@ async function parseSuccessBody(
       if (typeof response.blob !== "function") {
         throw new TypeError(
           "Blob responses are not supported in this runtime. " +
-            "Use responseType \"json\" or \"text\" instead.",
+            'Use responseType "json" or "text" instead.',
         );
       }
       return response.blob();
@@ -335,7 +373,10 @@ export async function customFetch<T = unknown>(
     throw new TypeError(`customFetch: ${method} requests cannot have a body.`);
   }
 
-  const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
+  const headers = mergeHeaders(
+    isRequest(input) ? input.headers : undefined,
+    headersInit,
+  );
 
   if (
     typeof init.body === "string" &&
