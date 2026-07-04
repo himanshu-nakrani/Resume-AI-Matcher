@@ -55,6 +55,7 @@ import {
   Bookmark,
   BookmarkCheck,
   MoreHorizontal,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -362,7 +363,13 @@ export function History() {
     null,
   );
 
-  const { data: analyses, isLoading, error } = useListAnalyses();
+  const {
+    data: analyses,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useListAnalyses();
   const deleteAnalysis = useDeleteAnalysis({
     mutation: {
       onSuccess: () =>
@@ -776,9 +783,27 @@ export function History() {
       )}
 
       {!isLoading && error && (
-        <div className="rounded-md border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          Could not load analyses.{" "}
-          {error instanceof Error ? error.message : "Try again in a moment."}
+        <div className="flex flex-col gap-3 rounded-md border border-destructive/25 bg-destructive/10 px-3 py-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-medium">Could not load analyses.</p>
+            <p className="mt-1 text-[12px] text-destructive/85">
+              {error instanceof Error
+                ? error.message
+                : "Try again in a moment."}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-destructive/30 bg-background/50 text-destructive hover:bg-destructive/10"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw
+              className={`mr-1.5 h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`}
+            />
+            {isFetching ? "Retrying..." : "Retry"}
+          </Button>
         </div>
       )}
 
