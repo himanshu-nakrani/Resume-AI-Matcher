@@ -260,95 +260,116 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <ShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
       <aside
-  className={cn(
-    "sticky top-0 z-20 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex transition-[width] duration-[var(--duration)]",
-    sidebarCollapsed ? "w-[52px]" : "w-[180px]",
-  )}
->
-  <div className="px-3 py-4">
-    <Link href="/" className="group flex items-center gap-2 outline-none ring-sidebar-ring focus-visible:ring-2 rounded px-2 py-1 transition-colors">
-      <div className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] bg-foreground text-background">
-        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" />
-        </svg>
-      </div>
-      {!sidebarCollapsed && (
-        <span className="truncate text-[12.5px] font-semibold tracking-[-0.01em]">OptiMatch</span>
-      )}
-    </Link>
-  </div>
-
-  <nav className="flex flex-1 flex-col overflow-y-auto px-2 pb-3" aria-label="Main">
-    {navGroups.map((group, groupIdx) => (
-      <div key={group.label}>
-        {!sidebarCollapsed && (
-          <div
-            className={cn(
-              "px-2 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-subtle-foreground",
-              groupIdx === 0 && "pt-1",
-            )}
-          >
-            {group.label}
-          </div>
+        className={cn(
+          "sticky top-0 z-20 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-[var(--duration)] md:flex",
+          sidebarCollapsed ? "w-[56px]" : "w-[208px]",
         )}
-        <div className="flex flex-col">
-          {group.items.map((item) => {
-            const active = isActive(location, item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "group flex h-8 items-center gap-2.5 rounded-[5px] px-2 text-[12.5px] transition-colors",
-                  active
-                    ? "bg-surface-2 text-foreground"
-                    : "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
-                  sidebarCollapsed && "justify-center",
-                )}
-                title={sidebarCollapsed ? item.label : undefined}
+      >
+        <div className="px-3 py-4">
+          <Link
+            href="/"
+            className="group flex items-center gap-2 rounded px-2 py-1 outline-none ring-sidebar-ring transition-colors focus-visible:ring-2"
+          >
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground shadow-sm">
+              <svg
+                className="h-3.5 w-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <item.icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {!sidebarCollapsed && (
-                  <>
-                    <span className="truncate">{item.label}</span>
-                    {item.kbd && (
-                      <kbd className="ml-auto hidden text-[9.5px] font-mono text-subtle-foreground group-hover:inline">
-                        {item.kbd}
-                      </kbd>
-                    )}
-                  </>
-                )}
-              </Link>
-            );
-          })}
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              </svg>
+            </div>
+            {!sidebarCollapsed && (
+              <div className="min-w-0">
+                <span className="block truncate text-[13px] font-semibold tracking-[-0.01em]">
+                  OptiMatch
+                </span>
+                <span className="block truncate text-[10px] font-medium text-subtle-foreground">
+                  Resume intelligence
+                </span>
+              </div>
+            )}
+          </Link>
         </div>
-      </div>
-    ))}
-  </nav>
 
-  <div className="flex items-center gap-1 border-t border-sidebar-border px-2 py-2">
-    <NotificationsPanel triggerClassName="h-7 w-7 text-muted-foreground hover:bg-surface-2 hover:text-foreground" />
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className="h-7 w-7 text-muted-foreground hover:bg-surface-2 hover:text-foreground"
-      onClick={toggle}
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-    >
-      {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-    </Button>
-    <button
-      type="button"
-      onClick={() => setShowShortcuts(true)}
-      className="ml-auto inline-flex h-7 items-center gap-1 rounded-[5px] px-2 text-[10px] text-subtle-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
-      aria-label="Keyboard shortcuts"
-    >
-      <Keyboard className="h-3 w-3" />
-      {!sidebarCollapsed && <span>⌘?</span>}
-    </button>
-  </div>
-</aside>
+        <nav className="flex flex-1 flex-col overflow-y-auto px-2 pb-3" aria-label="Main">
+          {navGroups.map((group, groupIdx) => (
+            <div key={group.label}>
+              {!sidebarCollapsed && (
+                <div
+                  className={cn(
+                    "px-2 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-subtle-foreground",
+                    groupIdx === 0 && "pt-1",
+                  )}
+                >
+                  {group.label}
+                </div>
+              )}
+              <div className="flex flex-col">
+                {group.items.map((item) => {
+                  const active = isActive(location, item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "group flex h-8 items-center gap-2.5 rounded-[5px] border border-transparent px-2 text-[12.5px] transition-colors",
+                        active
+                          ? "border-accent/15 bg-accent/10 text-foreground"
+                          : "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
+                        sidebarCollapsed && "justify-center",
+                      )}
+                      title={sidebarCollapsed ? item.label : undefined}
+                    >
+                      <item.icon
+                        className={cn("h-3.5 w-3.5 shrink-0", active && "text-accent")}
+                        aria-hidden
+                      />
+                      {!sidebarCollapsed && (
+                        <>
+                          <span className="truncate">{item.label}</span>
+                          {item.kbd && (
+                            <kbd className="ml-auto hidden text-[9.5px] font-mono text-subtle-foreground group-hover:inline">
+                              {item.kbd}
+                            </kbd>
+                          )}
+                        </>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-1 border-t border-sidebar-border px-2 py-2">
+          <NotificationsPanel triggerClassName="h-7 w-7 text-muted-foreground hover:bg-surface-2 hover:text-foreground" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:bg-surface-2 hover:text-foreground"
+            onClick={toggle}
+            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+          </Button>
+          <button
+            type="button"
+            onClick={() => setShowShortcuts(true)}
+            className="ml-auto inline-flex h-7 items-center gap-1 rounded-[5px] px-2 text-[10px] text-subtle-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+            aria-label="Keyboard shortcuts"
+          >
+            <Keyboard className="h-3 w-3" />
+            {!sidebarCollapsed && <span>⌘?</span>}
+          </button>
+        </div>
+      </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-surface-1 px-4 py-3 md:hidden">
@@ -386,7 +407,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
               );
             })()}
           </div>
-          <div className="flex items-center gap-2" id="topbar-actions" />
+          <div className="flex items-center gap-3 text-[11px] text-subtle-foreground" id="topbar-actions">
+            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+            <span>Local workspace</span>
+          </div>
         </header>
 
         <main className="flex-1 pb-20 md:pb-0">
