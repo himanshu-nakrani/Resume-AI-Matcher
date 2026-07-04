@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +25,8 @@ import {
   MousePointerClick,
   DollarSign,
   Save,
+  PlusCircle,
+  StickyNote,
 } from "lucide-react";
 
 interface SavedJob {
@@ -71,6 +82,15 @@ function dateTime(value: unknown): number {
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
+function shortDate(value: unknown): string | null {
+  const time = dateTime(value);
+  if (!time) return null;
+  return new Date(time).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function normalizeJob(value: unknown): SavedJob | null {
   if (!value || typeof value !== "object") return null;
   const job = value as Partial<SavedJob>;
@@ -107,6 +127,7 @@ function normalizeJob(value: unknown): SavedJob | null {
 }
 
 export function SavedJobsPage() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -237,47 +258,68 @@ export function SavedJobsPage() {
     [savedJobs],
   );
 
+  const stats = useMemo(
+    () => ({
+      total: visibleJobs.length,
+      easyApply: visibleJobs.filter((job) => job.applyType === "ats").length,
+      withNotes: visibleJobs.filter((job) => Boolean(job.notes?.trim())).length,
+      sources: new Set(visibleJobs.map((job) => job.source).filter(Boolean))
+        .size,
+    }),
+    [visibleJobs],
+  );
+
+  const normalizedSearch = searchTerm.trim().toLowerCase();
   const filtered = visibleJobs.filter(
-    (j) =>
-      !searchTerm ||
-      j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (j.company ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (j.source ?? "").toLowerCase().includes(searchTerm.toLowerCase()),
+    (job) =>
+      !normalizedSearch ||
+      job.title.toLowerCase().includes(normalizedSearch) ||
+      (job.company ?? "").toLowerCase().includes(normalizedSearch) ||
+      (job.source ?? "").toLowerCase().includes(normalizedSearch),
   );
 
   return (
-    <div className="container max-w-6xl mx-auto px-4 py-8 space-y-8">
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-muted p-3">
-            <Bookmark className="w-8 h-8 text-primary" />
+    <div className="container mx-auto max-w-6xl space-y-6 px-4 py-6 md:py-8">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-1">
+            <Bookmark className="h-5 w-5 text-accent" />
           </div>
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight">Saved Jobs</h1>
-            <div className="mt-1 flex items-center gap-2 text-lg text-muted-foreground">
-              <Badge variant="secondary" className="mr-2">
-                {visibleJobs.length}
-              </Badge>
-              <span>bookmarked listings</span>
-            </div>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight">Saved Jobs</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Keep high-signal listings, notes, and apply paths in one review
+              queue.
+            </p>
           </div>
         </div>
+        <Button onClick={() => setLocation("/")}>
+          <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
+          Find jobs
+        </Button>
       </div>
 
-      <div className="flex gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <MetricCard label="Saved" value={stats.total} />
+        <MetricCard label="Easy apply" value={stats.easyApply} />
+        <MetricCard label="With notes" value={stats.withNotes} />
+        <MetricCard label="Sources" value={stats.sources} />
+      </div>
+
+      <div className="flex gap-3 rounded-lg border border-border bg-surface-1 p-3">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-3.5 h-5 w-5 text-muted-foreground" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by title, company, or source..."
-            className="pl-12 h-12 text-base rounded-xl border-2"
+            className="h-9 pl-9"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           {searchTerm && (
             <Button
               variant="ghost"
-              size="sm"
-              className="absolute right-2 top-2"
+              size="icon"
+              className="absolute right-1 top-1 h-7 w-7"
               onClick={() => setSearchTerm("")}
               aria-label="Clear saved job search"
             >
@@ -290,36 +332,52 @@ export function SavedJobsPage() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-28 rounded-xl" />
+            <Skeleton key={i} className="h-32 rounded-lg" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Bookmark className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">
+        <Empty className="bg-surface-1">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              {searchTerm ? <Search /> : <Bookmark />}
+            </EmptyMedia>
+            <EmptyTitle>
               {searchTerm ? "No matches" : "No saved jobs yet"}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
+            </EmptyTitle>
+            <EmptyDescription>
               {searchTerm
-                ? "Try a different search term"
-                : "Save jobs from search results to track them here"}
-            </p>
-          </CardContent>
-        </Card>
+                ? "Try a different title, company, or source."
+                : "Save jobs from search results to build a focused shortlist."}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            {searchTerm ? (
+              <Button variant="outline" onClick={() => setSearchTerm("")}>
+                Clear search
+              </Button>
+            ) : (
+              <Button onClick={() => setLocation("/")}>
+                <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
+                Search jobs
+              </Button>
+            )}
+          </EmptyContent>
+        </Empty>
       ) : (
         <div className="space-y-3">
           {filtered.map((job) => {
             const tags = stringArray(job.tags);
+            const savedAt = shortDate(job.savedAt);
             return (
-              <Card key={job.id} className="border shadow-sm">
-                <CardContent className="p-4">
+              <Card key={job.id} padding="lg" className="bg-surface-1">
+                <CardContent className="p-4 md:p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 space-y-2 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         {job.source && (
                           <Badge
                             variant="outline"
+                            size="lg"
                             className="truncate max-w-[200px]"
                           >
                             {job.source}
@@ -327,19 +385,25 @@ export function SavedJobsPage() {
                         )}
                         {job.applyType === "ats" && (
                           <Badge
-                            variant="secondary"
-                            className="text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
+                            variant="success"
+                            size="lg"
+                            icon={<MousePointerClick className="h-3 w-3" />}
                           >
-                            <MousePointerClick className="w-3 h-3 mr-1" /> Easy
-                            Apply
+                            Easy Apply
                           </Badge>
                         )}
                         {job.salary && (
                           <Badge
-                            variant="secondary"
-                            className="text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800"
+                            variant="info"
+                            size="lg"
+                            icon={<DollarSign className="h-3 w-3" />}
                           >
-                            <DollarSign className="w-3 h-3 mr-1" /> {job.salary}
+                            {job.salary}
+                          </Badge>
+                        )}
+                        {savedAt && (
+                          <Badge variant="secondary" size="lg">
+                            Saved {savedAt}
                           </Badge>
                         )}
                       </div>
@@ -352,6 +416,13 @@ export function SavedJobsPage() {
                         {job.title}
                         <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-60 group-hover:opacity-100" />
                       </a>
+                      {(job.company || job.publishedDate) && (
+                        <p className="text-[13px] text-muted-foreground">
+                          {[job.company, job.publishedDate]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      )}
                       {tags.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {tags.map((tag) => (
@@ -390,13 +461,14 @@ export function SavedJobsPage() {
                       ) : job.notes ? (
                         <button
                           type="button"
-                          className="line-clamp-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+                          className="flex w-full items-start gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
                           onClick={() => {
                             setEditingNotes(job.id);
                             setNotesDraft(job.notes ?? "");
                           }}
                         >
-                          {job.notes}
+                          <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span className="line-clamp-2">{job.notes}</span>
                         </button>
                       ) : null}
                     </div>
@@ -431,5 +503,20 @@ export function SavedJobsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: number }) {
+  return (
+    <Card padding="sm" className="bg-surface-1">
+      <CardContent className="p-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+          {label}
+        </p>
+        <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">
+          {value}
+        </p>
+      </CardContent>
+    </Card>
   );
 }

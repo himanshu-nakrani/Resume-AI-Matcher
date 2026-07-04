@@ -1,11 +1,31 @@
 import { useState, useEffect, useMemo } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage, type ApiErrorPayload } from "@/lib/api-error";
-import { Bell, BellRing, RefreshCw, Trash2, Plus, Clock } from "lucide-react";
+import {
+  Bell,
+  BellRing,
+  RefreshCw,
+  Trash2,
+  Plus,
+  Clock,
+  Activity,
+  PauseCircle,
+  PlusCircle,
+} from "lucide-react";
 
 interface SearchAlert {
   id: number;
@@ -78,6 +98,7 @@ function normalizeAlert(value: unknown): SearchAlert | null {
 }
 
 export function SearchAlertsPage() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [alerts, setAlerts] = useState<SearchAlert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -285,51 +306,94 @@ export function SearchAlertsPage() {
     [alerts],
   );
 
+  const stats = useMemo(
+    () => ({
+      total: visibleAlerts.length,
+      active: visibleAlerts.filter((alert) => alert.enabled).length,
+      paused: visibleAlerts.filter((alert) => !alert.enabled).length,
+      checked: visibleAlerts.filter((alert) => alert.lastRunAt).length,
+    }),
+    [visibleAlerts],
+  );
+
   return (
-    <div className="container max-w-5xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Job Alerts</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {visibleAlerts.length} saved searches
-          </p>
+    <div className="container mx-auto max-w-6xl space-y-6 px-4 py-6 md:py-8">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-1">
+            <BellRing className="h-5 w-5 text-accent" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight">Job Alerts</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Re-run saved searches and keep fresh opportunities moving into the
+              pipeline.
+            </p>
+          </div>
         </div>
-        <Button size="sm" onClick={() => setShowCreate(!showCreate)}>
-          <Plus className="w-4 h-4 mr-1" />{" "}
-          {showCreate ? "Cancel" : "New Alert"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setLocation("/")}>
+            <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
+            New search
+          </Button>
+          <Button onClick={() => setShowCreate(!showCreate)}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            {showCreate ? "Close" : "New alert"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <MetricCard label="Alerts" value={stats.total} />
+        <MetricCard label="Active" value={stats.active} />
+        <MetricCard label="Paused" value={stats.paused} />
+        <MetricCard label="Checked" value={stats.checked} />
       </div>
 
       {showCreate && (
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <Input
-              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="Alert name (optional)"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-            />
-            <Input
-              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="Search query (e.g. senior React developer remote)"
-              value={newQuery}
-              onChange={(e) => setNewQuery(e.target.value)}
-            />
-            <select
-              className="flex h-9 rounded-md border border-input bg-background px-2 text-sm"
-              value={newSearchType}
-              onChange={(e) => setNewSearchType(e.target.value)}
-            >
-              <option value="auto">Auto</option>
-              <option value="fast">Fast</option>
-              <option value="deep">Deep</option>
-              <option value="deep-reasoning">Deep Reasoning</option>
-            </select>
+        <Card padding="lg" className="bg-surface-1">
+          <CardContent className="grid gap-3 p-4 md:grid-cols-[1fr_1.4fr_10rem_auto] md:items-end md:p-5">
+            <label className="space-y-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                Name
+              </span>
+              <Input
+                placeholder="Alert name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                Query
+              </span>
+              <Input
+                placeholder="senior React developer remote"
+                value={newQuery}
+                onChange={(e) => setNewQuery(e.target.value)}
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                Depth
+              </span>
+              <select
+                className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                value={newSearchType}
+                onChange={(e) => setNewSearchType(e.target.value)}
+              >
+                <option value="auto">Auto</option>
+                <option value="fast">Fast</option>
+                <option value="deep">Deep</option>
+                <option value="deep-reasoning">Deep reasoning</option>
+              </select>
+            </label>
             <Button
               onClick={createAlert}
               disabled={!newQuery.trim() || creating}
+              className="md:self-end"
             >
-              {creating ? "Creating..." : "Create Alert"}
+              {creating ? "Creating..." : "Create alert"}
             </Button>
           </CardContent>
         </Card>
@@ -337,60 +401,91 @@ export function SearchAlertsPage() {
 
       {loading ? (
         <div className="space-y-3">
-          {[1, 2].map((i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28 rounded-lg" />
           ))}
         </div>
       ) : visibleAlerts.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Bell className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No alerts yet</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Create an alert to re-check searches for new results
-            </p>
-          </CardContent>
-        </Card>
+        <Empty className="bg-surface-1">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Bell />
+            </EmptyMedia>
+            <EmptyTitle>No alerts yet</EmptyTitle>
+            <EmptyDescription>
+              Save repeat searches for roles, markets, or companies you want to
+              monitor.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Create alert
+            </Button>
+          </EmptyContent>
+        </Empty>
       ) : (
         <div className="space-y-3">
           {visibleAlerts.map((alert) => {
             const lastCheckedLabel = shortDate(alert.lastRunAt);
             const resultCount = safeCount(alert.lastResultCount);
             return (
-              <Card key={alert.id} className="border shadow-sm">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        {alert.enabled ? (
-                          <BellRing className="w-4 h-4 text-primary" />
-                        ) : (
-                          <Bell className="w-4 h-4 text-muted-foreground" />
-                        )}
-                        <h3 className="font-semibold">
-                          {alert.name || alert.query.slice(0, 60)}
-                        </h3>
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-1">
-                        {alert.query}
-                      </p>
-                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground pt-1">
-                        <BadgeSimple>{alert.searchType}</BadgeSimple>
+              <Card key={alert.id} padding="lg" className="bg-surface-1">
+                <CardContent className="p-4 md:p-5">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant={alert.enabled ? "success" : "secondary"}
+                          size="lg"
+                          icon={
+                            alert.enabled ? (
+                              <Activity className="h-3 w-3" />
+                            ) : (
+                              <PauseCircle className="h-3 w-3" />
+                            )
+                          }
+                        >
+                          {alert.enabled ? "Active" : "Paused"}
+                        </Badge>
+                        <Badge variant="outline" size="lg">
+                          {alert.searchType}
+                        </Badge>
                         {alert.userLocation && (
-                          <BadgeSimple>{alert.userLocation}</BadgeSimple>
-                        )}
-                        {lastCheckedLabel && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            Last checked: {lastCheckedLabel}
-                          </span>
+                          <Badge variant="outline" size="lg">
+                            {alert.userLocation}
+                          </Badge>
                         )}
                         {resultCount != null && (
-                          <span>{resultCount} results</span>
+                          <Badge variant="info" size="lg">
+                            {resultCount} results
+                          </Badge>
                         )}
                       </div>
+                      <div>
+                        <h3 className="text-base font-semibold leading-snug">
+                          {alert.name || alert.query.slice(0, 60)}
+                        </h3>
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                          {alert.query}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                        {lastCheckedLabel ? (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Last checked {lastCheckedLabel}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Not checked yet
+                          </span>
+                        )}
+                        {alert.recentOnly && <span>Recent listings only</span>}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex shrink-0 items-center gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
@@ -399,9 +494,9 @@ export function SearchAlertsPage() {
                         title={alert.enabled ? "Disable" : "Enable"}
                       >
                         {alert.enabled ? (
-                          <BellRing className="w-3.5 h-3.5 text-primary" />
+                          <BellRing className="h-3.5 w-3.5 text-primary" />
                         ) : (
-                          <Bell className="w-3.5 h-3.5" />
+                          <Bell className="h-3.5 w-3.5" />
                         )}
                       </Button>
                       <Button
@@ -412,7 +507,7 @@ export function SearchAlertsPage() {
                         title="Check for new listings"
                       >
                         <RefreshCw
-                          className={`w-3.5 h-3.5 ${checkingId === alert.id ? "animate-spin" : ""}`}
+                          className={`h-3.5 w-3.5 ${checkingId === alert.id ? "animate-spin" : ""}`}
                         />
                       </Button>
                       <Button
@@ -423,7 +518,7 @@ export function SearchAlertsPage() {
                         disabled={deletingId === alert.id}
                         title="Remove alert"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -437,10 +532,17 @@ export function SearchAlertsPage() {
   );
 }
 
-function BadgeSimple({ children }: { children: React.ReactNode }) {
+function MetricCard({ label, value }: { label: string; value: number }) {
   return (
-    <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium">
-      {children}
-    </span>
+    <Card padding="sm" className="bg-surface-1">
+      <CardContent className="p-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+          {label}
+        </p>
+        <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">
+          {value}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
