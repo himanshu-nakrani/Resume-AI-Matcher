@@ -86,6 +86,24 @@ describe("GET /api/analyses/:id", () => {
 });
 
 describe("GET /api/analyses/:id/resume.pdf", () => {
+  it("returns a structured error when optimized LaTeX is missing", async () => {
+    const inserted = insertAnalysis({ optimizedLatex: null });
+
+    const response = await request(app)
+      .get(`/api/analyses/${inserted.id}/resume.pdf`)
+      .set("X-Request-Id", "pdf-missing-latex")
+      .set("Accept", "application/pdf, application/json");
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      error: {
+        code: "optimized_latex_missing",
+        message: "No optimized LaTeX is available for this analysis.",
+        requestId: "pdf-missing-latex",
+      },
+    });
+  });
+
   it("returns a readable error when optimized LaTeX cannot compile", async () => {
     const inserted = insertAnalysis({
       optimizedLatex: "\\documentclass{article}\n\\begin{document}\n\\undefinedResumeCommand\n\\end{document}",
@@ -93,11 +111,16 @@ describe("GET /api/analyses/:id/resume.pdf", () => {
 
     const response = await request(app)
       .get(`/api/analyses/${inserted.id}/resume.pdf`)
+      .set("X-Request-Id", "pdf-compile-failed")
       .set("Accept", "application/pdf, application/json");
 
     expect(response.status).toBe(422);
-    expect(response.body.error).toContain("Could not compile optimized resume PDF.");
-    expect(response.body.error).not.toBe("[object Object]");
+    expect(response.body.error).toMatchObject({
+      code: "optimized_pdf_compile_failed",
+      requestId: "pdf-compile-failed",
+    });
+    expect(response.body.error.message).toContain("Could not compile optimized resume PDF.");
+    expect(response.body.error.message).not.toBe("[object Object]");
   });
 });
 

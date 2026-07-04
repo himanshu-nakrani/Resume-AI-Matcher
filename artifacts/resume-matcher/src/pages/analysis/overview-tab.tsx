@@ -245,19 +245,19 @@ export function OverviewTab({ analysis, id }: TabProps) {
       )}
 
       {/* Scores */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-6 flex flex-col items-center gap-2">
+      <div className="grid grid-cols-2 gap-4 md:gap-5">
+        <Card className="overflow-hidden">
+          <CardContent className="flex min-h-[15rem] flex-col items-center justify-center gap-3 p-6 md:min-h-[17rem] md:p-8">
             <ScoreCircle score={fitScore} size="lg" label="Fit Score" />
-            <p className="text-[13px] text-muted-foreground text-center max-w-xs mt-2">
+            <p className="mt-1 max-w-sm text-center text-[13px] leading-5 text-muted-foreground">
               {fitRationale}
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-6 flex flex-col items-center gap-2">
+        <Card className="overflow-hidden">
+          <CardContent className="flex min-h-[15rem] flex-col items-center justify-center gap-3 p-6 md:min-h-[17rem] md:p-8">
             <ScoreCircle score={atsScore} size="lg" label="ATS Score" />
-            <p className="text-[13px] text-muted-foreground text-center max-w-xs mt-2">
+            <p className="mt-1 max-w-sm text-center text-[13px] leading-5 text-muted-foreground">
               How well your resume passes automated applicant tracking systems.
             </p>
           </CardContent>

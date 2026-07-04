@@ -255,7 +255,7 @@ export function Analysis() {
   return (
     <div className="space-y-0" data-testid={`analysis-${id}`}>
       <Tabs value={activeTab} onValueChange={setTab}>
-        <div className="sticky top-12 z-30 bg-background border-b border-border pb-3 mb-6 sm:-mx-6 sm:px-6">
+        <div className="z-30 border-b border-border bg-background pb-3 mb-6 sm:-mx-6 sm:px-6 md:sticky md:top-12 md:pt-4 md:-mt-8 md:shadow-[0_1px_0_0_hsl(var(--border))]">
           <button
             onClick={() => setLocation("/")}
             className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground mb-2 transition-colors no-print"

@@ -32,6 +32,7 @@ import {
   FIREWORKS_DEFAULT_MODEL,
 } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger";
+import { sendApiError } from "../lib/api-error";
 import { sendAiError } from "../lib/send-ai-error";
 import { parseAiJson } from "../lib/parse-ai-json";
 import { optimizeLatexResume, canOptimizeLatex } from "../lib/latex-optimizer";
@@ -603,7 +604,7 @@ router.post("/analyses/:id/validate-latex", async (req, res): Promise<void> => {
 router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
   const params = GetAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", "The analysis id is invalid.");
     return;
   }
 
@@ -612,13 +613,19 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
   });
 
   if (!analysis) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
   const latex = analysis.optimizedLatex?.trim();
   if (!latex) {
-    res.status(400).json({ error: "No optimized LaTeX is available for this analysis." });
+    sendApiError(
+      req,
+      res,
+      400,
+      "optimized_latex_missing",
+      "No optimized LaTeX is available for this analysis.",
+    );
     return;
   }
 
@@ -643,7 +650,7 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
     } catch (compileErr) {
       if (!isPdfRepairRequested(req)) {
         req.log.warn({ err: compileErr, id: params.data.id }, "Optimized resume PDF compilation failed");
-        res.status(422).json({ error: formatLatexCompileError(compileErr) });
+        sendApiError(req, res, 422, "optimized_pdf_compile_failed", formatLatexCompileError(compileErr));
         return;
       }
       req.log.warn({ err: compileErr, id: params.data.id }, "Initial LaTeX compilation failed; attempting AI repair");
@@ -673,10 +680,10 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
     if (isAiError(err)) {
       sendAiError(res, err);
     } else if (isLatexCompileFailure(err)) {
-      res.status(422).json({ error: formatLatexCompileError(err) });
+      sendApiError(req, res, 422, "optimized_pdf_compile_failed", formatLatexCompileError(err));
     } else {
       const message = err instanceof Error ? err.message : "Could not compile optimized resume PDF.";
-      res.status(500).json({ error: message });
+      sendApiError(req, res, 500, "optimized_pdf_export_failed", message);
     }
   }
 });
