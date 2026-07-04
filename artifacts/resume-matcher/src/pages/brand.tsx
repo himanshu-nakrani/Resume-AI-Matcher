@@ -33,9 +33,51 @@ import {
 } from "lucide-react";
 
 function stringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
-    : [];
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function safeScore(value: unknown): number {
+  const score = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 0;
+}
+
+function dateValue(value: unknown): Date | null {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dateTime(value: unknown): number {
+  return dateValue(value)?.getTime() ?? 0;
+}
+
+function shortDate(value: unknown): string {
+  const date = dateValue(value);
+  return date ? date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "Unknown";
 }
 
 function StatCard({
@@ -193,18 +235,18 @@ export function Brand() {
 
   // 3. Fit Score Trend
   const trendData = [...analyses]
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .sort((a, b) => dateTime(a.createdAt) - dateTime(b.createdAt))
     .map(a => ({
-      date: new Date(a.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      score: a.fitScore,
-      job: a.jobTitle
+      date: shortDate(a.createdAt),
+      score: safeScore(a.fitScore),
+      job: a.jobTitle,
     }));
 
   // 4. Personal Summary Stats
   const totalAnalyses = analyses.length;
-  const avgFitScore = Math.round(analyses.reduce((acc, a) => acc + a.fitScore, 0) / totalAnalyses);
-  const avgAtsScore = Math.round(analyses.reduce((acc, a) => acc + (a.atsScore || 0), 0) / totalAnalyses);
-  const bestScore = Math.max(...analyses.map(a => a.fitScore));
+  const avgFitScore = Math.round(analyses.reduce((acc, a) => acc + safeScore(a.fitScore), 0) / totalAnalyses);
+  const avgAtsScore = Math.round(analyses.reduce((acc, a) => acc + safeScore(a.atsScore), 0) / totalAnalyses);
+  const bestScore = Math.max(...analyses.map(a => safeScore(a.fitScore)));
   
   const roleFreq: Record<string, number> = {};
   analyses.forEach(a => {
