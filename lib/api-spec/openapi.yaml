@@ -27,6 +27,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  /status:
+    get:
+      operationId: getSystemStatus
+      tags: [health]
+      summary: System capability status
+      description: Returns non-secret server capability flags for AI, job search, and PDF export.
+      responses:
+        "200":
+          description: Capability status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStatus"
+
   /analyses:
     get:
       operationId: listAnalyses
@@ -490,6 +504,63 @@ components:
           type: string
       required:
         - status
+
+    SystemServiceStatus:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        label:
+          type: string
+        detail:
+          type: string
+      required:
+        - configured
+        - label
+        - detail
+
+    PdfExportStatus:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        label:
+          type: string
+        detail:
+          type: string
+        availableCompilers:
+          type: array
+          items:
+            type: string
+            enum: [tectonic, latexmk, pdflatex]
+      required:
+        - configured
+        - label
+        - detail
+        - availableCompilers
+
+    SystemStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [operational, degraded]
+        services:
+          type: object
+          properties:
+            ai:
+              $ref: "#/components/schemas/SystemServiceStatus"
+            jobSearch:
+              $ref: "#/components/schemas/SystemServiceStatus"
+            pdfExport:
+              $ref: "#/components/schemas/PdfExportStatus"
+          required:
+            - ai
+            - jobSearch
+            - pdfExport
+      required:
+        - status
+        - services
 
     ErrorResponse:
       type: object
@@ -1037,4 +1108,3 @@ components:
           type: integer
       required:
         - id
-

@@ -16,12 +16,15 @@ import {
   Bookmark,
   Bell,
   MoreHorizontal,
+  ServerCog,
 } from "lucide-react";
+import { getGetSystemStatusQueryKey, useGetSystemStatus } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 import { CommandPalette } from "@/components/command-palette";
 import { NotificationsPanel } from "@/components/notifications-panel";
 import { PageTransition } from "@/components/page-transition";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Sheet,
   SheetContent,
@@ -181,6 +184,93 @@ function ShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void 
         </p>
       </div>
     </div>
+  );
+}
+
+function SystemStatusIndicator({ compact = false }: { compact?: boolean }) {
+  const { data, isError, isLoading } = useGetSystemStatus({
+    query: {
+      queryKey: getGetSystemStatusQueryKey(),
+      staleTime: 60_000,
+      refetchInterval: 60_000,
+      retry: 1,
+    },
+  });
+  const services = data
+    ? [data.services.ai, data.services.jobSearch, data.services.pdfExport]
+    : [];
+  const configuredCount = services.filter((service) => service.configured).length;
+  const totalCount = services.length || 3;
+  const state = isError ? "offline" : data?.status ?? "checking";
+  const label = isError
+    ? "API offline"
+    : isLoading
+      ? "Checking services"
+      : `${configuredCount}/${totalCount} services`;
+  const dotClass = cn(
+    "h-1.5 w-1.5 rounded-full",
+    state === "operational" && "bg-accent",
+    state === "degraded" && "bg-warning",
+    state === "offline" && "bg-destructive",
+    state === "checking" && "bg-muted-foreground",
+  );
+  const iconClass = cn(
+    "h-3.5 w-3.5",
+    state === "operational" && "text-accent",
+    state === "degraded" && "text-warning",
+    state === "offline" && "text-destructive",
+    state === "checking" && "text-muted-foreground",
+  );
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "inline-flex h-7 items-center gap-2 rounded-md border border-transparent px-2 text-[11px] text-subtle-foreground transition-colors hover:border-border hover:bg-surface-2 hover:text-foreground",
+            compact && "w-7 justify-center px-0",
+          )}
+          aria-label={`System status: ${label}`}
+        >
+          {compact ? <ServerCog className={iconClass} /> : <span className={dotClass} aria-hidden />}
+          {!compact && <span>{label}</span>}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent align="end" className="w-72 p-3">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[12px] font-semibold">System status</p>
+            <span className="text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
+              {state}
+            </span>
+          </div>
+          {isError ? (
+            <p className="text-[12px] leading-5 text-muted-foreground">
+              The API status endpoint is not reachable. Check that the backend is running.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {services.map((service) => (
+                <div key={service.label} className="flex gap-2">
+                  <span
+                    className={cn(
+                      "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                      service.configured ? "bg-accent" : "bg-warning",
+                    )}
+                    aria-hidden
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-medium">{service.label}</p>
+                    <p className="text-[11px] leading-4 text-muted-foreground">{service.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -382,6 +472,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             OptiMatch
           </Link>
           <div className="flex items-center gap-1">
+            <SystemStatusIndicator compact />
             <NotificationsPanel />
             <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle color mode">
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -407,9 +498,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
               );
             })()}
           </div>
-          <div className="flex items-center gap-3 text-[11px] text-subtle-foreground" id="topbar-actions">
-            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
-            <span>Local workspace</span>
+          <div className="flex items-center gap-3" id="topbar-actions">
+            <SystemStatusIndicator />
           </div>
         </header>
 

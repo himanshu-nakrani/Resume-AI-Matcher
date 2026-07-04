@@ -36,6 +36,12 @@ export * from "./generated/types/searchMetadata";
 export * from "./generated/types/searchMetadataApplyTypeBreakdown";
 export * from "./generated/types/searchMetadataRankingStats";
 export * from "./generated/types/shareResponse";
+export * from "./generated/types/pdfExportStatus";
+export * from "./generated/types/pdfExportStatusAvailableCompilersItem";
+export * from "./generated/types/systemServiceStatus";
+export * from "./generated/types/systemStatus";
+export * from "./generated/types/systemStatusServices";
+export * from "./generated/types/systemStatusStatus";
 export * from "./generated/types/updateAnalysisBodyStatus";
 
 // Aliased TS interfaces for the six conflicting names. Consumers that need the

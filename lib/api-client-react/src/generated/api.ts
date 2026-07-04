@@ -34,6 +34,7 @@ import type {
   RewriteBulletBody,
   RewriteBulletResponse,
   ShareResponse,
+  SystemStatus,
   UpdateAnalysisBody,
 } from "./api.schemas";
 
@@ -114,6 +115,82 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns non-secret server capability flags for AI, job search, and PDF export.
+ * @summary System capability status
+ */
+export const getGetSystemStatusUrl = () => {
+  return `/api/status`;
+};
+
+export const getSystemStatus = async (
+  options?: RequestInit,
+): Promise<SystemStatus> => {
+  return customFetch<SystemStatus>(getGetSystemStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSystemStatusQueryKey = () => {
+  return [`/api/status`] as const;
+};
+
+export const getGetSystemStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSystemStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSystemStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSystemStatusQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSystemStatus>>> = ({
+    signal,
+  }) => getSystemStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSystemStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSystemStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSystemStatus>>
+>;
+export type GetSystemStatusQueryError = ErrorType<unknown>;
+
+/**
+ * @summary System capability status
+ */
+
+export function useGetSystemStatus<
+  TData = Awaited<ReturnType<typeof getSystemStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSystemStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSystemStatusQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
