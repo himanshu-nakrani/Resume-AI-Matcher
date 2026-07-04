@@ -1,5 +1,6 @@
-export type ApiErrorPayload = {
-  error?: string | { message?: string; code?: string; requestId?: string };
+import type { ErrorResponse } from "@workspace/api-client-react";
+
+export type ApiErrorPayload = Partial<ErrorResponse> & {
   message?: string;
   requestId?: string;
 };

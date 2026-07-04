@@ -5,7 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ApiErrorDetail } from "./apiErrorDetail";
 
 export interface ErrorResponse {
-  error: string;
+  error: string | ApiErrorDetail;
 }
