@@ -10,6 +10,7 @@ export * from "./analysis";
 export * from "./analysisOriginalFileType";
 export * from "./analysisStats";
 export * from "./analysisStatus";
+export * from "./apiError";
 export * from "./createAnalysisBody";
 export * from "./createAnalysisBodyOriginalFileType";
 export * from "./enrichJobBody";
