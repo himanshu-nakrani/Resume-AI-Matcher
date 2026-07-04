@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
+import { useToast } from "@/hooks/use-toast";
 import { Filter, X, MapPin, Tag, CalendarClock, SlidersHorizontal, LayoutGrid } from "lucide-react";
 
 type Status = "not_applied" | "applied" | "got_interview" | "got_online_exam" | "selected" | "rejected";
@@ -70,17 +71,29 @@ const STATUS_COLORS: Record<string, string> = {
 export function Board() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [showFilters, setShowFilters] = useState(false);
   const [minScore, setMinScore] = useState("");
   const [filterTag, setFilterTag] = useState("");
   const [filterLocation, setFilterLocation] = useState("");
   const [hasDeadlineOnly, setHasDeadlineOnly] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [movingIds, setMovingIds] = useState<Set<number>>(new Set());
 
-  const { data: allAnalyses, isLoading } = useListAnalyses();
+  const { data: allAnalyses, isLoading, error } = useListAnalyses();
   const updateAnalysis = useUpdateAnalysis({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
+        toast({ title: "Status updated" });
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not update status",
+          description: err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
     },
   });
 
@@ -148,7 +161,28 @@ export function Board() {
   const onDrop = (e: React.DragEvent, targetStatus: Status) => {
     const id = parseInt(e.dataTransfer.getData("analysisId"), 10);
     if (isNaN(id)) return;
-    updateAnalysis.mutate({ id, data: { status: targetStatus } });
+    moveAnalysis(id, targetStatus);
+  };
+
+  const moveAnalysis = (id: number, targetStatus: Status) => {
+    if (movingIds.has(id)) return;
+    const analysis = allAnalyses?.find((item) => item.id === id);
+    const currentStatus = (analysis?.status as Status | undefined) ?? "not_applied";
+    if (currentStatus === targetStatus) return;
+
+    setMovingIds((prev) => new Set(prev).add(id));
+    updateAnalysis.mutate(
+      { id, data: { status: targetStatus } },
+      {
+        onSettled: () => {
+          setMovingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+        },
+      },
+    );
   };
 
   if (isLoading) {
@@ -324,8 +358,14 @@ export function Board() {
         </Card>
       )}
 
+      {!isLoading && error && (
+        <div className="rounded-md border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Could not load application tracker. {error instanceof Error ? error.message : "Try again in a moment."}
+        </div>
+      )}
+
       {/* Kanban Board */}
-      {(allAnalyses ?? []).length === 0 ? (
+      {!error && (allAnalyses ?? []).length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -340,7 +380,7 @@ export function Board() {
             <Button onClick={() => setLocation("/")}>Start a new analysis</Button>
           </EmptyContent>
         </Empty>
-      ) : (
+      ) : !error ? (
         <div className="flex gap-6 overflow-x-auto pb-6 flex-1 min-h-0 items-start">
           {COLUMNS.map((status) => (
             <div
@@ -360,31 +400,54 @@ export function Board() {
                 {columns[status]?.length === 0 ? (
                   <p className="text-[12px] text-subtle-foreground text-center py-4">Drag analyses here</p>
                 ) : (
-                  columns[status]?.map((a) => (
+                  columns[status]?.map((a) => {
+                    const isMoving = movingIds.has(a.id);
+                    return (
                     <Card
                       key={a.id}
                       padding="sm"
-                      draggable
+                      draggable={!isMoving}
                       onDragStart={(e) => onDragStart(e, a.id)}
-                      className="cursor-pointer hover:border-border-strong transition-colors border-l-2"
+                      className={`cursor-pointer hover:border-border-strong transition-colors border-l-2 ${isMoving ? "pointer-events-none opacity-60" : ""}`}
                       style={{ borderLeftColor: STATUS_COLORS[status] || "hsl(var(--muted-foreground))" }}
                       onClick={() => setLocation(`/analysis/${a.id}`)}
+                      aria-busy={isMoving}
                     >
                       <CardContent className="flex items-center justify-between gap-3 p-3">
                         <div className="min-w-0">
                           <p className="text-[13px] font-medium truncate">{a.jobTitle}</p>
                           {a.companyName && <p className="text-[11px] text-muted-foreground truncate">{a.companyName}</p>}
+                          {isMoving && <p className="text-[10px] text-muted-foreground">Updating status...</p>}
+                          <select
+                            className="mt-2 h-7 max-w-full rounded-md border border-input bg-background px-2 text-[11px] text-muted-foreground"
+                            value={(a.status as Status) || "not_applied"}
+                            disabled={isMoving}
+                            onClick={(event) => event.stopPropagation()}
+                            onChange={(event) => {
+                              event.stopPropagation();
+                              moveAnalysis(a.id, event.target.value as Status);
+                            }}
+                            aria-label={`Move ${a.jobTitle} to status`}
+                            data-testid={`board-status-${a.id}`}
+                          >
+                            {COLUMNS.map((nextStatus) => (
+                              <option key={nextStatus} value={nextStatus}>
+                                {STATUS_CONFIG[nextStatus].label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                         <ScoreCircle score={a.fitScore} size="sm" />
                       </CardContent>
                     </Card>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
