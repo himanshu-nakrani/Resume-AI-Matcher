@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,49 @@ function apiErrorMessage(payload: ApiErrorPayload | null, fallback: string): str
   return fallback;
 }
 
+function dateValue(value: unknown): Date | null {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dateTime(value: unknown): number {
+  return dateValue(value)?.getTime() ?? 0;
+}
+
+function shortDate(value: unknown): string | null {
+  const date = dateValue(value);
+  return date ? date.toLocaleDateString() : null;
+}
+
+function safeCount(value: unknown): number | null {
+  const count = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(count) && count >= 0 ? Math.round(count) : null;
+}
+
+function normalizeAlert(value: unknown): SearchAlert | null {
+  if (!value || typeof value !== "object") return null;
+  const alert = value as Partial<SearchAlert>;
+  if (typeof alert.id !== "number" || typeof alert.query !== "string") return null;
+
+  return {
+    id: alert.id,
+    name: typeof alert.name === "string" ? alert.name : null,
+    query: alert.query,
+    searchType: typeof alert.searchType === "string" ? alert.searchType : "auto",
+    userLocation: typeof alert.userLocation === "string" ? alert.userLocation : null,
+    recentOnly: Boolean(alert.recentOnly),
+    filters: alert.filters && typeof alert.filters === "object" ? alert.filters : null,
+    lastRunAt: typeof alert.lastRunAt === "string" ? alert.lastRunAt : null,
+    lastResultCount: safeCount(alert.lastResultCount),
+    createdAt: typeof alert.createdAt === "string" ? alert.createdAt : "",
+    enabled: Boolean(alert.enabled),
+  };
+}
+
 export function SearchAlertsPage() {
   const { toast } = useToast();
   const [alerts, setAlerts] = useState<SearchAlert[]>([]);
@@ -59,7 +102,7 @@ export function SearchAlertsPage() {
       if (!res.ok) {
         throw new Error(apiErrorMessage(data as ApiErrorPayload | null, "Could not load job alerts."));
       }
-      setAlerts(Array.isArray(data) ? data : []);
+      setAlerts(Array.isArray(data) ? data.map(normalizeAlert).filter((alert): alert is SearchAlert => alert != null) : []);
     } catch (err) {
       toast({
         title: "Could not load job alerts",
@@ -92,8 +135,9 @@ export function SearchAlertsPage() {
       if (!res.ok) {
         throw new Error(apiErrorMessage(data as ApiErrorPayload | null, "Could not create this alert."));
       }
-      if (data && "id" in data) {
-        setAlerts((prev) => [data as SearchAlert, ...prev]);
+      const alert = normalizeAlert(data);
+      if (alert) {
+        setAlerts((prev) => [alert, ...prev]);
       } else {
         void fetchAlerts();
       }
@@ -145,7 +189,8 @@ export function SearchAlertsPage() {
       if (!res.ok) {
         throw new Error(apiErrorMessage(data as ApiErrorPayload | null, "Could not update this alert."));
       }
-      setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, ...(data as SearchAlert), enabled } : a)));
+      const updated = normalizeAlert(data);
+      setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, ...(updated ?? {}), enabled } : a)));
       toast({ title: enabled ? "Alert enabled" : "Alert disabled" });
     } catch (err) {
       toast({
@@ -185,12 +230,20 @@ export function SearchAlertsPage() {
     }
   };
 
+  const visibleAlerts = useMemo(
+    () => [...alerts].sort((a, b) => {
+      const lastRunDelta = dateTime(b.lastRunAt) - dateTime(a.lastRunAt);
+      return lastRunDelta || dateTime(b.createdAt) - dateTime(a.createdAt) || b.id - a.id;
+    }),
+    [alerts],
+  );
+
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Job Alerts</h1>
-          <p className="text-sm text-muted-foreground mt-1">{alerts.length} saved searches</p>
+          <p className="text-sm text-muted-foreground mt-1">{visibleAlerts.length} saved searches</p>
         </div>
         <Button size="sm" onClick={() => setShowCreate(!showCreate)}>
           <Plus className="w-4 h-4 mr-1" /> {showCreate ? "Cancel" : "New Alert"}
@@ -229,7 +282,7 @@ export function SearchAlertsPage() {
         <div className="space-y-3">
           {[1, 2].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
         </div>
-      ) : alerts.length === 0 ? (
+      ) : visibleAlerts.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Bell className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
@@ -239,7 +292,10 @@ export function SearchAlertsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {alerts.map((alert) => (
+          {visibleAlerts.map((alert) => {
+            const lastCheckedLabel = shortDate(alert.lastRunAt);
+            const resultCount = safeCount(alert.lastResultCount);
+            return (
             <Card key={alert.id} className="border shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -252,14 +308,14 @@ export function SearchAlertsPage() {
                     <div className="flex flex-wrap gap-2 text-xs text-muted-foreground pt-1">
                       <BadgeSimple>{alert.searchType}</BadgeSimple>
                       {alert.userLocation && <BadgeSimple>{alert.userLocation}</BadgeSimple>}
-                      {alert.lastRunAt && (
+                      {lastCheckedLabel && (
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          Last checked: {new Date(alert.lastRunAt).toLocaleDateString()}
+                          Last checked: {lastCheckedLabel}
                         </span>
                       )}
-                      {alert.lastResultCount != null && (
-                        <span>{alert.lastResultCount} results</span>
+                      {resultCount != null && (
+                        <span>{resultCount} results</span>
                       )}
                     </div>
                   </div>
@@ -296,7 +352,8 @@ export function SearchAlertsPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>
