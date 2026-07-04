@@ -38,15 +38,26 @@ function downloadTextFile(content: string, fileName: string): void {
 }
 
 type ErrorPayload = {
-  error?: string | { message?: string; code?: string };
-  message?: string;
+  error?: unknown;
+  message?: unknown;
 };
+
+function stringifyErrorValue(value: unknown): string | null {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && "message" in value) {
+    const message = (value as { message?: unknown }).message;
+    if (typeof message === "string") return message;
+  }
+  return null;
+}
 
 function errorMessageFromPayload(payload: ErrorPayload | null): string {
   if (!payload) return "Could not compile optimized resume PDF.";
-  if (typeof payload.error === "string") return payload.error;
-  if (payload.error?.message) return payload.error.message;
-  if (payload.message) return payload.message;
+  const error = stringifyErrorValue(payload.error);
+  if (error) return error;
+  const message = stringifyErrorValue(payload.message);
+  if (message) return message;
   return "Could not compile optimized resume PDF.";
 }
 
@@ -74,7 +85,7 @@ export function OverviewTab({ analysis, id }: TabProps) {
     }
     setIsDownloadingPdf(true);
     try {
-      const response = await fetch(`/api/analyses/${id}/resume.pdf`, {
+      const response = await fetch(`/api/analyses/${id}/resume.pdf?repair=1`, {
         headers: {
           Accept: "application/pdf, application/json",
         },
