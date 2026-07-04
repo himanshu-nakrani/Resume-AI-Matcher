@@ -45,6 +45,19 @@ import { RecentAnalysesStrip, JobSearchSection } from "./home/sections";
 
 type ResumeFileType = "pdf" | "latex" | "text";
 
+type ApiErrorPayload = {
+  error?: string | { message?: string; code?: string };
+  message?: string;
+};
+
+function apiErrorMessage(payload: ApiErrorPayload | null, fallback: string): string {
+  if (!payload) return fallback;
+  if (typeof payload.error === "string") return payload.error;
+  if (payload.error?.message) return payload.error.message;
+  if (payload.message) return payload.message;
+  return fallback;
+}
+
 function stripLatexToText(source: string) {
   return source
     .replace(/%.*$/gm, " ")
@@ -353,14 +366,22 @@ export function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resumeText, jobUrl: hit.url }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setMatchScores((prev) => new Map(prev).set(hit.url, { score: data.matchScore, loading: false }));
-      } else {
-        setMatchScores((prev) => new Map(prev).set(hit.url, { score: 0, loading: false }));
+      const data = (await res.json().catch(() => null)) as ({ matchScore?: unknown } & ApiErrorPayload) | null;
+      if (!res.ok) {
+        throw new Error(apiErrorMessage(data, "Could not estimate this job match."));
       }
-    } catch {
+      const matchScore = Number(data?.matchScore);
+      if (!Number.isFinite(matchScore)) {
+        throw new Error("The pre-screen response did not include a match score.");
+      }
+      setMatchScores((prev) => new Map(prev).set(hit.url, { score: matchScore, loading: false }));
+    } catch (err) {
       setMatchScores((prev) => new Map(prev).set(hit.url, { score: 0, loading: false }));
+      toast({
+        title: "Could not estimate match",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
     }
   };
 

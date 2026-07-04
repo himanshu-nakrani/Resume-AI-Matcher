@@ -1,14 +1,28 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
 import { z } from "zod";
 import { SearchJobsBody } from "@workspace/api-zod";
 import { runExaJobSearch } from "../lib/exa-job-search";
 import { enrichJobContent } from "../lib/exa-job-contents";
 import { logger } from "../lib/logger";
-import { getAiClient, FIREWORKS_DEFAULT_MODEL } from "@workspace/integrations-openai-ai-server";
+import {
+  AiMissingKeyError,
+  FIREWORKS_DEFAULT_MODEL,
+  getAiClient,
+  isAiError,
+  runAiCompletion,
+} from "@workspace/integrations-openai-ai-server";
 import { parseAiJson } from "../lib/parse-ai-json";
 import { fetchReadableTextFromUrl, UnsafeUrlError } from "../lib/safe-url-fetch";
+import { sendAiError } from "../lib/send-ai-error";
 
 const router: IRouter = Router();
+
+function sendMissingAiKeyError(res: Response): void {
+  sendAiError(res, Object.assign(new Error("FIREWORKS_API_KEY env var is not set"), {
+    code: "ai_missing_key" as const,
+    retryable: false,
+  }));
+}
 
 router.post("/job-search", async (req, res): Promise<void> => {
   const parsed = SearchJobsBody.safeParse(req.body);
@@ -91,10 +105,14 @@ router.post("/job-search/pre-screen", async (req, res): Promise<void> => {
     '"topGaps": ["<gap 1>", "<gap 2>", "<gap 3>"]}';
 
   try {
-    const completion = await getAiClient().chat.completions.create({
+    const completion = await runAiCompletion(getAiClient(), {
       model: FIREWORKS_DEFAULT_MODEL,
       max_completion_tokens: 300,
       messages: [{ role: "user", content: prompt }],
+    }, {
+      route: "/job-search/pre-screen",
+      timeoutMs: 30_000,
+      retries: 0,
     });
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
     let result: { matchScore: number; topMatches: string[]; topGaps: string[] };
@@ -108,7 +126,13 @@ router.post("/job-search/pre-screen", async (req, res): Promise<void> => {
     });
   } catch (err) {
     logger.error({ err }, "Pre-screen failed");
-    res.status(500).json({ error: "Pre-screen failed" });
+    if (isAiError(err)) {
+      sendAiError(res, err);
+    } else if (err instanceof AiMissingKeyError) {
+      sendMissingAiKeyError(res);
+    } else {
+      res.status(500).json({ error: "Pre-screen failed" });
+    }
   }
 });
 
