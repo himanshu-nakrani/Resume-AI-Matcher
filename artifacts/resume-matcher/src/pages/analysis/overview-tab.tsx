@@ -37,6 +37,19 @@ function downloadTextFile(content: string, fileName: string): void {
   URL.revokeObjectURL(url);
 }
 
+type ErrorPayload = {
+  error?: string | { message?: string; code?: string };
+  message?: string;
+};
+
+function errorMessageFromPayload(payload: ErrorPayload | null): string {
+  if (!payload) return "Could not compile optimized resume PDF.";
+  if (typeof payload.error === "string") return payload.error;
+  if (payload.error?.message) return payload.error.message;
+  if (payload.message) return payload.message;
+  return "Could not compile optimized resume PDF.";
+}
+
 export function OverviewTab({ analysis, id }: TabProps) {
   const { copy, isCopied } = useCopy();
   const { toast } = useToast();
@@ -67,8 +80,8 @@ export function OverviewTab({ analysis, id }: TabProps) {
         },
       });
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error ?? "Could not compile optimized resume PDF.");
+        const payload = (await response.json().catch(() => null)) as ErrorPayload | null;
+        throw new Error(errorMessageFromPayload(payload));
       }
       const blob = await response.blob();
       const fileName = safeFileName([analysis.companyName, analysis.jobTitle], "pdf");
@@ -79,7 +92,7 @@ export function OverviewTab({ analysis, id }: TabProps) {
       URL.revokeObjectURL(a.href);
       toast({
         title: "PDF downloaded",
-        description: "Validated by AI, then compiled from optimized LaTeX.",
+        description: "Compiled from optimized LaTeX.",
       });
     } catch (err) {
       toast({

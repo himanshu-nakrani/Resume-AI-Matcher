@@ -551,12 +551,32 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
   }
 
   try {
-    const correctedLatex = await validateAndCorrectLatexForPdf(req, latex, {
+    const preparedLatex = prepareLatexForPdfCompilation(latex);
+    try {
+      const pdf = await compileLatexToPdf(preparedLatex);
+      if (preparedLatex !== latex) {
+        await db
+          .update(analyses)
+          .set({ optimizedLatex: preparedLatex })
+          .where(eq(analyses.id, params.data.id));
+      }
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${safeDownloadName([analysis.companyName, analysis.jobTitle], "pdf")}"`,
+      );
+      res.send(pdf);
+      return;
+    } catch (compileErr) {
+      req.log.warn({ err: compileErr, id: params.data.id }, "Initial LaTeX compilation failed; attempting AI repair");
+    }
+
+    const correctedLatex = await validateAndCorrectLatexForPdf(req, preparedLatex, {
       jobTitle: analysis.jobTitle,
       companyName: analysis.companyName,
     }, "/analyses/:id/validate-latex");
-    const normalizedLatex = correctedLatex.trim();
-    const finalLatex = prepareLatexForPdfCompilation(normalizedLatex);
+    const finalLatex = prepareLatexForPdfCompilation(correctedLatex.trim());
     if (finalLatex !== latex) {
       await db
         .update(analyses)
@@ -575,7 +595,7 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
     const message = err instanceof Error ? err.message : "Could not compile optimized resume PDF.";
     logger.error({ err, id: params.data.id }, "Optimized resume PDF compilation failed");
     if (isAiError(err)) {
-      sendAiError(res, err, "Optimized resume PDF compilation failed");
+      sendAiError(res, err);
     } else {
       res.status(500).json({ error: message });
     }
