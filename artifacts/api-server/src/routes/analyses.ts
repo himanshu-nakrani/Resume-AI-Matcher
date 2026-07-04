@@ -52,6 +52,35 @@ function safeDownloadName(parts: Array<string | null | undefined>, extension: st
   return `${base || "optimized-resume"}.${extension}`;
 }
 
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function safeScore(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
 async function tryCompileLatex(
   compiler: "tectonic" | "latexmk" | "pdflatex",
   workDir: string,
@@ -668,12 +697,12 @@ router.get("/analyses/stats", async (req, res): Promise<void> => {
     return;
   }
 
-  const avgFit = rows.reduce((sum, r) => sum + r.fitScore, 0) / total;
-  const avgAts = rows.reduce((sum, r) => sum + r.atsScore, 0) / total;
+  const avgFit = rows.reduce((sum, r) => sum + safeScore(r.fitScore), 0) / total;
+  const avgAts = rows.reduce((sum, r) => sum + safeScore(r.atsScore), 0) / total;
 
   const keywordCounts: Record<string, number> = {};
   for (const row of rows) {
-    const missing = (row.atsKeywordsMissing as string[]) ?? [];
+    const missing = stringArray(row.atsKeywordsMissing);
     for (const kw of missing) {
       keywordCounts[kw] = (keywordCounts[kw] ?? 0) + 1;
     }

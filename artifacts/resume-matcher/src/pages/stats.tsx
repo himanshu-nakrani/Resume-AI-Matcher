@@ -17,10 +17,9 @@ import {
   ScatterChart,
   Scatter,
   CartesianGrid,
-  LineChart,
-  Line,
 } from "recharts";
 import {
+  AlertCircle,
   TrendingUp,
   FileText,
   Target,
@@ -90,22 +89,102 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: "hsl(var(--destructive))",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  not_applied: "Not applied",
+  applied: "Applied",
+  got_interview: "Interview",
+  got_online_exam: "Online exam",
+  selected: "Selected",
+  rejected: "Rejected",
+};
+
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) return stringArray(parsed);
+    } catch {
+      return [trimmed];
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
+function safeScore(value: unknown): number {
+  const score = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return Math.min(100, Math.max(0, Math.round(score)));
+}
+
+function dateMs(value: unknown): number | null {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+}
+
+function statusKey(value: unknown): string {
+  return typeof value === "string" && value in STATUS_COLORS ? value : "not_applied";
+}
+
+function statusLabel(value: unknown): string {
+  return STATUS_LABELS[statusKey(value)] ?? "Not applied";
+}
+
+function keywordTrendRows(values: string[], limit: number) {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    const key = value.trim();
+    if (!key) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit);
+}
+
 export function Stats() {
   const [, setLocation] = useLocation();
-  const { data: stats, isLoading: statsLoading } = useGetAnalysisStats();
-  const { data: analyses, isLoading: analysesLoading } = useListAnalyses();
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    isError: statsIsError,
+    error: statsError,
+  } = useGetAnalysisStats();
+  const {
+    data: analyses,
+    isLoading: analysesLoading,
+    isError: analysesIsError,
+    error: analysesError,
+  } = useListAnalyses();
   const [drillBucket, setDrillBucket] = useState<null | { label: string; ids: number[] }>(null);
 
   const isLoading = statsLoading || analysesLoading;
+  const isError = statsIsError || analysesIsError;
+  const error = statsError ?? analysesError;
+  const analysesList = analyses ?? [];
 
-  const trendData = analyses
-    ? [...analyses]
+  const trendData = analysesList.length > 0
+    ? [...analysesList]
         .reverse()
         .slice(-12)
         .map((a, i) => ({
           name: `#${i + 1}`,
-          fit: a.fitScore,
-          ats: a.atsScore,
+          fit: safeScore(a.fitScore),
+          ats: safeScore(a.atsScore),
           label: a.jobTitle,
           id: a.id,
         }))
@@ -117,21 +196,21 @@ export function Stats() {
     return "hsl(var(--destructive))";
   };
 
-  const scoreDistData = analyses
+  const scoreDistData = analysesList.length > 0
     ? SCORE_BUCKETS.map((bucket) => ({
         ...bucket,
-        count: analyses.filter((a) => a.fitScore >= bucket.min && a.fitScore <= bucket.max).length,
-        ids: analyses
-          .filter((a) => a.fitScore >= bucket.min && a.fitScore <= bucket.max)
+        count: analysesList.filter((a) => safeScore(a.fitScore) >= bucket.min && safeScore(a.fitScore) <= bucket.max).length,
+        ids: analysesList
+          .filter((a) => safeScore(a.fitScore) >= bucket.min && safeScore(a.fitScore) <= bucket.max)
           .map((a) => a.id),
       }))
     : [];
 
-  const pipelineData = analyses
+  const pipelineData = analysesList.length > 0
     ? (() => {
-        const applied = analyses.filter((a) => ["applied", "got_interview", "got_online_exam", "selected"].includes(a.status)).length;
-        const interview = analyses.filter((a) => ["got_interview", "selected"].includes(a.status)).length;
-        const selected = analyses.filter((a) => a.status === "selected").length;
+        const applied = analysesList.filter((a) => ["applied", "got_interview", "got_online_exam", "selected"].includes(statusKey(a.status))).length;
+        const interview = analysesList.filter((a) => ["got_interview", "selected"].includes(statusKey(a.status))).length;
+        const selected = analysesList.filter((a) => statusKey(a.status) === "selected").length;
         return [
           { name: "Applied", value: applied, fill: "hsl(var(--info))" },
           { name: "Interview", value: interview, fill: "hsl(var(--warning))" },
@@ -140,66 +219,54 @@ export function Stats() {
       })()
     : [];
 
-  const topMatchedKeywords = analyses
+  const topMatchedKeywords = analysesList.length > 0
     ? (() => {
-        const freq: Record<string, number> = {};
-        for (const a of analyses) {
-          for (const kw of (a.atsKeywordsMatched as string[]) ?? []) {
-            freq[kw] = (freq[kw] ?? 0) + 1;
-          }
-        }
-        return Object.entries(freq)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 15)
+        const keywords = analysesList.flatMap((a) => stringArray(a.atsKeywordsMatched));
+        return keywordTrendRows(keywords, 15)
           .map(([kw]) => kw);
       })()
     : [];
 
   const interviewRate =
-    analyses && analyses.filter((a) => a.status !== "not_applied").length > 0
+    analysesList.filter((a) => statusKey(a.status) !== "not_applied").length > 0
       ? Math.round(
-          (analyses.filter((a) => ["got_interview", "selected"].includes(a.status)).length /
-            analyses.filter((a) => a.status !== "not_applied").length) *
+          (analysesList.filter((a) => ["got_interview", "selected"].includes(statusKey(a.status))).length /
+            analysesList.filter((a) => statusKey(a.status) !== "not_applied").length) *
             100
         )
       : null;
 
   // T004: Keyword Trends
-  const keywordTrends = analyses
+  const keywordTrends = analysesList.length > 0
     ? (() => {
-        const freq: Record<string, number> = {};
-        for (const a of analyses) {
-          const matched = (a.atsKeywordsMatched as string[]) ?? [];
-          const missing = (a.atsKeywordsMissing as string[]) ?? [];
-          for (const kw of [...matched, ...missing]) {
-            freq[kw] = (freq[kw] ?? 0) + 1;
-          }
-        }
-        return Object.entries(freq)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 10)
+        const keywords = analysesList.flatMap((a) => [
+          ...stringArray(a.atsKeywordsMatched),
+          ...stringArray(a.atsKeywordsMissing),
+        ]);
+        return keywordTrendRows(keywords, 10)
           .map(([name, count]) => ({ name, count }));
       })()
     : [];
 
   // T004: Time-in-Stage (Estimate from createdAt to now)
-  const timeInStage = analyses
+  const timeInStage = analysesList.length > 0
     ? (() => {
         const now = new Date().getTime();
         const stageTotals: Record<string, number> = {};
         const stageCounts: Record<string, number> = {};
         
-        for (const a of analyses) {
-          const created = new Date(a.createdAt).getTime();
+        for (const a of analysesList) {
+          const created = dateMs(a.createdAt);
+          if (created === null) continue;
           const days = Math.max(0, (now - created) / (1000 * 60 * 60 * 24));
-          const status = a.status || "not_applied";
+          const status = statusKey(a.status);
           stageTotals[status] = (stageTotals[status] ?? 0) + days;
           stageCounts[status] = (stageCounts[status] ?? 0) + 1;
         }
 
         return ["not_applied", "applied", "got_interview", "got_online_exam", "selected", "rejected"]
           .map(status => ({
-            status: status.replace("_", " "),
+            status: statusLabel(status),
             avgDays: stageCounts[status] ? Math.round(stageTotals[status] / stageCounts[status]) : 0,
             fill: STATUS_COLORS[status] || "hsl(var(--muted-foreground))"
           }))
@@ -208,12 +275,12 @@ export function Stats() {
     : [];
 
   // T004: Success Rate (Interview+ and Selected)
-  const successMetrics = analyses
+  const successMetrics = analysesList.length > 0
     ? (() => {
-        const total = analyses.length;
+        const total = analysesList.length;
         if (total === 0) return { interviewRate: 0, offerRate: 0 };
-        const interviewPlus = analyses.filter(a => ["got_interview", "selected"].includes(a.status)).length;
-        const offers = analyses.filter(a => a.status === "selected").length;
+        const interviewPlus = analysesList.filter(a => ["got_interview", "selected"].includes(statusKey(a.status))).length;
+        const offers = analysesList.filter(a => statusKey(a.status) === "selected").length;
         return {
           interviewRate: Math.round((interviewPlus / total) * 100),
           offerRate: Math.round((offers / total) * 100),
@@ -222,13 +289,13 @@ export function Stats() {
     : { interviewRate: 0, offerRate: 0 };
 
   // T004: Score Momentum
-  const momentum = analyses && analyses.length >= 2
+  const momentum = analysesList.length >= 2
     ? (() => {
-        const sorted = [...analyses].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        const sorted = [...analysesList].sort((a, b) => (dateMs(a.createdAt) ?? 0) - (dateMs(b.createdAt) ?? 0));
         const first5 = sorted.slice(0, 5);
         const last5 = sorted.slice(-5);
-        const firstAvg = first5.reduce((sum, a) => sum + (a.fitScore || 0), 0) / first5.length;
-        const lastAvg = last5.reduce((sum, a) => sum + (a.fitScore || 0), 0) / last5.length;
+        const firstAvg = first5.reduce((sum, a) => sum + safeScore(a.fitScore), 0) / first5.length;
+        const lastAvg = last5.reduce((sum, a) => sum + safeScore(a.fitScore), 0) / last5.length;
         return {
           improvement: Math.round(lastAvg - firstAvg),
           firstAvg: Math.round(firstAvg),
@@ -237,31 +304,35 @@ export function Stats() {
       })()
     : null;
 
-  const drillAnalyses = drillBucket && analyses
-    ? analyses.filter((a) => drillBucket.ids.includes(a.id))
+  const drillAnalyses = drillBucket
+    ? analysesList.filter((a) => drillBucket.ids.includes(a.id))
     : [];
 
   // Application timeline — scatter plot
-  const timelineData = analyses
-    ? analyses.map((a) => ({
-        date: new Date(a.createdAt).getTime(),
-        fit: a.fitScore,
-        label: a.jobTitle,
-        status: a.status,
-        id: a.id,
-      }))
+  const timelineData = analysesList.length > 0
+    ? analysesList.flatMap((a) => {
+        const created = dateMs(a.createdAt);
+        if (created === null) return [];
+        return [{
+          date: created,
+          fit: safeScore(a.fitScore),
+          label: a.jobTitle,
+          status: statusKey(a.status),
+          id: a.id,
+        }];
+      })
     : [];
 
   // Success rate by role (top job titles with >1 application)
-  const roleSuccessData = analyses
+  const roleSuccessData = analysesList.length > 0
     ? (() => {
         const roles: Record<string, { total: number; interview: number; offer: number }> = {};
-        for (const a of analyses) {
+        for (const a of analysesList) {
           const title = a.jobTitle;
           if (!roles[title]) roles[title] = { total: 0, interview: 0, offer: 0 };
           roles[title].total += 1;
-          if (["got_interview", "selected"].includes(a.status)) roles[title].interview += 1;
-          if (a.status === "selected") roles[title].offer += 1;
+          if (["got_interview", "selected"].includes(statusKey(a.status))) roles[title].interview += 1;
+          if (statusKey(a.status) === "selected") roles[title].offer += 1;
         }
         return Object.entries(roles)
           .filter(([, v]) => v.total >= 1 && (v.interview > 0 || v.offer > 0))
@@ -271,7 +342,9 @@ export function Stats() {
     : [];
 
   // Benchmark message
-  const avgFit = stats?.averageFitScore ?? 0;
+  const avgFit = safeScore(stats?.averageFitScore);
+  const avgAts = safeScore(stats?.averageAtsScore);
+  const topMissingKeywords = stringArray(stats?.topMissingKeywords);
   const benchmarkMsg =
     avgFit >= 80 ? "Excellent — your resume matches these roles very well."
     : avgFit >= 65 ? "Good — you're competitive. A few targeted improvements could help."
@@ -280,10 +353,12 @@ export function Stats() {
 
   return (
     <div className="space-y-8">
-      <header className="flex items-baseline justify-between gap-3 mb-6">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-[-0.02em]">Stats</h1>
-          <p className="text-[13px] text-muted-foreground mt-1">Aggregate insights across all your analyses.</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Aggregate insights across all resume targets, score movement, and application outcomes.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -306,6 +381,23 @@ export function Stats() {
           </div>
           <Skeleton className="h-64 rounded-md" />
         </div>
+      ) : isError ? (
+        <Empty className="bg-surface-1">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <AlertCircle />
+            </EmptyMedia>
+            <EmptyTitle>Could not load stats</EmptyTitle>
+            <EmptyDescription>
+              {error instanceof Error ? error.message : "Refresh the page or try again in a moment."}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Reload
+            </Button>
+          </EmptyContent>
+        </Empty>
       ) : !stats || stats.totalAnalyses === 0 ? (
         <Empty>
           <EmptyHeader>
@@ -328,18 +420,18 @@ export function Stats() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard title="Total Analyses" value={stats.totalAnalyses} icon={FileText} sub="all time" />
             <div className="col-span-1">
-              <Card className="border shadow-sm h-full">
+              <Card className="h-full shadow-sm">
                 <CardContent className="pt-6 pb-5 flex flex-col items-center">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">Avg Fit Score</p>
-                  <ScoreCircle score={Math.round(stats.averageFitScore)} size="md" />
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Avg Fit Score</p>
+                  <ScoreCircle score={avgFit} size="md" />
                 </CardContent>
               </Card>
             </div>
             <div className="col-span-1">
-              <Card className="border shadow-sm h-full">
+              <Card className="h-full shadow-sm">
                 <CardContent className="pt-6 pb-5 flex flex-col items-center">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">Avg ATS Score</p>
-                  <ScoreCircle score={Math.round(stats.averageAtsScore)} size="md" />
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Avg ATS Score</p>
+                  <ScoreCircle score={avgAts} size="md" />
                 </CardContent>
               </Card>
             </div>
@@ -362,30 +454,30 @@ export function Stats() {
 
           {/* T004: Success Rate Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <Card className="border shadow-sm">
+             <Card className="shadow-sm">
                 <CardContent className="pt-6 pb-5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Interview Conversion</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Interview Conversion</p>
                       <p className="text-3xl font-bold mt-1 tabular-nums">{successMetrics.interviewRate}%</p>
                       <p className="text-xs text-muted-foreground mt-1">Analyses reaching Interview or Offer</p>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-amber-500/10">
-                      <Target className="w-5 h-5 text-amber-500" />
+                    <div className="rounded-md bg-warning/10 p-2.5">
+                      <Target className="w-5 h-5 text-warning" />
                     </div>
                   </div>
                 </CardContent>
              </Card>
-             <Card className="border shadow-sm">
+             <Card className="shadow-sm">
                 <CardContent className="pt-6 pb-5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Offer Conversion</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">Offer Conversion</p>
                       <p className="text-3xl font-bold mt-1 tabular-nums">{successMetrics.offerRate}%</p>
                       <p className="text-xs text-muted-foreground mt-1">Analyses resulting in an Offer</p>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-green-500/10">
-                      <Trophy className="w-5 h-5 text-green-500" />
+                    <div className="rounded-md bg-success/10 p-2.5">
+                      <Trophy className="w-5 h-5 text-success" />
                     </div>
                   </div>
                 </CardContent>
@@ -394,16 +486,16 @@ export function Stats() {
 
           {/* Benchmark message */}
           {stats.totalAnalyses >= 1 && (
-            <Card className="border shadow-sm border-primary/30 bg-primary/5">
+            <Card className="border-accent/30 bg-accent/5 shadow-sm">
               <CardContent className="pt-4 pb-4 flex items-center gap-3">
-                <Trophy className="w-5 h-5 text-primary shrink-0" />
+                <Trophy className="w-5 h-5 text-accent shrink-0" />
                 <div>
                   <p className="text-sm font-semibold">Performance Insight</p>
                   <p className="text-sm text-muted-foreground">{benchmarkMsg}</p>
                 </div>
                 <div className="ml-auto shrink-0 text-right">
                   <p className="text-xs text-muted-foreground">Avg fit score</p>
-                  <p className="text-2xl font-bold tabular-nums">{Math.round(stats.averageFitScore)}</p>
+                  <p className="text-2xl font-bold tabular-nums">{avgFit}</p>
                 </div>
               </CardContent>
             </Card>
@@ -414,10 +506,10 @@ export function Stats() {
           {/* T004: Keyword Trends and Time-in-Stage */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {keywordTrends.length > 0 && (
-              <Card className="border shadow-sm">
+              <Card className="shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Target className="w-4 h-4 text-primary" /> Top Keyword Trends
+                    <Target className="w-4 h-4 text-accent" /> Top Keyword Trends
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -448,10 +540,10 @@ export function Stats() {
             )}
 
             {timeInStage.length > 0 && (
-              <Card className="border shadow-sm">
+              <Card className="shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-primary" /> Avg Days in Stage
+                    <Calendar className="w-4 h-4 text-accent" /> Avg Days in Stage
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -480,10 +572,10 @@ export function Stats() {
           </div>
 
           {trendData.length > 1 && (
-            <Card className="border shadow-sm">
+            <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-primary" /> Fit Score Trend
+                  <TrendingUp className="w-4 h-4 text-accent" /> Fit Score Trend
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -518,10 +610,10 @@ export function Stats() {
 
           {/* Application Timeline */}
           {timelineData.length > 1 && (
-            <Card className="border shadow-sm">
+            <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-primary" /> Application Timeline
+                  <Calendar className="w-4 h-4 text-accent" /> Application Timeline
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -556,7 +648,7 @@ export function Stats() {
                             <p className="font-semibold">{d.label}</p>
                             <p className="text-muted-foreground">{format(new Date(d.date), "MMM d, yyyy")}</p>
                             <p>Fit: <span className="font-bold">{d.fit}</span></p>
-                            <p className="capitalize">Status: {d.status.replace("_", " ")}</p>
+                            <p>Status: {statusLabel(d.status)}</p>
                           </div>
                         );
                       }}
@@ -576,7 +668,7 @@ export function Stats() {
                   {Object.entries(STATUS_COLORS).map(([status, color]) => (
                     <div key={status} className="flex items-center gap-1.5">
                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                      <span className="text-xs text-muted-foreground capitalize">{status.replace("_", " ")}</span>
+                      <span className="text-xs text-muted-foreground">{statusLabel(status)}</span>
                     </div>
                   ))}
                 </div>
@@ -586,10 +678,10 @@ export function Stats() {
 
           {/* Success Rate by Role */}
           {roleSuccessData.length > 0 && (
-            <Card className="border shadow-sm">
+            <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-yellow-500" /> Success Rate by Role
+                  <Trophy className="w-4 h-4 text-warning" /> Success Rate by Role
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -606,9 +698,9 @@ export function Stats() {
                           {data.offer > 0 && ` · ${data.offer} offer`}
                         </span>
                       </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-yellow-400 transition-all"
+                          className="h-full rounded-full bg-warning transition-all"
                           style={{ width: `${(data.interview / data.total) * 100}%` }}
                         />
                       </div>
@@ -619,11 +711,11 @@ export function Stats() {
             </Card>
           )}
 
-          {analyses && analyses.length >= 3 && (
-            <Card className="border shadow-sm">
+          {analysesList.length >= 3 && (
+            <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Target className="w-4 h-4 text-primary" /> Fit Score Distribution
+                  <Target className="w-4 h-4 text-accent" /> Fit Score Distribution
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -685,7 +777,7 @@ export function Stats() {
                           onClick={() => setLocation(`/analysis/${a.id}`)}
                           className="w-full text-left flex items-center gap-3 p-2.5 rounded-lg border hover:bg-muted/60 transition-colors"
                         >
-                          <span className="font-bold tabular-nums text-sm w-8 shrink-0">{a.fitScore}</span>
+                          <span className="font-bold tabular-nums text-sm w-8 shrink-0">{safeScore(a.fitScore)}</span>
                           <span className="flex-1 text-sm font-medium truncate">{a.jobTitle}</span>
                           {a.companyName && (
                             <span className="text-xs text-muted-foreground truncate hidden sm:block">{a.companyName}</span>
@@ -700,10 +792,10 @@ export function Stats() {
           )}
 
           {pipelineData.length > 0 && (
-            <Card className="border shadow-sm">
+            <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <GitBranch className="w-4 h-4 text-primary" /> Application Pipeline
+                  <GitBranch className="w-4 h-4 text-accent" /> Application Pipeline
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -717,7 +809,7 @@ export function Stats() {
                     return (
                       <div key={stage.name} className="flex items-center gap-3">
                         <div className="w-20 shrink-0 text-sm font-medium text-right">{stage.name}</div>
-                        <div className="flex-1 bg-muted rounded-full h-7 overflow-hidden">
+                        <div className="flex-1 bg-surface-2 rounded-full h-7 overflow-hidden">
                           <div
                             className="h-full rounded-full flex items-center px-3 transition-all"
                             style={{ width: `${Math.max(pct, 8)}%`, backgroundColor: stage.fill }}
@@ -740,10 +832,10 @@ export function Stats() {
           )}
 
           {topMatchedKeywords.length > 0 && (
-            <Card className="border shadow-sm">
+            <Card className="shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Most Frequent Matched Skills
+                  <CheckCircle2 className="w-4 h-4 text-success" /> Most Frequent Matched Skills
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -755,7 +847,7 @@ export function Stats() {
                     <Badge
                       key={i}
                       variant="outline"
-                      className="border-emerald-300 bg-emerald-50 text-emerald-950 shadow-none dark:border-emerald-600 dark:bg-emerald-950/45 dark:text-emerald-50"
+                      className="border-success/30 bg-success/10 text-success shadow-none"
                     >
                       {kw}
                     </Badge>
@@ -765,11 +857,11 @@ export function Stats() {
             </Card>
           )}
 
-          {stats.topMissingKeywords.length > 0 && (
-            <Card className="border shadow-sm">
+          {topMissingKeywords.length > 0 && (
+            <Card className="shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Target className="w-4 h-4 text-primary" /> Most Missing ATS Keywords
+                  <Target className="w-4 h-4 text-destructive" /> Most Missing ATS Keywords
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -777,11 +869,11 @@ export function Stats() {
                   These keywords appear most in job descriptions but are missing from your resumes.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {stats.topMissingKeywords.map((kw, i) => (
+                  {topMissingKeywords.map((kw, i) => (
                     <Badge
                       key={i}
                       variant="outline"
-                      className="border-rose-300 bg-rose-50 text-rose-950 shadow-none dark:border-rose-600 dark:bg-rose-950/45 dark:text-rose-50"
+                      className="border-destructive/30 bg-destructive/10 text-destructive shadow-none"
                       data-testid={`top-missing-keyword-${i}`}
                     >
                       {kw}

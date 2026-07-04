@@ -41,6 +41,36 @@ describe("GET /api/analyses", () => {
   });
 });
 
+describe("GET /api/analyses/stats", () => {
+  it("normalizes legacy keyword JSON shapes when aggregating stats", async () => {
+    const legacyString = insertAnalysis({ jobTitle: "Legacy string keywords" });
+    const legacyObject = insertAnalysis({ jobTitle: "Legacy object keywords" });
+    insertAnalysis({
+      jobTitle: "Normal keywords",
+      atsKeywordsMissing: ["GraphQL", "Rust"],
+    });
+
+    const sqliteClient = (db as unknown as { $client: { exec: (sql: string) => void } }).$client;
+    sqliteClient.exec(`
+      UPDATE analyses
+      SET ats_keywords_missing = '"GraphQL"'
+      WHERE id = ${legacyString.id};
+
+      UPDATE analyses
+      SET ats_keywords_missing = '{"bad": true}'
+      WHERE id = ${legacyObject.id};
+    `);
+
+    const response = await request(app).get("/api/analyses/stats");
+
+    expect(response.status).toBe(200);
+    expect(response.body.totalAnalyses).toBe(3);
+    expect(response.body.topMissingKeywords).toContain("GraphQL");
+    expect(response.body.topMissingKeywords).toContain("Rust");
+    expect(response.body.topMissingKeywords).not.toContain("bad");
+  });
+});
+
 describe("GET /api/analyses/:id", () => {
   it("returns 404 when the analysis does not exist", async () => {
     const response = await request(app).get("/api/analyses/9999");
