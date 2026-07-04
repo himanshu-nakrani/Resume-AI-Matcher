@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   useListAnalyses,
@@ -36,8 +36,6 @@ import {
   Copy,
   Bookmark,
   BookmarkCheck,
-  Pencil,
-  Check,
   MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -88,9 +86,20 @@ function saveSavedSearches(searches: SavedSearch[]) {
 
 function StatusPicker({ analysisId, currentStatus }: { analysisId: number; currentStatus: string }) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const updateAnalysis = useUpdateAnalysis({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
+        toast({ title: "Status updated" });
+      },
+      onError: (error) => {
+        toast({
+          title: "Could not update status",
+          description: error instanceof Error ? error.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
     },
   });
   const status = (currentStatus as Status) in STATUS_CONFIG ? (currentStatus as Status) : "not_applied";
@@ -101,6 +110,7 @@ function StatusPicker({ analysisId, currentStatus }: { analysisId: number; curre
         <button
           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border transition-opacity hover:opacity-80 ${config.className}`}
           data-testid={`status-picker-${analysisId}`}
+          disabled={updateAnalysis.isPending}
         >
           {config.label}
           <ChevronDown className="w-3 h-3" />
@@ -111,7 +121,10 @@ function StatusPicker({ analysisId, currentStatus }: { analysisId: number; curre
           <DropdownMenuItem
             key={s}
             className="cursor-pointer"
-            onSelect={() => updateAnalysis.mutate({ id: analysisId, data: { status: s } })}
+            disabled={updateAnalysis.isPending || s === status}
+            onSelect={() => {
+              if (s !== status) updateAnalysis.mutate({ id: analysisId, data: { status: s } });
+            }}
             data-testid={`status-option-${s}`}
           >
             <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border ${STATUS_CONFIG[s].className}`}>
@@ -126,82 +139,36 @@ function StatusPicker({ analysisId, currentStatus }: { analysisId: number; curre
 
 function FavoriteButton({ analysisId, isFavorite }: { analysisId: number; isFavorite: boolean }) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const update = useUpdateAnalysis({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
+        toast({ title: isFavorite ? "Removed from favorites" : "Added to favorites" });
+      },
+      onError: (error) => {
+        toast({
+          title: "Could not update favorite",
+          description: error instanceof Error ? error.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
     },
   });
   return (
     <button
       onClick={(e) => {
         e.stopPropagation();
+        if (update.isPending) return;
         update.mutate({ id: analysisId, data: { isFavorite: !isFavorite } });
       }}
-      className={`p-1 rounded transition-colors ${isFavorite ? "text-pink-500" : "text-muted-foreground hover:text-pink-400"}`}
+      disabled={update.isPending}
+      className={`p-1 rounded transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isFavorite ? "text-pink-500" : "text-muted-foreground hover:text-pink-400"}`}
       title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+      aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
     >
       <Heart className={`w-3.5 h-3.5 ${isFavorite ? "fill-pink-500" : ""}`} />
     </button>
-  );
-}
-
-function InlineEdit({
-  value,
-  onSave,
-  className,
-}: {
-  value: string;
-  onSave: (v: string) => void;
-  className?: string;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const start = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setDraft(value);
-    setEditing(true);
-    setTimeout(() => inputRef.current?.focus(), 0);
-  };
-
-  const commit = () => {
-    const trimmed = draft.trim();
-    if (trimmed && trimmed !== value) onSave(trimmed);
-    setEditing(false);
-  };
-
-  if (editing) {
-    return (
-      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-        <input
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commit();
-            if (e.key === "Escape") setEditing(false);
-          }}
-          onBlur={commit}
-          className="text-sm font-semibold bg-transparent border-b border-primary outline-none w-full"
-        />
-        <button onClick={commit} className="text-primary shrink-0"><Check className="w-3.5 h-3.5" /></button>
-        <button onClick={() => setEditing(false)} className="text-muted-foreground shrink-0"><X className="w-3.5 h-3.5" /></button>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`flex items-center gap-1.5 group/edit ${className}`}>
-      <span>{value}</span>
-      <button
-        onClick={start}
-        className="opacity-0 group-hover/edit:opacity-100 transition-opacity text-muted-foreground hover:text-foreground p-0.5 rounded"
-        title="Edit"
-      >
-        <Pencil className="w-3 h-3" />
-      </button>
-    </div>
   );
 }
 
@@ -216,15 +183,17 @@ export function History() {
   const [showSavedSearches, setShowSavedSearches] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  const { data: analyses, isLoading } = useListAnalyses();
+  const { data: analyses, isLoading, error } = useListAnalyses();
   const deleteAnalysis = useDeleteAnalysis({
     mutation: {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
-    },
-  });
-  const updateAnalysis = useUpdateAnalysis({
-    mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() }),
+      onError: (err) => {
+        toast({
+          title: "Could not delete analysis",
+          description: err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
+      },
     },
   });
   const duplicateAnalysis = useDuplicateAnalysis({
@@ -233,6 +202,13 @@ export function History() {
         queryClient.invalidateQueries({ queryKey: getListAnalysesQueryKey() });
         toast({ title: "Analysis duplicated", description: "Opening the duplicate now." });
         setLocation(`/analysis/${data.id}`);
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not duplicate analysis",
+          description: err instanceof Error ? err.message : "Try again in a moment.",
+          variant: "destructive",
+        });
       },
     },
   });
@@ -365,8 +341,30 @@ export function History() {
         setSelectedIds(new Set());
         toast({ title: `${count} ${count === 1 ? "analysis" : "analyses"} deleted` });
       })
-      .catch(() => toast({ title: "Some deletions failed", variant: "destructive" }));
+      .catch((err) => toast({
+        title: "Some deletions failed",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      }));
   }, [selectedIds, deleteAnalysis, toast]);
+
+  const deleteOne = useCallback((id: number) => {
+    const confirmed = window.confirm("Delete this analysis? This cannot be undone.");
+    if (!confirmed) return;
+    deleteAnalysis.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          setSelectedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          toast({ title: "Analysis deleted" });
+        },
+      },
+    );
+  }, [deleteAnalysis, toast]);
 
   return (
     <div className="space-y-6">
@@ -511,8 +509,14 @@ export function History() {
         </div>
       )}
 
+      {!isLoading && error && (
+        <div className="rounded-md border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Could not load analyses. {error instanceof Error ? error.message : "Try again in a moment."}
+        </div>
+      )}
+
       {/* EMPTY: NO ANALYSES AT ALL */}
-      {!isLoading && analyses && analyses.length === 0 && (
+      {!isLoading && !error && analyses && analyses.length === 0 && (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -532,7 +536,7 @@ export function History() {
       )}
 
       {/* EMPTY: NO MATCHES FOR CURRENT FILTERS */}
-      {!isLoading && analyses && analyses.length > 0 && filtered.length === 0 && (
+      {!isLoading && !error && analyses && analyses.length > 0 && filtered.length === 0 && (
         <Empty>
           <EmptyHeader>
             <EmptyTitle>No matches</EmptyTitle>
@@ -616,7 +620,7 @@ export function History() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"
-                            onSelect={() => deleteAnalysis.mutate({ id: a.id })}
+                            onSelect={() => deleteOne(a.id)}
                           >
                             Delete
                           </DropdownMenuItem>
