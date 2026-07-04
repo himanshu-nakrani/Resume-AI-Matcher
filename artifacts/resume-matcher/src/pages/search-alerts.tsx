@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, BellRing, RefreshCw, Trash2, Plus, Search, Clock } from "lucide-react";
+import { Bell, BellRing, RefreshCw, Trash2, Plus, Clock } from "lucide-react";
 
 interface SearchAlert {
   id: number;
@@ -19,6 +20,24 @@ interface SearchAlert {
   enabled: boolean;
 }
 
+type ApiErrorPayload = {
+  error?: string | { message?: string };
+  message?: string;
+};
+
+type CheckAlertResponse = {
+  newResultsCount?: number;
+  newCount?: number;
+} & ApiErrorPayload;
+
+function apiErrorMessage(payload: ApiErrorPayload | null, fallback: string): string {
+  if (!payload) return fallback;
+  if (typeof payload.error === "string") return payload.error;
+  if (payload.error?.message) return payload.error.message;
+  if (payload.message) return payload.message;
+  return fallback;
+}
+
 export function SearchAlertsPage() {
   const { toast } = useToast();
   const [alerts, setAlerts] = useState<SearchAlert[]>([]);
@@ -29,71 +48,141 @@ export function SearchAlertsPage() {
   const [newName, setNewName] = useState("");
   const [newSearchType, setNewSearchType] = useState("auto");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const fetchAlerts = async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/search-alerts");
-      if (res.ok) setAlerts(await res.json());
-    } catch { /* ignore */ }
-    setLoading(false);
+      const data = await res.json().catch(() => null) as SearchAlert[] | ApiErrorPayload | null;
+      if (!res.ok) {
+        throw new Error(apiErrorMessage(data as ApiErrorPayload | null, "Could not load job alerts."));
+      }
+      setAlerts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      toast({
+        title: "Could not load job alerts",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchAlerts(); }, []);
+  useEffect(() => {
+    void fetchAlerts();
+  }, []);
 
   const createAlert = async () => {
     if (!newQuery.trim()) return;
+    setCreating(true);
     try {
       const res = await fetch("/api/search-alerts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName || undefined, query: newQuery, searchType: newSearchType }),
+        body: JSON.stringify({
+          name: newName.trim() || undefined,
+          query: newQuery.trim(),
+          searchType: newSearchType,
+        }),
       });
-      if (res.ok) {
-        toast({ title: "Alert created" });
-        setShowCreate(false);
-        setNewQuery("");
-        setNewName("");
-        fetchAlerts();
+      const data = await res.json().catch(() => null) as SearchAlert | ApiErrorPayload | null;
+      if (!res.ok) {
+        throw new Error(apiErrorMessage(data as ApiErrorPayload | null, "Could not create this alert."));
       }
-    } catch { toast({ title: "Failed", variant: "destructive" }); }
+      if (data && "id" in data) {
+        setAlerts((prev) => [data as SearchAlert, ...prev]);
+      } else {
+        void fetchAlerts();
+      }
+      toast({ title: "Alert created" });
+      setShowCreate(false);
+      setNewQuery("");
+      setNewName("");
+    } catch (err) {
+      toast({
+        title: "Could not create alert",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreating(false);
+    }
   };
 
   const deleteAlert = async (id: number) => {
-    const res = await fetch(`/api/search-alerts/${id}`, { method: "DELETE" });
-    if (res.ok) {
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/search-alerts/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as ApiErrorPayload | null;
+        throw new Error(apiErrorMessage(data, "Could not remove this alert."));
+      }
       setAlerts((prev) => prev.filter((a) => a.id !== id));
       toast({ title: "Alert removed" });
+    } catch (err) {
+      toast({
+        title: "Could not remove alert",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const toggleAlert = async (id: number, enabled: boolean) => {
-    await fetch(`/api/search-alerts/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled }),
-    });
-    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, enabled } : a)));
+    setTogglingId(id);
+    try {
+      const res = await fetch(`/api/search-alerts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      const data = await res.json().catch(() => null) as SearchAlert | ApiErrorPayload | null;
+      if (!res.ok) {
+        throw new Error(apiErrorMessage(data as ApiErrorPayload | null, "Could not update this alert."));
+      }
+      setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, ...(data as SearchAlert), enabled } : a)));
+      toast({ title: enabled ? "Alert enabled" : "Alert disabled" });
+    } catch (err) {
+      toast({
+        title: "Could not update alert",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const checkAlert = async (id: number) => {
     setCheckingId(id);
     try {
       const res = await fetch(`/api/search-alerts/${id}/check`, { method: "POST" });
-      const data = await res.json();
+      const data = await res.json().catch(() => null) as CheckAlertResponse | null;
       if (res.ok) {
+        const newResultsCount = typeof data?.newResultsCount === "number" ? data.newResultsCount : 0;
+        const newCount = typeof data?.newCount === "number" ? data.newCount : 0;
         toast({
-          title: `${data.newResultsCount} new results`,
-          description: `Found ${data.newCount} total. ${data.newResultsCount > 0 ? "Check them out!" : "No new listings since last check."}`,
+          title: `${newResultsCount} new results`,
+          description: `Found ${newCount} total. ${newResultsCount > 0 ? "Check them out!" : "No new listings since last check."}`,
         });
-        fetchAlerts();
+        void fetchAlerts();
       } else {
-        toast({ title: "Check failed", description: data.error, variant: "destructive" });
+        throw new Error(apiErrorMessage(data, "Could not check this alert."));
       }
-    } catch {
-      toast({ title: "Check failed", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: "Check failed",
+        description: err instanceof Error ? err.message : "Try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setCheckingId(null);
     }
-    setCheckingId(null);
   };
 
   return (
@@ -111,13 +200,13 @@ export function SearchAlertsPage() {
       {showCreate && (
         <Card>
           <CardContent className="p-4 space-y-3">
-            <input
+            <Input
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               placeholder="Alert name (optional)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
-            <input
+            <Input
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               placeholder="Search query (e.g. senior React developer remote)"
               value={newQuery}
@@ -129,7 +218,9 @@ export function SearchAlertsPage() {
               <option value="deep">Deep</option>
               <option value="deep-reasoning">Deep Reasoning</option>
             </select>
-            <Button onClick={createAlert} disabled={!newQuery.trim()}>Create Alert</Button>
+            <Button onClick={createAlert} disabled={!newQuery.trim() || creating}>
+              {creating ? "Creating..." : "Create Alert"}
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -177,6 +268,7 @@ export function SearchAlertsPage() {
                       size="sm"
                       variant="ghost"
                       onClick={() => toggleAlert(alert.id, !alert.enabled)}
+                      disabled={togglingId === alert.id}
                       title={alert.enabled ? "Disable" : "Enable"}
                     >
                       {alert.enabled ? <BellRing className="w-3.5 h-3.5 text-primary" /> : <Bell className="w-3.5 h-3.5" />}
@@ -186,10 +278,18 @@ export function SearchAlertsPage() {
                       variant="ghost"
                       onClick={() => checkAlert(alert.id)}
                       disabled={checkingId === alert.id}
+                      title="Check for new listings"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${checkingId === alert.id ? "animate-spin" : ""}`} />
                     </Button>
-                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deleteAlert(alert.id)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                      onClick={() => deleteAlert(alert.id)}
+                      disabled={deletingId === alert.id}
+                      title="Remove alert"
+                    >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
