@@ -353,7 +353,7 @@ export function Board() {
   }
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
+    <div className="flex h-full min-w-0 flex-col space-y-6">
       <header className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-[-0.02em]">
@@ -600,94 +600,96 @@ export function Board() {
           </EmptyContent>
         </Empty>
       ) : (
-        <div className="flex gap-6 overflow-x-auto pb-6 flex-1 min-h-0 items-start">
-          {COLUMNS.map((status) => (
-            <div
-              key={status}
-              className="w-80 shrink-0 flex flex-col"
-              onDragOver={onDragOver}
-              onDrop={(e) => onDrop(e, status)}
-            >
-              <div className="sticky top-12 z-10 bg-background border-b border-border pb-2 mb-3">
-                <h3 className="text-[13px] font-semibold flex items-center gap-2">
-                  {STATUS_CONFIG[status].label}
-                  <Badge variant="default" size="sm">
-                    {columns[status]?.length ?? 0}
-                  </Badge>
-                </h3>
-              </div>
+        <div className="min-w-0 max-w-full flex-1 overflow-hidden">
+          <div className="flex min-h-0 items-start gap-6 overflow-x-auto pb-6">
+            {COLUMNS.map((status) => (
+              <div
+                key={status}
+                className="w-80 shrink-0 flex flex-col"
+                onDragOver={onDragOver}
+                onDrop={(e) => onDrop(e, status)}
+              >
+                <div className="sticky top-12 z-10 bg-background border-b border-border pb-2 mb-3">
+                  <h3 className="text-[13px] font-semibold flex items-center gap-2">
+                    {STATUS_CONFIG[status].label}
+                    <Badge variant="default" size="sm">
+                      {columns[status]?.length ?? 0}
+                    </Badge>
+                  </h3>
+                </div>
 
-              <div className="bg-surface-1 rounded-md border border-border p-3 space-y-2 min-h-[120px]">
-                {columns[status]?.length === 0 ? (
-                  <p className="text-[12px] text-subtle-foreground text-center py-4">
-                    Drag analyses here
-                  </p>
-                ) : (
-                  columns[status]?.map((a) => {
-                    const isMoving = movingIds.has(a.id);
-                    const currentStatus = a.status;
-                    const score = a.fitScore;
-                    return (
-                      <Card
-                        key={a.id}
-                        padding="sm"
-                        draggable={!isMoving}
-                        onDragStart={(e) => onDragStart(e, a.id)}
-                        className={`cursor-pointer hover:border-border-strong transition-colors border-l-2 ${isMoving ? "pointer-events-none opacity-60" : ""}`}
-                        style={{
-                          borderLeftColor:
-                            STATUS_COLORS[status] ||
-                            "hsl(var(--muted-foreground))",
-                        }}
-                        onClick={() => setLocation(`/analysis/${a.id}`)}
-                        aria-busy={isMoving}
-                      >
-                        <CardContent className="flex items-center justify-between gap-3 p-3">
-                          <div className="min-w-0">
-                            <p className="text-[13px] font-medium truncate">
-                              {a.jobTitle}
-                            </p>
-                            {a.companyName && (
-                              <p className="text-[11px] text-muted-foreground truncate">
-                                {a.companyName}
+                <div className="bg-surface-1 rounded-md border border-border p-3 space-y-2 min-h-[120px]">
+                  {columns[status]?.length === 0 ? (
+                    <p className="text-[12px] text-subtle-foreground text-center py-4">
+                      Drag analyses here
+                    </p>
+                  ) : (
+                    columns[status]?.map((a) => {
+                      const isMoving = movingIds.has(a.id);
+                      const currentStatus = a.status;
+                      const score = a.fitScore;
+                      return (
+                        <Card
+                          key={a.id}
+                          padding="sm"
+                          draggable={!isMoving}
+                          onDragStart={(e) => onDragStart(e, a.id)}
+                          className={`cursor-pointer hover:border-border-strong transition-colors border-l-2 ${isMoving ? "pointer-events-none opacity-60" : ""}`}
+                          style={{
+                            borderLeftColor:
+                              STATUS_COLORS[status] ||
+                              "hsl(var(--muted-foreground))",
+                          }}
+                          onClick={() => setLocation(`/analysis/${a.id}`)}
+                          aria-busy={isMoving}
+                        >
+                          <CardContent className="flex items-center justify-between gap-3 p-3">
+                            <div className="min-w-0">
+                              <p className="text-[13px] font-medium truncate">
+                                {a.jobTitle}
                               </p>
-                            )}
-                            {isMoving && (
-                              <p className="text-[10px] text-muted-foreground">
-                                Updating status...
-                              </p>
-                            )}
-                            <select
-                              className="mt-2 h-7 max-w-full rounded-md border border-input bg-background px-2 text-[11px] text-muted-foreground"
-                              value={currentStatus}
-                              disabled={isMoving}
-                              onClick={(event) => event.stopPropagation()}
-                              onChange={(event) => {
-                                event.stopPropagation();
-                                moveAnalysis(
-                                  a.id,
-                                  event.target.value as Status,
-                                );
-                              }}
-                              aria-label={`Move ${a.jobTitle} to status`}
-                              data-testid={`board-status-${a.id}`}
-                            >
-                              {COLUMNS.map((nextStatus) => (
-                                <option key={nextStatus} value={nextStatus}>
-                                  {STATUS_CONFIG[nextStatus].label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <ScoreCircle score={score} size="sm" />
-                        </CardContent>
-                      </Card>
-                    );
-                  })
-                )}
+                              {a.companyName && (
+                                <p className="text-[11px] text-muted-foreground truncate">
+                                  {a.companyName}
+                                </p>
+                              )}
+                              {isMoving && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Updating status...
+                                </p>
+                              )}
+                              <select
+                                className="mt-2 h-7 max-w-full rounded-md border border-input bg-background px-2 text-[11px] text-muted-foreground"
+                                value={currentStatus}
+                                disabled={isMoving}
+                                onClick={(event) => event.stopPropagation()}
+                                onChange={(event) => {
+                                  event.stopPropagation();
+                                  moveAnalysis(
+                                    a.id,
+                                    event.target.value as Status,
+                                  );
+                                }}
+                                aria-label={`Move ${a.jobTitle} to status`}
+                                data-testid={`board-status-${a.id}`}
+                              >
+                                {COLUMNS.map((nextStatus) => (
+                                  <option key={nextStatus} value={nextStatus}>
+                                    {STATUS_CONFIG[nextStatus].label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <ScoreCircle score={score} size="sm" />
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>

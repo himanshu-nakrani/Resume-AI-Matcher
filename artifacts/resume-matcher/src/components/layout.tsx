@@ -668,8 +668,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 pb-20 md:pb-0">
-          <div className="mx-auto h-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <main className="min-w-0 flex-1 pb-20 md:pb-0">
+          <div className="mx-auto h-full min-w-0 max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
             <PageTransition>{children}</PageTransition>
           </div>
         </main>
