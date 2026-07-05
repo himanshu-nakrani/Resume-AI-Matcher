@@ -36,6 +36,7 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from "@/components/ui/empty";
+import { unknownErrorMessage } from "@/lib/api-error";
 import { formatDistanceToNow } from "date-fns";
 
 function stringArray(value: unknown): string[] {
@@ -187,9 +188,7 @@ function AnalysisColumn({
           <div>
             <p className="text-sm font-semibold">Could not load analysis</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error
-                ? error.message
-                : "Try again in a moment."}
+              {unknownErrorMessage(error)}
             </p>
           </div>
         </CardContent>
@@ -497,11 +496,7 @@ export function Compare() {
               <AlertCircle />
             </EmptyMedia>
             <EmptyTitle>Could not load analyses</EmptyTitle>
-            <EmptyDescription>
-              {error instanceof Error
-                ? error.message
-                : "Try again in a moment."}
-            </EmptyDescription>
+            <EmptyDescription>{unknownErrorMessage(error)}</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button

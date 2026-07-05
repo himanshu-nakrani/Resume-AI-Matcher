@@ -26,6 +26,31 @@ describe("apiErrorMessage", () => {
 });
 
 describe("unknownErrorMessage", () => {
+  it("prefers structured API client payloads over generic error messages", () => {
+    const error = Object.assign(new Error("Request failed with status 500"), {
+      data: {
+        error: {
+          message: "Analysis service unavailable.",
+          requestId: "api-500",
+        },
+      },
+    });
+
+    expect(unknownErrorMessage(error)).toBe(
+      "Analysis service unavailable. (request api-500)",
+    );
+  });
+
+  it("supports response data payloads from request libraries", () => {
+    expect(
+      unknownErrorMessage({
+        response: {
+          data: { error: "Saved search was not found." },
+        },
+      }),
+    ).toBe("Saved search was not found.");
+  });
+
   it("uses real error messages before the fallback", () => {
     expect(unknownErrorMessage(new Error("Network failed."))).toBe(
       "Network failed.",

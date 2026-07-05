@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { unknownErrorMessage } from "@/lib/api-error";
 import {
   ArrowLeft,
   Heart,
@@ -215,7 +216,7 @@ export function Analysis() {
           Could not load analysis.
         </p>
         <p className="mt-2 text-[13px] text-muted-foreground">
-          {error instanceof Error ? error.message : "Try again in a moment."}
+          {unknownErrorMessage(error)}
         </p>
         <div className="mt-4 flex justify-center gap-2">
           <Button variant="secondary" onClick={() => setLocation("/history")}>

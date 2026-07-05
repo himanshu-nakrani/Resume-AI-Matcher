@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { unknownErrorMessage } from "@/lib/api-error";
 import {
   BarChart3,
   CheckCircle2,
@@ -126,7 +127,7 @@ export function UserPage() {
     profile.userName.trim() !== persistedProfile.userName ||
     profile.userEmail.trim() !== persistedProfile.userEmail;
   const canSave = profileComplete && profileDirty;
-  const statsError = error instanceof Error ? error.message : null;
+  const statsError = error ? unknownErrorMessage(error) : null;
 
   return (
     <div className="space-y-6">

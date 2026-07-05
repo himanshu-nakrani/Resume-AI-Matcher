@@ -43,5 +43,18 @@ export function unknownErrorMessage(
   error: unknown,
   fallback = "Try again in a moment.",
 ): string {
+  if (error && typeof error === "object") {
+    const source = error as Record<string, unknown>;
+    const response =
+      source.response && typeof source.response === "object"
+        ? (source.response as Record<string, unknown>)
+        : null;
+    const structuredMessage =
+      apiErrorMessage(source.data, "") ||
+      apiErrorMessage(source.body, "") ||
+      apiErrorMessage(response?.data, "");
+    if (structuredMessage) return structuredMessage;
+  }
+
   return error instanceof Error && error.message ? error.message : fallback;
 }

@@ -14,6 +14,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import { unknownErrorMessage } from "@/lib/api-error";
 import { format } from "date-fns";
 import {
   AlertCircle,
@@ -196,11 +197,7 @@ export function Versions() {
               <AlertCircle />
             </EmptyMedia>
             <EmptyTitle>Could not load versions</EmptyTitle>
-            <EmptyDescription>
-              {error instanceof Error
-                ? error.message
-                : "Try again in a moment."}
-            </EmptyDescription>
+            <EmptyDescription>{unknownErrorMessage(error)}</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button

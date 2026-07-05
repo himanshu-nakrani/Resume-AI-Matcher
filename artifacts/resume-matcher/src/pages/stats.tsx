@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { unknownErrorMessage } from "@/lib/api-error";
 import {
   Empty,
   EmptyHeader,
@@ -550,9 +551,10 @@ export function Stats() {
             </EmptyMedia>
             <EmptyTitle>Could not load stats</EmptyTitle>
             <EmptyDescription>
-              {error instanceof Error
-                ? error.message
-                : "Refresh the page or try again in a moment."}
+              {unknownErrorMessage(
+                error,
+                "Refresh the page or try again in a moment.",
+              )}
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>

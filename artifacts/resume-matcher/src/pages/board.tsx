@@ -21,6 +21,7 @@ import {
   EmptyContent,
 } from "@/components/ui/empty";
 import { useToast } from "@/hooks/use-toast";
+import { unknownErrorMessage } from "@/lib/api-error";
 import {
   AlertCircle,
   Filter,
@@ -560,9 +561,10 @@ export function Board() {
             </EmptyMedia>
             <EmptyTitle>Could not load tracker</EmptyTitle>
             <EmptyDescription>
-              {error instanceof Error
-                ? error.message
-                : "Refresh the page or try again in a moment."}
+              {unknownErrorMessage(
+                error,
+                "Refresh the page or try again in a moment.",
+              )}
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>

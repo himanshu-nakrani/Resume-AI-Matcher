@@ -68,6 +68,7 @@ import {
 } from "@/components/ui/empty";
 import { formatDistanceToNow, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { unknownErrorMessage } from "@/lib/api-error";
 
 type Status =
   | "not_applied"
@@ -787,9 +788,7 @@ export function History() {
           <div>
             <p className="font-medium">Could not load analyses.</p>
             <p className="mt-1 text-[12px] text-destructive/85">
-              {error instanceof Error
-                ? error.message
-                : "Try again in a moment."}
+              {unknownErrorMessage(error)}
             </p>
           </div>
           <Button
