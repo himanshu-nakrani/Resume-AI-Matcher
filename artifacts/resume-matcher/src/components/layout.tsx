@@ -277,7 +277,7 @@ function ShortcutsModal({
             type="button"
             onClick={onClose}
             className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
-            aria-label="Close"
+            aria-label="Close keyboard shortcuts"
           >
             <X className="h-3.5 w-3.5" />
           </button>
