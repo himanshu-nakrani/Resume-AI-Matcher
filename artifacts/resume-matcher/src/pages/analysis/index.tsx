@@ -250,6 +250,10 @@ export function Analysis() {
   const visibleTags = tags.filter((tag) => tag !== "sample");
   const deadlineLabel = shortDate(analysis.deadline);
   const followUpLabel = shortDate(analysis.followUpDate);
+  const analysisLabel = `${analysis.jobTitle} at ${analysis.companyName ?? "unknown company"}`;
+  const favoriteActionLabel = analysis.isFavorite
+    ? `Remove ${analysisLabel} from favorites`
+    : `Add ${analysisLabel} to favorites`;
 
   return (
     <div className="space-y-0" data-testid={`analysis-${id}`}>
@@ -319,16 +323,8 @@ export function Analysis() {
                   })
                 }
                 disabled={updateAnalysis.isPending}
-                title={
-                  analysis.isFavorite
-                    ? "Remove from favorites"
-                    : "Add to favorites"
-                }
-                aria-label={
-                  analysis.isFavorite
-                    ? "Remove from favorites"
-                    : "Add to favorites"
-                }
+                title={favoriteActionLabel}
+                aria-label={favoriteActionLabel}
                 data-testid="button-favorite"
               >
                 <Heart
@@ -345,8 +341,8 @@ export function Analysis() {
                 size="sm"
                 onClick={() => duplicateAnalysis.mutate({ id })}
                 disabled={duplicateAnalysis.isPending}
-                title="Duplicate this analysis"
-                aria-label="Duplicate this analysis"
+                title={`Duplicate ${analysisLabel}`}
+                aria-label={`Duplicate ${analysisLabel}`}
               >
                 <GitCompareArrows className="w-3.5 h-3.5" />
               </Button>
@@ -356,8 +352,8 @@ export function Analysis() {
                 className="text-muted-foreground hover:text-destructive"
                 onClick={handleDelete}
                 disabled={deleteAnalysis.isPending}
-                title="Delete this analysis"
-                aria-label="Delete this analysis"
+                title={`Delete ${analysisLabel}`}
+                aria-label={`Delete ${analysisLabel}`}
                 data-testid="button-delete"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -396,9 +392,9 @@ export function Analysis() {
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this analysis?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {analysis.jobTitle}?</AlertDialogTitle>
             <AlertDialogDescription>
-              "{analysis.jobTitle}" will be permanently removed from your
+              {analysisLabel} will be permanently removed from your
               workspace. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
