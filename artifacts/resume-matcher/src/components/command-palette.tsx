@@ -32,7 +32,7 @@ type GoEntry = { label: string; path: string; icon: typeof Plus; kbd?: string };
 
 const PAGES: GoEntry[] = [
   { label: "Optimize / New analysis", path: "/", icon: Plus, kbd: "⌘N" },
-  { label: "Tracker", path: "/tracker", icon: LayoutGrid, kbd: "⌘T" },
+  { label: "Tracker", path: "/tracker", icon: LayoutGrid, kbd: "G T" },
   { label: "Profile", path: "/user", icon: UserRound },
   { label: "History", path: "/history", icon: History, kbd: "G H" },
   { label: "Stats", path: "/stats", icon: BarChart2, kbd: "G S" },
@@ -45,11 +45,17 @@ const PAGES: GoEntry[] = [
 
 function safeScore(value: unknown): number {
   const score = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 0;
+  return Number.isFinite(score)
+    ? Math.max(0, Math.min(100, Math.round(score)))
+    : 0;
 }
 
 function dateTime(value: unknown): number {
-  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+  if (
+    typeof value !== "string" &&
+    typeof value !== "number" &&
+    !(value instanceof Date)
+  ) {
     return 0;
   }
 
@@ -83,13 +89,17 @@ export function CommandPalette() {
   );
 
   const favorites = useMemo(
-    () => (analyses ?? [])
-      .filter((a) => a.isFavorite)
-      .sort((a, b) => dateTime(b.createdAt) - dateTime(a.createdAt)),
+    () =>
+      (analyses ?? [])
+        .filter((a) => a.isFavorite)
+        .sort((a, b) => dateTime(b.createdAt) - dateTime(a.createdAt)),
     [analyses],
   );
   const recent = useMemo(
-    () => [...(analyses ?? [])].sort((a, b) => dateTime(b.createdAt) - dateTime(a.createdAt)).slice(0, 5),
+    () =>
+      [...(analyses ?? [])]
+        .sort((a, b) => dateTime(b.createdAt) - dateTime(a.createdAt))
+        .slice(0, 5),
     [analyses],
   );
 
@@ -169,10 +179,22 @@ export function CommandPalette() {
 
         <CommandSeparator />
         <CommandGroup heading="Settings">
-          <CommandItem onSelect={() => { setOpen(false); toggle(); }} className="group">
-            {isDark ? <Sun className="mr-2 h-3.5 w-3.5" /> : <Moon className="mr-2 h-3.5 w-3.5" />}
+          <CommandItem
+            onSelect={() => {
+              setOpen(false);
+              toggle();
+            }}
+            className="group"
+          >
+            {isDark ? (
+              <Sun className="mr-2 h-3.5 w-3.5" />
+            ) : (
+              <Moon className="mr-2 h-3.5 w-3.5" />
+            )}
             <span className="flex-1">Toggle theme</span>
-            <kbd className="ml-2 font-mono text-[10px] text-subtle-foreground">T</kbd>
+            <kbd className="ml-2 font-mono text-[10px] text-subtle-foreground">
+              T
+            </kbd>
           </CommandItem>
         </CommandGroup>
       </CommandList>
