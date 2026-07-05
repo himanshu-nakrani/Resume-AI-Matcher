@@ -479,7 +479,7 @@ router.post("/analyses", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "AI analysis failed");
     if (isAiError(err)) {
-      sendAiError(res, err, "AI analysis failed");
+      sendAiError(req, res, err, "AI analysis failed");
     } else {
       res.status(500).json({ error: "AI analysis failed" });
     }
@@ -678,7 +678,7 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err, id: params.data.id }, "Optimized resume PDF compilation failed");
     if (isAiError(err)) {
-      sendAiError(res, err);
+      sendAiError(req, res, err);
     } else if (isLatexCompileFailure(err)) {
       sendApiError(req, res, 422, "optimized_pdf_compile_failed", formatLatexCompileError(err));
     } else {
@@ -1018,7 +1018,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
 
     logger.error({ err, url }, "Job URL fetch failed");
     if (isAiError(err)) {
-      sendAiError(res, err, "Job URL fetch failed");
+      sendAiError(req, res, err, "Job URL fetch failed");
     } else {
       sendApiError(req, res, 400, "job_url_fetch_failed", "Could not fetch that URL. Please copy the job description text manually.");
     }
@@ -1076,7 +1076,7 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "Cover letter generation failed");
     if (isAiError(err)) {
-      sendAiError(res, err, "Cover letter generation failed");
+      sendAiError(req, res, err, "Cover letter generation failed");
     } else {
       res.status(500).json({ error: "Cover letter generation failed" });
     }
@@ -1127,7 +1127,7 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "LinkedIn post generation failed");
     if (isAiError(err)) {
-      sendAiError(res, err, "LinkedIn post generation failed");
+      sendAiError(req, res, err, "LinkedIn post generation failed");
     } else {
       res.status(500).json({ error: "LinkedIn post generation failed" });
     }
@@ -1190,7 +1190,7 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "Bullet rewrite failed");
     if (isAiError(err)) {
-      sendAiError(res, err, "Bullet rewrite failed");
+      sendAiError(req, res, err, "Bullet rewrite failed");
     } else {
       res.status(500).json({ error: "Bullet rewrite failed" });
     }

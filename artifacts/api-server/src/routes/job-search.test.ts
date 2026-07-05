@@ -35,6 +35,7 @@ describe("POST /api/job-search/pre-screen", () => {
     try {
       const response = await request(app)
         .post("/api/job-search/pre-screen")
+        .set("X-Request-Id", "job-prescreen-no-ai")
         .send({
           resumeText: validResumeText,
           jobText:
@@ -44,6 +45,7 @@ describe("POST /api/job-search/pre-screen", () => {
       expect(response.status).toBe(503);
       expect(response.body.error).toMatchObject({
         code: "ai_missing_key",
+        requestId: "job-prescreen-no-ai",
         retryable: false,
       });
       expect(response.body.error.message).toContain("FIREWORKS_API_KEY");

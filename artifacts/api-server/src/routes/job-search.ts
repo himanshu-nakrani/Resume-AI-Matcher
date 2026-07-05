@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Response } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 import { SearchJobsBody } from "@workspace/api-zod";
 import { runExaJobSearch } from "../lib/exa-job-search";
@@ -21,8 +21,9 @@ import { sendAiError } from "../lib/send-ai-error";
 
 const router: IRouter = Router();
 
-function sendMissingAiKeyError(res: Response): void {
+function sendMissingAiKeyError(req: Request, res: Response): void {
   sendAiError(
+    req,
     res,
     Object.assign(new Error("FIREWORKS_API_KEY env var is not set"), {
       code: "ai_missing_key" as const,
@@ -188,9 +189,9 @@ router.post("/job-search/pre-screen", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "Pre-screen failed");
     if (isAiError(err)) {
-      sendAiError(res, err);
+      sendAiError(req, res, err);
     } else if (err instanceof AiMissingKeyError) {
-      sendMissingAiKeyError(res);
+      sendMissingAiKeyError(req, res);
     } else {
       sendApiError(req, res, 500, "prescreen_failed", "Pre-screen failed");
     }
