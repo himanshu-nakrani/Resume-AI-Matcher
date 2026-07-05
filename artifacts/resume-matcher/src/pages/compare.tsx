@@ -91,6 +91,15 @@ function relativeDate(value: unknown): string {
     : "Date unavailable";
 }
 
+function analysisDisplayName(analysis: {
+  jobTitle?: string | null;
+  companyName?: string | null;
+}): string {
+  return analysis.companyName
+    ? `${analysis.jobTitle} at ${analysis.companyName}`
+    : (analysis.jobTitle ?? "selected analysis");
+}
+
 function ScoreBar({
   score,
   label,
@@ -462,6 +471,17 @@ export function Compare() {
   const selectedCount = [leftId, rightId].filter(
     (id): id is number => id != null,
   ).length;
+  const selectedAnalyses = useMemo(() => {
+    const byId = new Map(analyses.map((analysis) => [analysis.id, analysis]));
+    return {
+      left: leftId != null ? byId.get(leftId) : undefined,
+      right: rightId != null ? byId.get(rightId) : undefined,
+    };
+  }, [analyses, leftId, rightId]);
+  const swapLabel =
+    selectedAnalyses.left && selectedAnalyses.right
+      ? `Swap ${analysisDisplayName(selectedAnalyses.left)} with ${analysisDisplayName(selectedAnalyses.right)}`
+      : "Swap analyses";
 
   return (
     <div className="space-y-6">
@@ -550,7 +570,8 @@ export function Compare() {
                   setRightId(tmp);
                 }}
                 disabled={leftId == null || rightId == null}
-                aria-label="Swap analyses"
+                title={swapLabel}
+                aria-label={swapLabel}
               >
                 <ArrowLeftRight className="h-3.5 w-3.5" />
               </Button>
