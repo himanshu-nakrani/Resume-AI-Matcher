@@ -411,10 +411,14 @@ export function Board() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* Search */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">
+                <label
+                  htmlFor="tracker-filter-search"
+                  className="text-xs font-medium text-muted-foreground"
+                >
                   Search
                 </label>
                 <Input
+                  id="tracker-filter-search"
                   placeholder="Job title or company..."
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
@@ -423,11 +427,15 @@ export function Board() {
               </div>
               {/* Min Score */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">
+                <label
+                  htmlFor="tracker-filter-min-score"
+                  className="text-xs font-medium text-muted-foreground"
+                >
                   Min Fit Score
                 </label>
                 <div className="relative">
                   <Input
+                    id="tracker-filter-min-score"
                     type="number"
                     min="0"
                     max="100"
@@ -447,8 +455,10 @@ export function Board() {
                   />
                   {minScore && (
                     <button
+                      type="button"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       onClick={() => setMinScore("")}
+                      aria-label="Clear minimum fit score filter"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -457,10 +467,14 @@ export function Board() {
               </div>
               {/* Tag Filter */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <label
+                  htmlFor="tracker-filter-tag"
+                  className="text-xs font-medium text-muted-foreground flex items-center gap-1"
+                >
                   <Tag className="w-3 h-3" /> Tag
                 </label>
                 <select
+                  id="tracker-filter-tag"
                   className="w-full h-8 text-xs rounded-md border border-input bg-background px-2 focus:outline-none focus:ring-2 focus:ring-ring"
                   value={filterTag}
                   onChange={(e) => setFilterTag(e.target.value)}
@@ -475,10 +489,14 @@ export function Board() {
               </div>
               {/* Location */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <label
+                  htmlFor="tracker-filter-location"
+                  className="text-xs font-medium text-muted-foreground flex items-center gap-1"
+                >
                   <MapPin className="w-3 h-3" /> Location
                 </label>
                 <Input
+                  id="tracker-filter-location"
                   placeholder="e.g. Remote, NYC..."
                   value={filterLocation}
                   onChange={(e) => setFilterLocation(e.target.value)}
@@ -489,7 +507,9 @@ export function Board() {
             {/* Toggle */}
             <div className="flex items-center gap-3">
               <button
+                type="button"
                 onClick={() => setHasDeadlineOnly((p) => !p)}
+                aria-pressed={hasDeadlineOnly}
                 className={
                   "flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors " +
                   (hasDeadlineOnly
@@ -508,7 +528,11 @@ export function Board() {
                 {minScore && (
                   <span className="inline-flex items-center gap-1 rounded-md border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
                     Fit ≥ {minScore}%
-                    <button onClick={() => setMinScore("")}>
+                    <button
+                      type="button"
+                      onClick={() => setMinScore("")}
+                      aria-label="Remove minimum fit score filter"
+                    >
                       <X className="w-2.5 h-2.5" />
                     </button>
                   </span>
@@ -516,7 +540,11 @@ export function Board() {
                 {filterTag && (
                   <span className="inline-flex items-center gap-1 rounded-md border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
                     Tag: {filterTag}
-                    <button onClick={() => setFilterTag("")}>
+                    <button
+                      type="button"
+                      onClick={() => setFilterTag("")}
+                      aria-label={`Remove ${filterTag} tag filter`}
+                    >
                       <X className="w-2.5 h-2.5" />
                     </button>
                   </span>
@@ -524,7 +552,11 @@ export function Board() {
                 {filterLocation && (
                   <span className="inline-flex items-center gap-1 rounded-md border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
                     <MapPin className="w-2.5 h-2.5" /> {filterLocation}
-                    <button onClick={() => setFilterLocation("")}>
+                    <button
+                      type="button"
+                      onClick={() => setFilterLocation("")}
+                      aria-label="Remove location filter"
+                    >
                       <X className="w-2.5 h-2.5" />
                     </button>
                   </span>
@@ -532,7 +564,11 @@ export function Board() {
                 {hasDeadlineOnly && (
                   <span className="inline-flex items-center gap-1 rounded-md border border-warning/20 bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">
                     Has deadline
-                    <button onClick={() => setHasDeadlineOnly(false)}>
+                    <button
+                      type="button"
+                      onClick={() => setHasDeadlineOnly(false)}
+                      aria-label="Remove deadline filter"
+                    >
                       <X className="w-2.5 h-2.5" />
                     </button>
                   </span>
@@ -540,7 +576,11 @@ export function Board() {
                 {searchText && (
                   <span className="inline-flex items-center gap-1 rounded-md border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
                     "{searchText}"
-                    <button onClick={() => setSearchText("")}>
+                    <button
+                      type="button"
+                      onClick={() => setSearchText("")}
+                      aria-label="Remove tracker search filter"
+                    >
                       <X className="w-2.5 h-2.5" />
                     </button>
                   </span>

@@ -493,6 +493,11 @@ export function SearchAlertsPage() {
                         onClick={() => toggleAlert(alert.id, !alert.enabled)}
                         disabled={togglingId === alert.id}
                         title={alert.enabled ? "Disable" : "Enable"}
+                        aria-label={
+                          alert.enabled
+                            ? `Disable ${alert.name ?? alert.query} alert`
+                            : `Enable ${alert.name ?? alert.query} alert`
+                        }
                       >
                         {alert.enabled ? (
                           <BellRing className="h-3.5 w-3.5 text-primary" />
@@ -506,6 +511,7 @@ export function SearchAlertsPage() {
                         onClick={() => checkAlert(alert.id)}
                         disabled={checkingId === alert.id}
                         title="Check for new listings"
+                        aria-label={`Check ${alert.name ?? alert.query} for new listings`}
                       >
                         <RefreshCw
                           className={`h-3.5 w-3.5 ${checkingId === alert.id ? "animate-spin" : ""}`}
@@ -518,6 +524,7 @@ export function SearchAlertsPage() {
                         onClick={() => deleteAlert(alert.id)}
                         disabled={deletingId === alert.id}
                         title="Remove alert"
+                        aria-label={`Remove ${alert.name ?? alert.query} alert`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
