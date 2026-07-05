@@ -228,8 +228,7 @@ export function Board() {
       onError: (err) => {
         toast({
           title: "Could not update status",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },

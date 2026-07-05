@@ -43,7 +43,11 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiErrorMessage, type ApiErrorPayload } from "@/lib/api-error";
+import {
+  apiErrorMessage,
+  unknownErrorMessage,
+  type ApiErrorPayload,
+} from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 
 import {
@@ -220,18 +224,9 @@ export function Home() {
         setLocation(`/analysis/${data.id}`);
       },
       onError: (error) => {
-        const envelope = (
-          error as
-            | { data?: { error?: { message?: string } } }
-            | null
-            | undefined
-        )?.data?.error;
         toast({
           title: "Optimization failed",
-          description:
-            envelope?.message ??
-            (error as Error | null | undefined)?.message ??
-            "Please try again.",
+          description: unknownErrorMessage(error, "Please try again."),
           variant: "destructive",
         });
       },
@@ -298,11 +293,9 @@ export function Home() {
         });
       },
       onError: (err: unknown) => {
-        const message =
-          err instanceof Error ? err.message : "Job search failed.";
         toast({
           title: "Job search failed",
-          description: message,
+          description: unknownErrorMessage(err, "Job search failed."),
           variant: "destructive",
         });
       },
@@ -402,8 +395,7 @@ export function Home() {
     } catch (err) {
       toast({
         title: "Could not load more jobs",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -442,8 +434,7 @@ export function Home() {
     } catch (err) {
       toast({
         title: "Could not save",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     }
@@ -490,8 +481,7 @@ export function Home() {
       );
       toast({
         title: "Could not estimate match",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     }

@@ -20,6 +20,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { unknownErrorMessage } from "@/lib/api-error";
 
 const ICON_MAP = {
   deadline: CalendarClock,
@@ -144,8 +145,7 @@ export function NotificationsPanel({
       onError: (err) => {
         toast({
           title: "Could not update notifications",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -159,8 +159,7 @@ export function NotificationsPanel({
       onError: (err) => {
         toast({
           title: "Could not mark notification read",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -264,9 +263,7 @@ export function NotificationsPanel({
                     Could not load notifications
                   </p>
                   <p className="mt-1 text-[11px] text-destructive/80">
-                    {error instanceof Error
-                      ? error.message
-                      : "Try again in a moment."}
+                    {unknownErrorMessage(error)}
                   </p>
                 </div>
               ) : visibleNotifications.length === 0 ? (

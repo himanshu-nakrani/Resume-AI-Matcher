@@ -140,8 +140,7 @@ export function Analysis() {
       onError: (err) => {
         toast({
           title: "Could not delete analysis",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -162,8 +161,7 @@ export function Analysis() {
       onError: (err) => {
         toast({
           title: "Could not update analysis",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -184,8 +182,7 @@ export function Analysis() {
       onError: (err) => {
         toast({
           title: "Could not duplicate analysis",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },

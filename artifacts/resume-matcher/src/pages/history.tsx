@@ -255,8 +255,7 @@ function StatusPicker({
       onError: (error) => {
         toast({
           title: "Could not update status",
-          description:
-            error instanceof Error ? error.message : "Try again in a moment.",
+          description: unknownErrorMessage(error),
           variant: "destructive",
         });
       },
@@ -323,8 +322,7 @@ function FavoriteButton({
       onError: (error) => {
         toast({
           title: "Could not update favorite",
-          description:
-            error instanceof Error ? error.message : "Try again in a moment.",
+          description: unknownErrorMessage(error),
           variant: "destructive",
         });
       },
@@ -378,8 +376,7 @@ export function History() {
       onError: (err) => {
         toast({
           title: "Could not delete analysis",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -398,8 +395,7 @@ export function History() {
       onError: (err) => {
         toast({
           title: "Could not duplicate analysis",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -594,8 +590,7 @@ export function History() {
       .catch((err) =>
         toast({
           title: "Some deletions failed",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         }),
       );

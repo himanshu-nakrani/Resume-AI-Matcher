@@ -15,7 +15,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { apiErrorMessage, type ApiErrorPayload } from "@/lib/api-error";
+import {
+  apiErrorMessage,
+  unknownErrorMessage,
+  type ApiErrorPayload,
+} from "@/lib/api-error";
 import {
   Bookmark,
   Trash2,
@@ -159,8 +163,7 @@ export function SavedJobsPage() {
     } catch (err) {
       toast({
         title: "Could not load saved jobs",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -186,8 +189,7 @@ export function SavedJobsPage() {
     } catch (err) {
       toast({
         title: "Could not remove job",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     }
@@ -214,8 +216,7 @@ export function SavedJobsPage() {
     } catch (err) {
       toast({
         title: "Could not save notes",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     }
@@ -243,8 +244,7 @@ export function SavedJobsPage() {
     } catch (err) {
       toast({
         title: "Could not remove tag",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     }

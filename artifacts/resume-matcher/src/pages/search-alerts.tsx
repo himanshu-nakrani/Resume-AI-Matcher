@@ -14,7 +14,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiErrorMessage, type ApiErrorPayload } from "@/lib/api-error";
+import {
+  apiErrorMessage,
+  unknownErrorMessage,
+  type ApiErrorPayload,
+} from "@/lib/api-error";
 import {
   Bell,
   BellRing,
@@ -137,8 +141,7 @@ export function SearchAlertsPage() {
     } catch (err) {
       toast({
         title: "Could not load job alerts",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -188,8 +191,7 @@ export function SearchAlertsPage() {
     } catch (err) {
       toast({
         title: "Could not create alert",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -212,8 +214,7 @@ export function SearchAlertsPage() {
     } catch (err) {
       toast({
         title: "Could not remove alert",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -251,8 +252,7 @@ export function SearchAlertsPage() {
     } catch (err) {
       toast({
         title: "Could not update alert",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -284,8 +284,7 @@ export function SearchAlertsPage() {
     } catch (err) {
       toast({
         title: "Check failed",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
