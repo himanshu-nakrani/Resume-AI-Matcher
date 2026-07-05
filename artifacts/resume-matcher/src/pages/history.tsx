@@ -644,12 +644,13 @@ export function History() {
                   >
                     <span className="flex-1 truncate text-sm">{s.name}</span>
                     <button
+                      type="button"
                       className="shrink-0 text-muted-foreground hover:text-destructive p-0.5 rounded"
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteSavedSearch(s.id);
                       }}
-                      aria-label="Delete saved search"
+                      aria-label={`Delete saved search ${s.name}`}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -690,8 +691,12 @@ export function History() {
         <Card padding="sm">
           <CardContent className="flex flex-wrap items-center gap-3 p-3">
             <div className="relative flex-1 min-w-[200px]">
+              <label htmlFor="history-search" className="sr-only">
+                Search analyses
+              </label>
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <Input
+                id="history-search"
                 placeholder="Search by title or company…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -700,7 +705,9 @@ export function History() {
             </div>
             <div className="flex flex-wrap items-center gap-1">
               <button
+                type="button"
                 onClick={() => setStatusFilter("all")}
+                aria-pressed={statusFilter === "all"}
                 className={cn(
                   "h-7 rounded-[4px] px-2 text-[11px] font-medium tracking-[0.04em] transition-colors",
                   statusFilter === "all"
@@ -712,10 +719,12 @@ export function History() {
               </button>
               {ALL_STATUSES.map((s) => (
                 <button
+                  type="button"
                   key={s}
                   onClick={() =>
                     setStatusFilter(statusFilter === s ? "all" : s)
                   }
+                  aria-pressed={statusFilter === s}
                   className={cn(
                     "h-7 rounded-[4px] px-2 text-[11px] font-medium tracking-[0.04em] transition-colors",
                     statusFilter === s
@@ -731,6 +740,7 @@ export function History() {
               variant={favoritesOnly ? "default" : "ghost"}
               size="sm"
               onClick={() => setFavoritesOnly(!favoritesOnly)}
+              aria-pressed={favoritesOnly}
             >
               <Heart
                 className={cn(
@@ -902,7 +912,7 @@ export function History() {
                         className="h-3.5 w-3.5 rounded border-border"
                         checked={selectedIds.has(a.id)}
                         onChange={() => toggleId(a.id)}
-                        aria-label="Select row"
+                        aria-label={`Select analysis ${a.jobTitle}`}
                       />
                     </td>
                     <td className="px-3 py-2">
@@ -1015,7 +1025,7 @@ export function History() {
                       toggleId(a.id);
                     }}
                     onClick={(e) => e.stopPropagation()}
-                    aria-label="Select row"
+                    aria-label={`Select analysis ${a.jobTitle}`}
                   />
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-start justify-between gap-2">
