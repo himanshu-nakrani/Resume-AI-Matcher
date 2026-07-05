@@ -36,6 +36,10 @@ function getHostname(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return "job source"; }
 }
 
+function cleanJobTitle(title: string): string {
+  return title.replace(/\s+/g, " ").trim() || "selected job";
+}
+
 export function JobDetailModal({ open, onOpenChange, hit, onImport, matchScore }: JobDetailModalProps) {
   const [enriched, setEnriched] = useState<EnrichJobResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +68,7 @@ export function JobDetailModal({ open, onOpenChange, hit, onImport, matchScore }
 
   const source = getHostname(hit.url);
   const displayTitle = hit.title;
+  const actionLabel = cleanJobTitle(displayTitle);
   const hasStructured =
     enriched &&
     (enriched.employmentType ||
@@ -112,12 +117,21 @@ export function JobDetailModal({ open, onOpenChange, hit, onImport, matchScore }
         <div className="space-y-4">
           <div className="flex gap-2">
             <Button size="sm" asChild variant="outline">
-              <a href={hit.url} target="_blank" rel="noopener noreferrer">
+              <a
+                href={hit.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open original posting for ${actionLabel}`}
+              >
                 <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Open original
               </a>
             </Button>
             {onImport && (
-              <Button size="sm" onClick={() => onImport(hit.url)}>
+              <Button
+                size="sm"
+                onClick={() => onImport(hit.url)}
+                aria-label={`Import job description for ${actionLabel}`}
+              >
                 <FileText className="w-3.5 h-3.5 mr-1.5" /> Import JD
               </Button>
             )}
