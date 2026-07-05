@@ -122,6 +122,12 @@ function formatCreatedAt(value: unknown) {
   return date ? format(date, "MMM d, yyyy") : "Unknown date";
 }
 
+function analysisTargetLabel(item: AnalysisItem) {
+  return item.companyName
+    ? `${item.jobTitle} at ${item.companyName}`
+    : item.jobTitle;
+}
+
 export function Versions() {
   const [, setLocation] = useLocation();
   const {
@@ -299,11 +305,14 @@ export function Versions() {
                       const isLatest = idx === 0;
                       const tags = stringArray(item.tags).slice(0, 2);
                       const fitScore = safeScore(item.fitScore);
+                      const actionLabel = `Open ${analysisTargetLabel(item)} version from ${formatCreatedAt(item.createdAt)}`;
                       return (
                         <button
                           key={item.id}
                           className="group flex w-full flex-col gap-3 border-b p-4 text-left transition-colors hover:bg-surface-1 last:border-b-0 sm:flex-row sm:items-center"
                           onClick={() => setLocation("/analysis/" + item.id)}
+                          title={actionLabel}
+                          aria-label={actionLabel}
                         >
                           <div className="flex items-start gap-3 sm:flex-1">
                             <div className="mt-1 flex shrink-0 flex-col items-center gap-1">
@@ -396,11 +405,14 @@ export function Versions() {
                   const item = group.items[0];
                   const tags = stringArray(item.tags).slice(0, 2);
                   const fitScore = safeScore(item.fitScore);
+                  const actionLabel = `Open ${analysisTargetLabel(item)} analysis`;
                   return (
                     <button
                       key={item.id}
                       className="group flex items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-surface-1"
                       onClick={() => setLocation("/analysis/" + item.id)}
+                      title={actionLabel}
+                      aria-label={actionLabel}
                     >
                       <ScoreCircle score={fitScore} size="sm" />
                       <div className="min-w-0 flex-1">
