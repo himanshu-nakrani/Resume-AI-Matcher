@@ -16,18 +16,49 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCopy } from "@/hooks/use-copy";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Calendar, CalendarClock, User, Mail, Tag, DollarSign, Link2, X, Plus, Building2,
-  Wand2, ArrowRightLeft, Sparkles, ClipboardCheck, StickyNote, Share2, Copy, Check,
-  ExternalLink, EyeOff, Send, CheckCircle2,
+  Calendar,
+  CalendarClock,
+  User,
+  Mail,
+  Tag,
+  DollarSign,
+  Link2,
+  X,
+  Plus,
+  Building2,
+  Wand2,
+  ArrowRightLeft,
+  Sparkles,
+  ClipboardCheck,
+  StickyNote,
+  Share2,
+  Copy,
+  Check,
+  ExternalLink,
+  EyeOff,
+  Send,
+  CheckCircle2,
 } from "lucide-react";
 import { format } from "date-fns";
 
 // Cover Letter tone — type + options
-export type CoverLetterTone = "professional" | "friendly" | "enthusiastic" | "concise";
-export const TONE_OPTIONS: { value: CoverLetterTone; label: string; desc: string }[] = [
+export type CoverLetterTone =
+  | "professional"
+  | "friendly"
+  | "enthusiastic"
+  | "concise";
+export const TONE_OPTIONS: {
+  value: CoverLetterTone;
+  label: string;
+  desc: string;
+}[] = [
   { value: "professional", label: "Professional", desc: "Formal & polished" },
   { value: "friendly", label: "Friendly", desc: "Warm & personable" },
-  { value: "enthusiastic", label: "Enthusiastic", desc: "Energetic & passionate" },
+  {
+    value: "enthusiastic",
+    label: "Enthusiastic",
+    desc: "Energetic & passionate",
+  },
   { value: "concise", label: "Concise", desc: "Brief & to the point" },
 ];
 
@@ -71,7 +102,11 @@ function stringArray(value: unknown): string[] {
 }
 
 function dateValue(value: unknown): Date | null {
-  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+  if (
+    typeof value !== "string" &&
+    typeof value !== "number" &&
+    !(value instanceof Date)
+  ) {
     return null;
   }
   const date = new Date(value);
@@ -93,32 +128,37 @@ function downloadICS(data: {
 }) {
   const events: string[] = [];
   const toICSDate = (s: string) => s.replace(/-/g, "");
-  const title = data.jobTitle + (data.companyName ? " @ " + data.companyName : "");
+  const title =
+    data.jobTitle + (data.companyName ? " @ " + data.companyName : "");
 
   if (data.deadline && dateValue(data.deadline)) {
     const d = toICSDate(data.deadline);
-    events.push([
-      "BEGIN:VEVENT",
-      "DTSTART;VALUE=DATE:" + d,
-      "DTEND;VALUE=DATE:" + d,
-      "SUMMARY:Application Deadline: " + title,
-      "DESCRIPTION:Job application deadline. Track it in OptiMatch.",
-      "UID:deadline-" + data.id + "-" + d + "@optimatch",
-      "END:VEVENT",
-    ].join("\r\n"));
+    events.push(
+      [
+        "BEGIN:VEVENT",
+        "DTSTART;VALUE=DATE:" + d,
+        "DTEND;VALUE=DATE:" + d,
+        "SUMMARY:Application Deadline: " + title,
+        "DESCRIPTION:Job application deadline. Track it in OptiMatch.",
+        "UID:deadline-" + data.id + "-" + d + "@optimatch",
+        "END:VEVENT",
+      ].join("\r\n"),
+    );
   }
 
   if (data.followUpDate && dateValue(data.followUpDate)) {
     const d = toICSDate(data.followUpDate);
-    events.push([
-      "BEGIN:VEVENT",
-      "DTSTART;VALUE=DATE:" + d,
-      "DTEND;VALUE=DATE:" + d,
-      "SUMMARY:Follow-up: " + title,
-      "DESCRIPTION:Follow-up on this job application. Track it in OptiMatch.",
-      "UID:followup-" + data.id + "-" + d + "@optimatch",
-      "END:VEVENT",
-    ].join("\r\n"));
+    events.push(
+      [
+        "BEGIN:VEVENT",
+        "DTSTART;VALUE=DATE:" + d,
+        "DTEND;VALUE=DATE:" + d,
+        "SUMMARY:Follow-up: " + title,
+        "DESCRIPTION:Follow-up on this job application. Track it in OptiMatch.",
+        "UID:followup-" + data.id + "-" + d + "@optimatch",
+        "END:VEVENT",
+      ].join("\r\n"),
+    );
   }
 
   if (events.length === 0) return;
@@ -136,7 +176,13 @@ function downloadICS(data: {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "optimatch-" + data.jobTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40) + ".ics";
+  a.download =
+    "optimatch-" +
+    data.jobTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .slice(0, 40) +
+    ".ics";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -145,7 +191,10 @@ function downloadICS(data: {
 
 // === Inner components ===
 
-export function JobTrackingSection({ analysisId, analysis }: {
+export function JobTrackingSection({
+  analysisId,
+  analysis,
+}: {
   analysisId: number;
   analysis: {
     deadline: string | null;
@@ -173,40 +222,58 @@ export function JobTrackingSection({ analysisId, analysis }: {
   const deadlineLabel = formattedLongDate(analysis.deadline);
   const followUpLabel = formattedLongDate(analysis.followUpDate);
 
-  const allExistingTags = Array.from(new Set(
-    (allAnalyses ?? []).flatMap((a) => stringArray(a.tags))
-  )).filter((t) => !tags.includes(t));
+  const allExistingTags = Array.from(
+    new Set((allAnalyses ?? []).flatMap((a) => stringArray(a.tags))),
+  ).filter((t) => !tags.includes(t));
 
   const suggestions = tagInput.trim()
-    ? allExistingTags.filter((t) => t.toLowerCase().includes(tagInput.toLowerCase()))
+    ? allExistingTags.filter((t) =>
+        t.toLowerCase().includes(tagInput.toLowerCase()),
+      )
     : allExistingTags.slice(0, 6);
 
   const update = useUpdateAnalysis({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) }),
+      onSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: getGetAnalysisQueryKey(analysisId),
+        }),
       onError: () => toast({ title: "Save failed", variant: "destructive" }),
     },
   });
 
-  const save = useCallback((field: string, value: string | string[]) => {
-    update.mutate({ id: analysisId, data: { [field]: value } });
-  }, [analysisId, update]);
+  const save = useCallback(
+    (field: string, value: string | string[]) => {
+      update.mutate({ id: analysisId, data: { [field]: value } });
+    },
+    [analysisId, update],
+  );
 
   const addTag = (t?: string) => {
     const tag = (t ?? tagInput).trim();
-    if (!tag || tags.includes(tag)) { setTagInput(""); setShowSuggestions(false); return; }
+    if (!tag || tags.includes(tag)) {
+      setTagInput("");
+      setShowSuggestions(false);
+      return;
+    }
     save("tags", [...tags, tag]);
     setTagInput("");
     setShowSuggestions(false);
   };
 
   const removeTag = (tag: string) => {
-    save("tags", tags.filter((t) => t !== tag));
+    save(
+      "tags",
+      tags.filter((t) => t !== tag),
+    );
   };
 
   const addLink = () => {
     const link = linkInput.trim();
-    if (!link || portfolioLinks.includes(link)) { setLinkInput(""); return; }
+    if (!link || portfolioLinks.includes(link)) {
+      setLinkInput("");
+      return;
+    }
     if (portfolioLinks.length >= 3) {
       toast({ title: "Maximum 3 links allowed", variant: "destructive" });
       return;
@@ -216,11 +283,17 @@ export function JobTrackingSection({ analysisId, analysis }: {
   };
 
   const removeLink = (link: string) => {
-    save("portfolioLinks", portfolioLinks.filter((l) => l !== link));
+    save(
+      "portfolioLinks",
+      portfolioLinks.filter((l) => l !== link),
+    );
   };
 
   const emailLink = analysis.contactEmail
-    ? "mailto:" + analysis.contactEmail + "?subject=Re: " + encodeURIComponent("Application inquiry")
+    ? "mailto:" +
+      analysis.contactEmail +
+      "?subject=Re: " +
+      encodeURIComponent("Application inquiry")
     : null;
 
   const canExportICS = !!(analysis.deadline || analysis.followUpDate);
@@ -241,13 +314,15 @@ export function JobTrackingSection({ analysisId, analysis }: {
             variant="outline"
             size="sm"
             className="shrink-0 gap-1.5 no-print"
-            onClick={() => downloadICS({
-              id: analysisId,
-              jobTitle: analysis.jobTitle,
-              companyName: analysis.companyName,
-              deadline: analysis.deadline,
-              followUpDate: analysis.followUpDate,
-            })}
+            onClick={() =>
+              downloadICS({
+                id: analysisId,
+                jobTitle: analysis.jobTitle,
+                companyName: analysis.companyName,
+                deadline: analysis.deadline,
+                followUpDate: analysis.followUpDate,
+              })
+            }
           >
             <Calendar className="w-3.5 h-3.5" />
             Export to Calendar
@@ -303,7 +378,12 @@ export function JobTrackingSection({ analysisId, analysis }: {
                 className="text-sm flex-1"
               />
               {emailLink && (
-                <a href={emailLink} target="_blank" rel="noreferrer" className="shrink-0">
+                <a
+                  href={emailLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0"
+                >
                   <Button variant="outline" size="sm" type="button">
                     <Mail className="w-3.5 h-3.5 mr-1" /> Email
                   </Button>
@@ -319,7 +399,10 @@ export function JobTrackingSection({ analysisId, analysis }: {
           </label>
           <div className="flex flex-wrap gap-2 min-h-[28px]">
             {portfolioLinks.map((link) => (
-              <div key={link} className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-muted border group">
+              <div
+                key={link}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-muted border group"
+              >
                 <a
                   href={link.startsWith("http") ? link : `https://${link}`}
                   target="_blank"
@@ -344,7 +427,10 @@ export function JobTrackingSection({ analysisId, analysis }: {
               value={linkInput}
               onChange={(e) => setLinkInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") { e.preventDefault(); addLink(); }
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addLink();
+                }
               }}
               className="text-sm flex-1"
             />
@@ -357,7 +443,9 @@ export function JobTrackingSection({ analysisId, analysis }: {
               <Plus className="w-3.5 h-3.5" />
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground">Up to 3 relevant links for this application.</p>
+          <p className="text-[10px] text-muted-foreground">
+            Up to 3 relevant links for this application.
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -366,9 +454,15 @@ export function JobTrackingSection({ analysisId, analysis }: {
           </label>
           <div className="flex flex-wrap gap-1.5 min-h-[28px]">
             {tags.map((tag) => (
-              <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+              >
                 {tag}
-                <button onClick={() => removeTag(tag)} className="ml-0.5 hover:text-destructive transition-colors">
+                <button
+                  onClick={() => removeTag(tag)}
+                  className="ml-0.5 hover:text-destructive transition-colors"
+                >
                   <X className="w-3 h-3" />
                 </button>
               </span>
@@ -379,23 +473,36 @@ export function JobTrackingSection({ analysisId, analysis }: {
               <Input
                 placeholder="Add a tag (e.g. remote, fintech, senior)..."
                 value={tagInput}
-                onChange={(e) => { setTagInput(e.target.value); setShowSuggestions(true); }}
+                onChange={(e) => {
+                  setTagInput(e.target.value);
+                  setShowSuggestions(true);
+                }}
                 onFocus={() => setShowSuggestions(true)}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); addTag(); }
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addTag();
+                  }
                   if (e.key === "Escape") setShowSuggestions(false);
                 }}
                 className="text-sm flex-1"
               />
-              <Button variant="outline" size="sm" onClick={() => addTag()} disabled={!tagInput.trim()}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addTag()}
+                disabled={!tagInput.trim()}
+              >
                 <Plus className="w-3.5 h-3.5" />
               </Button>
             </div>
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute top-full left-0 z-50 mt-1 w-full bg-card border rounded-lg shadow-lg py-1 max-h-48 overflow-y-auto">
                 {tagInput.trim() === "" && (
-                  <p className="text-xs text-muted-foreground px-3 py-1.5">Tags from your other analyses:</p>
+                  <p className="text-xs text-muted-foreground px-3 py-1.5">
+                    Tags from your other analyses:
+                  </p>
                 )}
                 {suggestions.map((t) => (
                   <button
@@ -467,19 +574,46 @@ export function JobTrackingSection({ analysisId, analysis }: {
               </div>
             )}
             {/* Phase 21 — Email Reminder */}
-            {analysis.contactEmail && (analysis.deadline || analysis.followUpDate) && (
-              <a
-                href={"mailto:" + analysis.contactEmail + "?subject=" + encodeURIComponent("Following up: " + analysis.jobTitle + (analysis.companyName ? " at " + analysis.companyName : "")) + "&body=" + encodeURIComponent("Hi,\n\nI wanted to follow up regarding my application for the " + analysis.jobTitle + " position" + (analysis.companyName ? " at " + analysis.companyName : "") + ".\n\nPlease let me know if you need anything further from my side.\n\nBest regards,\n[Your Name]")}
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 ml-auto"
-              >
-                <Button variant="outline" size="sm" type="button" className="gap-1.5">
-                  <Send className="w-3.5 h-3.5" />
-                  Email Reminder
-                </Button>
-              </a>
-            )}
+            {analysis.contactEmail &&
+              (analysis.deadline || analysis.followUpDate) && (
+                <a
+                  href={
+                    "mailto:" +
+                    analysis.contactEmail +
+                    "?subject=" +
+                    encodeURIComponent(
+                      "Following up: " +
+                        analysis.jobTitle +
+                        (analysis.companyName
+                          ? " at " + analysis.companyName
+                          : ""),
+                    ) +
+                    "&body=" +
+                    encodeURIComponent(
+                      "Hi,\n\nI wanted to follow up regarding my application for the " +
+                        analysis.jobTitle +
+                        " position" +
+                        (analysis.companyName
+                          ? " at " + analysis.companyName
+                          : "") +
+                        ".\n\nPlease let me know if you need anything further from my side.\n\nBest regards,\n[Your Name]",
+                    )
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0 ml-auto"
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    className="gap-1.5"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Email Reminder
+                  </Button>
+                </a>
+              )}
           </div>
         )}
       </CardContent>
@@ -489,7 +623,10 @@ export function JobTrackingSection({ analysisId, analysis }: {
 
 export function BulletRewriter({ analysisId }: { analysisId: number }) {
   const [bulletText, setBulletText] = useState("");
-  const [result, setResult] = useState<{ original: string; rewritten: string } | null>(null);
+  const [result, setResult] = useState<{
+    original: string;
+    rewritten: string;
+  } | null>(null);
   const { copy, isCopied } = useCopy();
 
   const rewrite = useRewriteBullet({
@@ -522,15 +659,23 @@ export function BulletRewriter({ analysisId }: { analysisId: number }) {
           />
           <Button
             size="sm"
-            onClick={() => rewrite.mutate({ id: analysisId, data: { bulletText } })}
+            onClick={() =>
+              rewrite.mutate({ id: analysisId, data: { bulletText } })
+            }
             disabled={rewrite.isPending || !bulletText.trim()}
             data-testid="button-rewrite-bullet"
             className="no-print"
           >
             {rewrite.isPending ? (
-              <><Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />Rewriting...</>
+              <>
+                <Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />
+                Rewriting...
+              </>
             ) : (
-              <><ArrowRightLeft className="w-3.5 h-3.5 mr-1.5" />Rewrite</>
+              <>
+                <ArrowRightLeft className="w-3.5 h-3.5 mr-1.5" />
+                Rewrite
+              </>
             )}
           </Button>
         </div>
@@ -538,28 +683,43 @@ export function BulletRewriter({ analysisId }: { analysisId: number }) {
         {result && (
           <div className="space-y-3 pt-2">
             <div className="rounded-lg bg-muted/40 p-3 text-sm">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Original</p>
-              <p className="line-through text-muted-foreground">{result.original}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                Original
+              </p>
+              <p className="line-through text-muted-foreground">
+                {result.original}
+              </p>
             </div>
             <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-sm">
               <div className="flex items-center justify-between mb-1.5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-green-700 dark:text-green-400">Rewritten</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-green-700 dark:text-green-400">
+                  Rewritten
+                </p>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6 text-green-700 dark:text-green-400 no-print"
                   onClick={() => copy(result.rewritten, "Bullet copied")}
                 >
-                  {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {isCopied ? (
+                    <Check className="w-3.5 h-3.5" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
                 </Button>
               </div>
-              <p className="font-medium text-green-800 dark:text-green-300">{result.rewritten}</p>
+              <p className="font-medium text-green-800 dark:text-green-300">
+                {result.rewritten}
+              </p>
             </div>
             <Button
               variant="ghost"
               size="sm"
               className="text-xs text-muted-foreground no-print"
-              onClick={() => { setBulletText(result.original); setResult(null); }}
+              onClick={() => {
+                setBulletText(result.original);
+                setResult(null);
+              }}
             >
               Try another bullet
             </Button>
@@ -570,7 +730,13 @@ export function BulletRewriter({ analysisId }: { analysisId: number }) {
   );
 }
 
-export function NotesSection({ analysisId, initialNotes }: { analysisId: number; initialNotes: string | null }) {
+export function NotesSection({
+  analysisId,
+  initialNotes,
+}: {
+  analysisId: number;
+  initialNotes: string | null;
+}) {
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState(initialNotes ?? "");
   const [isDirty, setIsDirty] = useState(false);
@@ -581,11 +747,19 @@ export function NotesSection({ analysisId, initialNotes }: { analysisId: number;
     mutation: {
       onSuccess: () => {
         setIsDirty(false);
-        queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) });
+        queryClient.invalidateQueries({
+          queryKey: getGetAnalysisQueryKey(analysisId),
+        });
       },
-      onError: () => toast({ title: "Could not save notes", variant: "destructive" }),
+      onError: () =>
+        toast({ title: "Could not save notes", variant: "destructive" }),
     },
   });
+  const statusText = update.isPending
+    ? "Saving..."
+    : isDirty
+      ? "Unsaved changes"
+      : null;
 
   const handleChange = (value: string) => {
     setNotes(value);
@@ -597,8 +771,16 @@ export function NotesSection({ analysisId, initialNotes }: { analysisId: number;
   };
 
   useEffect(() => {
-    return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current); };
+    return () => {
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    };
   }, []);
+
+  useEffect(() => {
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    setNotes(initialNotes ?? "");
+    setIsDirty(false);
+  }, [analysisId, initialNotes]);
 
   return (
     <Card className="border shadow-sm no-print">
@@ -606,9 +788,9 @@ export function NotesSection({ analysisId, initialNotes }: { analysisId: number;
         <CardTitle className="text-base flex items-center gap-2">
           <StickyNote className="w-4 h-4 text-yellow-500" /> Notes
         </CardTitle>
-        <span className={`text-xs transition-opacity ${isDirty || update.isPending ? "opacity-100 text-muted-foreground" : "opacity-0"}`}>
-          {update.isPending ? "Saving..." : "Unsaved changes"}
-        </span>
+        {statusText && (
+          <span className="text-xs text-muted-foreground">{statusText}</span>
+        )}
       </CardHeader>
       <CardContent>
         <Textarea
@@ -623,7 +805,15 @@ export function NotesSection({ analysisId, initialNotes }: { analysisId: number;
   );
 }
 
-export function ShareSection({ analysisId, isPublic, shareToken }: { analysisId: number; isPublic: boolean; shareToken: string | null }) {
+export function ShareSection({
+  analysisId,
+  isPublic,
+  shareToken,
+}: {
+  analysisId: number;
+  isPublic: boolean;
+  shareToken: string | null;
+}) {
   const queryClient = useQueryClient();
   const { copy, isCopied } = useCopy();
   const { toast } = useToast();
@@ -631,9 +821,14 @@ export function ShareSection({ analysisId, isPublic, shareToken }: { analysisId:
   const share = useShareAnalysis({
     mutation: {
       onSuccess: (data) => {
-        queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) });
+        queryClient.invalidateQueries({
+          queryKey: getGetAnalysisQueryKey(analysisId),
+        });
         copy(data.shareUrl, "Share link copied!");
-        toast({ title: "Share link copied!", description: "Anyone with the link can view this analysis." });
+        toast({
+          title: "Share link copied!",
+          description: "Anyone with the link can view this analysis.",
+        });
       },
     },
   });
@@ -641,15 +836,22 @@ export function ShareSection({ analysisId, isPublic, shareToken }: { analysisId:
   const unshare = useUnshareAnalysis({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(analysisId) });
-        toast({ title: "Link disabled", description: "This analysis is no longer public." });
+        queryClient.invalidateQueries({
+          queryKey: getGetAnalysisQueryKey(analysisId),
+        });
+        toast({
+          title: "Link disabled",
+          description: "This analysis is no longer public.",
+        });
       },
     },
   });
 
   const buildShareUrl = () => {
     if (!shareToken) return "";
-    const base = window.location.origin + (import.meta.env.BASE_URL?.replace(/\/$/, "") || "");
+    const base =
+      window.location.origin +
+      (import.meta.env.BASE_URL?.replace(/\/$/, "") || "");
     return base + "/share/" + shareToken;
   };
 
@@ -659,7 +861,9 @@ export function ShareSection({ analysisId, isPublic, shareToken }: { analysisId:
       <div className="flex items-center gap-2 p-3 rounded-lg bg-muted border border-border no-print">
         <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-foreground">Shared publicly</p>
+          <p className="text-xs font-semibold text-foreground">
+            Shared publicly
+          </p>
           <p className="text-xs text-muted-foreground truncate">{url}</p>
         </div>
         <Button
@@ -668,7 +872,11 @@ export function ShareSection({ analysisId, isPublic, shareToken }: { analysisId:
           className="shrink-0"
           onClick={() => copy(url, "Link copied!")}
         >
-          {isCopied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+          {isCopied ? (
+            <Check className="w-3.5 h-3.5 mr-1" />
+          ) : (
+            <Copy className="w-3.5 h-3.5 mr-1" />
+          )}
           Copy
         </Button>
         <Button
@@ -704,9 +912,15 @@ export function ShareSection({ analysisId, isPublic, shareToken }: { analysisId:
       data-testid="button-share"
     >
       {share.isPending ? (
-        <><Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />Creating link...</>
+        <>
+          <Sparkles className="w-3.5 h-3.5 mr-1.5 animate-pulse" />
+          Creating link...
+        </>
       ) : (
-        <><Share2 className="w-3.5 h-3.5 mr-1.5" />Share</>
+        <>
+          <Share2 className="w-3.5 h-3.5 mr-1.5" />
+          Share
+        </>
       )}
     </Button>
   );
@@ -715,7 +929,11 @@ export function ShareSection({ analysisId, isPublic, shareToken }: { analysisId:
 export function InterviewChecklist({ analysisId }: { analysisId: number }) {
   const storageKey = "optimatch_checklist_" + analysisId;
   const [checked, setChecked] = useState<Record<number, boolean>>(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) ?? "{}"); } catch { return {}; }
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) ?? "{}");
+    } catch {
+      return {};
+    }
   });
 
   const toggle = (i: number) => {
@@ -732,7 +950,8 @@ export function InterviewChecklist({ analysisId }: { analysisId: number }) {
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-base flex items-center gap-2">
-            <ClipboardCheck className="w-4 h-4 text-teal-500" /> Interview Checklist
+            <ClipboardCheck className="w-4 h-4 text-teal-500" /> Interview
+            Checklist
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-0.5">
             Pre-interview prep tasks. Progress is saved in your browser.
@@ -757,10 +976,16 @@ export function InterviewChecklist({ analysisId }: { analysisId: number }) {
             onClick={() => toggle(i)}
             className={`w-full flex items-start gap-3 p-2.5 rounded-lg text-left transition-all ${checked[i] ? "bg-green-50 dark:bg-green-900/20" : "bg-muted/40 hover:bg-muted/60"}`}
           >
-            <div className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${checked[i] ? "bg-green-500 border-green-500" : "border-muted-foreground/40"}`}>
+            <div
+              className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${checked[i] ? "bg-green-500 border-green-500" : "border-muted-foreground/40"}`}
+            >
               {checked[i] && <Check className="w-2.5 h-2.5 text-white" />}
             </div>
-            <span className={`text-sm ${checked[i] ? "line-through text-muted-foreground" : ""}`}>{item}</span>
+            <span
+              className={`text-sm ${checked[i] ? "line-through text-muted-foreground" : ""}`}
+            >
+              {item}
+            </span>
           </button>
         ))}
         {pct === 100 && (
