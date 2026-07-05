@@ -332,10 +332,14 @@ export function JobTrackingSection({
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <label
+              htmlFor="analysis-tracking-deadline"
+              className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"
+            >
               <CalendarClock className="w-3.5 h-3.5" /> Application Deadline
             </label>
             <Input
+              id="analysis-tracking-deadline"
               type="date"
               defaultValue={analysis.deadline ?? ""}
               onBlur={(e) => save("deadline", e.target.value)}
@@ -343,10 +347,14 @@ export function JobTrackingSection({
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <label
+              htmlFor="analysis-tracking-follow-up"
+              className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"
+            >
               <CalendarClock className="w-3.5 h-3.5" /> Follow-up Date
             </label>
             <Input
+              id="analysis-tracking-follow-up"
               type="date"
               defaultValue={analysis.followUpDate ?? ""}
               onBlur={(e) => save("followUpDate", e.target.value)}
@@ -354,10 +362,14 @@ export function JobTrackingSection({
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <label
+              htmlFor="analysis-tracking-contact-name"
+              className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"
+            >
               <User className="w-3.5 h-3.5" /> Contact Name
             </label>
             <Input
+              id="analysis-tracking-contact-name"
               type="text"
               placeholder="Recruiter or hiring manager..."
               defaultValue={analysis.contactName ?? ""}
@@ -366,11 +378,15 @@ export function JobTrackingSection({
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <label
+              htmlFor="analysis-tracking-contact-email"
+              className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"
+            >
               <Mail className="w-3.5 h-3.5" /> Contact Email
             </label>
             <div className="flex gap-2">
               <Input
+                id="analysis-tracking-contact-email"
                 type="email"
                 placeholder="email@company.com..."
                 defaultValue={analysis.contactEmail ?? ""}
@@ -394,7 +410,10 @@ export function JobTrackingSection({
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+          <label
+            htmlFor="analysis-tracking-portfolio-link"
+            className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"
+          >
             <Link2 className="w-3.5 h-3.5" /> Portfolio & Project Links
           </label>
           <div className="flex flex-wrap gap-2 min-h-[28px]">
@@ -413,6 +432,7 @@ export function JobTrackingSection({
                   {link.replace(/^https?:\/\/(www\.)?/, "")}
                 </a>
                 <button
+                  type="button"
                   onClick={() => removeLink(link)}
                   className="ml-1 opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
                   aria-label={`Remove portfolio link ${link.replace(/^https?:\/\/(www\.)?/, "")}`}
@@ -425,6 +445,7 @@ export function JobTrackingSection({
           </div>
           <div className="flex gap-2">
             <Input
+              id="analysis-tracking-portfolio-link"
               placeholder="Add GitHub, portfolio, or case study URL..."
               value={linkInput}
               onChange={(e) => setLinkInput(e.target.value)}
@@ -452,7 +473,10 @@ export function JobTrackingSection({
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+          <label
+            htmlFor="analysis-tracking-tag"
+            className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"
+          >
             <Tag className="w-3.5 h-3.5" /> Tags
           </label>
           <div className="flex flex-wrap gap-1.5 min-h-[28px]">
@@ -463,6 +487,7 @@ export function JobTrackingSection({
               >
                 {tag}
                 <button
+                  type="button"
                   onClick={() => removeTag(tag)}
                   className="ml-0.5 hover:text-destructive transition-colors"
                   aria-label={`Remove tag ${tag}`}
@@ -476,6 +501,7 @@ export function JobTrackingSection({
           <div className="relative">
             <div className="flex gap-2">
               <Input
+                id="analysis-tracking-tag"
                 placeholder="Add a tag (e.g. remote, fintech, senior)..."
                 value={tagInput}
                 onChange={(e) => {
@@ -512,6 +538,7 @@ export function JobTrackingSection({
                 )}
                 {suggestions.map((t) => (
                   <button
+                    type="button"
                     key={t}
                     className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted/60 transition-colors flex items-center gap-2"
                     onMouseDown={() => addTag(t)}
@@ -528,10 +555,14 @@ export function JobTrackingSection({
         {/* Version Label, Location, Salary Expectation */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <label
+              htmlFor="analysis-tracking-version-label"
+              className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"
+            >
               <Tag className="w-3.5 h-3.5" /> Version Label
             </label>
             <Input
+              id="analysis-tracking-version-label"
               type="text"
               placeholder="e.g. v1, tailored, senior..."
               defaultValue={analysis.versionLabel ?? ""}
@@ -540,10 +571,14 @@ export function JobTrackingSection({
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <label
+              htmlFor="analysis-tracking-location"
+              className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"
+            >
               <Building2 className="w-3.5 h-3.5" /> Job Location
             </label>
             <Input
+              id="analysis-tracking-location"
               type="text"
               placeholder="e.g. Remote, New York, Hybrid..."
               defaultValue={analysis.location ?? ""}
@@ -552,10 +587,14 @@ export function JobTrackingSection({
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <label
+              htmlFor="analysis-tracking-salary"
+              className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"
+            >
               <DollarSign className="w-3.5 h-3.5" /> Salary Expectation
             </label>
             <Input
+              id="analysis-tracking-salary"
               type="text"
               placeholder="e.g. $120k–$150k..."
               defaultValue={analysis.salaryExpectation ?? ""}
@@ -651,7 +690,11 @@ export function BulletRewriter({ analysisId }: { analysisId: number }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2">
+          <label htmlFor="analysis-bullet-rewriter-input" className="sr-only">
+            Resume bullet to rewrite
+          </label>
           <Input
+            id="analysis-bullet-rewriter-input"
             placeholder="e.g. Managed a team and improved performance..."
             value={bulletText}
             onChange={(e) => setBulletText(e.target.value)}
@@ -706,6 +749,7 @@ export function BulletRewriter({ analysisId }: { analysisId: number }) {
                   size="icon"
                   className="h-6 w-6 text-green-700 dark:text-green-400 no-print"
                   onClick={() => copy(result.rewritten, "Bullet copied")}
+                  aria-label="Copy rewritten bullet"
                 >
                   {isCopied ? (
                     <Check className="w-3.5 h-3.5" />
@@ -799,7 +843,11 @@ export function NotesSection({
         )}
       </CardHeader>
       <CardContent>
+        <label htmlFor="analysis-private-notes" className="sr-only">
+          Private analysis notes
+        </label>
         <Textarea
+          id="analysis-private-notes"
           placeholder="Add private notes about this role, follow-ups, contacts, deadlines..."
           value={notes}
           onChange={(e) => handleChange(e.target.value)}
