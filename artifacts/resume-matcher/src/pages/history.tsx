@@ -305,12 +305,17 @@ function StatusPicker({
 function FavoriteButton({
   analysisId,
   isFavorite,
+  label,
 }: {
   analysisId: number;
   isFavorite: boolean;
+  label: string;
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const actionLabel = isFavorite
+    ? `Remove ${label} from favorites`
+    : `Add ${label} to favorites`;
   const update = useUpdateAnalysis({
     mutation: {
       onSuccess: () => {
@@ -337,8 +342,8 @@ function FavoriteButton({
       }}
       disabled={update.isPending}
       className={`p-1 rounded transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isFavorite ? "text-pink-500" : "text-muted-foreground hover:text-pink-400"}`}
-      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-      aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+      title={actionLabel}
+      aria-label={actionLabel}
     >
       <Heart className={`w-3.5 h-3.5 ${isFavorite ? "fill-pink-500" : ""}`} />
     </button>
@@ -920,6 +925,7 @@ export function History() {
                         <FavoriteButton
                           analysisId={a.id}
                           isFavorite={a.isFavorite}
+                          label={`${a.jobTitle} at ${a.companyName ?? "unknown company"}`}
                         />
                         <span className="text-[13px] font-medium truncate">
                           {a.jobTitle}
@@ -1049,6 +1055,7 @@ export function History() {
                       <FavoriteButton
                         analysisId={a.id}
                         isFavorite={a.isFavorite}
+                        label={`${a.jobTitle} at ${a.companyName ?? "unknown company"}`}
                       />
                     </div>
                     <div className="flex items-center gap-3 text-[12px]">
