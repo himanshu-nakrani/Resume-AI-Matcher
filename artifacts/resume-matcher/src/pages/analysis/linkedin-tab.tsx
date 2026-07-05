@@ -22,7 +22,8 @@ export function LinkedInTab({ analysis, id }: TabProps) {
 
   const generateLinkedinPost = useGenerateLinkedinPost({
     mutation: {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) }),
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(id) }),
     },
   });
 
@@ -38,10 +39,17 @@ export function LinkedInTab({ analysis, id }: TabProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => copy(analysis.linkedinPost!, "LinkedIn post copied")}
+                onClick={() =>
+                  copy(analysis.linkedinPost!, "LinkedIn post copied")
+                }
+                aria-label="Copy LinkedIn post"
                 data-testid="button-copy-linkedin"
               >
-                {isCopied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                {isCopied ? (
+                  <Check className="w-3.5 h-3.5 mr-1" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 mr-1" />
+                )}
                 Copy
               </Button>
             )}
@@ -50,9 +58,18 @@ export function LinkedInTab({ analysis, id }: TabProps) {
               variant={analysis.linkedinPost ? "secondary" : "default"}
               onClick={() => generateLinkedinPost.mutate({ id })}
               disabled={generateLinkedinPost.isPending}
+              aria-label={
+                analysis.linkedinPost
+                  ? "Regenerate LinkedIn post"
+                  : "Generate LinkedIn post"
+              }
               data-testid="button-generate-linkedin"
             >
-              {generateLinkedinPost.isPending ? "Generating…" : analysis.linkedinPost ? "Regenerate" : "Generate"}
+              {generateLinkedinPost.isPending
+                ? "Generating..."
+                : analysis.linkedinPost
+                  ? "Regenerate"
+                  : "Generate"}
             </Button>
           </div>
         </div>
@@ -66,12 +83,18 @@ export function LinkedInTab({ analysis, id }: TabProps) {
             <Skeleton className="h-4 w-3/4" />
           </div>
         ) : analysis.linkedinPost ? (
-          <Textarea
-            value={analysis.linkedinPost}
-            readOnly
-            className="min-h-[180px] text-[13px] resize-none"
-            data-testid="textarea-linkedin"
-          />
+          <>
+            <label htmlFor="linkedin-post-output" className="sr-only">
+              LinkedIn post content
+            </label>
+            <Textarea
+              id="linkedin-post-output"
+              value={analysis.linkedinPost}
+              readOnly
+              className="min-h-[180px] text-[13px] resize-none"
+              data-testid="textarea-linkedin"
+            />
+          </>
         ) : (
           <p className="text-[13px] text-muted-foreground py-4">
             Click "Generate" to create a LinkedIn announcement for this role.
