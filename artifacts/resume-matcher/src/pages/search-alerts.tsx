@@ -332,7 +332,7 @@ export function SearchAlertsPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setLocation("/")}>
+          <Button variant="outline" onClick={() => setLocation("/?panel=jobs")}>
             <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
             New search
           </Button>
@@ -417,12 +417,14 @@ export function SearchAlertsPage() {
               monitor.
             </EmptyDescription>
           </EmptyHeader>
-          <EmptyContent>
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Create alert
-            </Button>
-          </EmptyContent>
+          {!showCreate && (
+            <EmptyContent>
+              <Button onClick={() => setShowCreate(true)}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Create alert
+              </Button>
+            </EmptyContent>
+          )}
         </Empty>
       ) : (
         <div className="space-y-3">

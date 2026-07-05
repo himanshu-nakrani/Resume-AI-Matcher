@@ -293,7 +293,7 @@ export function SavedJobsPage() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setLocation("/")}>
+        <Button onClick={() => setLocation("/?panel=jobs")}>
           <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
           Find jobs
         </Button>
@@ -356,7 +356,7 @@ export function SavedJobsPage() {
                 Clear search
               </Button>
             ) : (
-              <Button onClick={() => setLocation("/")}>
+              <Button onClick={() => setLocation("/?panel=jobs")}>
                 <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
                 Search jobs
               </Button>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -99,6 +99,7 @@ async function parsePdf(file: File) {
 
 export function Home() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [resumeFileName, setResumeFileName] = useState("");
@@ -125,6 +126,7 @@ export function Home() {
   const [exaCompanySize, setExaCompanySize] = useState("");
   const [detailHit, setDetailHit] = useState<JobSearchHit | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [jobSearchOpen, setJobSearchOpen] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [matchScores, setMatchScores] = useState<
     Map<string, { score: number; loading: boolean }>
@@ -187,6 +189,24 @@ export function Home() {
     });
     return () => subscription.unsubscribe();
   }, [form]);
+
+  useEffect(() => {
+    const panel = new URLSearchParams(search).get("panel");
+    if (panel !== "jobs") return;
+
+    setJobSearchOpen(true);
+  }, [search]);
+
+  useEffect(() => {
+    const panel = new URLSearchParams(search).get("panel");
+    if (panel !== "jobs" || !jobSearchOpen) return;
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("job-search")
+        ?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+  }, [jobSearchOpen, search]);
 
   const createAnalysis = useCreateAnalysis({
     mutation: {
@@ -1017,6 +1037,8 @@ export function Home() {
         isSearchPending={jobSearchExa.isPending}
         isFetchJobPending={fetchJob.isPending}
         hasResumeText={(form.getValues("resumeText")?.length ?? 0) >= 50}
+        isOpen={jobSearchOpen}
+        onOpenChange={setJobSearchOpen}
         onSearch={() => handleExaJobSearch()}
         onLoadMore={loadMore}
         onSaveJob={saveJob}

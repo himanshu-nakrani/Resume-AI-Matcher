@@ -106,6 +106,8 @@ interface JobSearchSectionProps {
   isSearchPending: boolean;
   isFetchJobPending: boolean;
   hasResumeText: boolean;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   onSearch: () => void;
   onLoadMore: () => void;
   onSaveJob: (hit: JobSearchHit) => void;
@@ -150,6 +152,8 @@ export function JobSearchSection({
   isSearchPending,
   isFetchJobPending,
   hasResumeText,
+  isOpen,
+  onOpenChange,
   onSearch,
   onLoadMore,
   onSaveJob,
@@ -167,7 +171,12 @@ export function JobSearchSection({
 
   return (
     <>
-      <details className="mt-10 group">
+      <details
+        id="job-search"
+        className="mt-10 group"
+        open={isOpen}
+        onToggle={(event) => onOpenChange(event.currentTarget.open)}
+      >
         <summary className="flex items-center gap-2 cursor-pointer rounded-md border border-border bg-surface-1 px-4 py-3 hover:bg-surface-2 transition-colors marker:hidden list-none">
           <Search className="h-4 w-4 text-muted-foreground" />
           <span className="text-[15px] font-semibold">Find similar roles</span>
