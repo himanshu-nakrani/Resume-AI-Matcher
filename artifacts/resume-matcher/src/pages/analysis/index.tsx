@@ -49,6 +49,7 @@ const TAB_VALUES = [
   "notes",
 ] as const;
 type TabValue = (typeof TAB_VALUES)[number];
+const ANALYSIS_TAB_CONTENT_CLASS = "pt-1";
 
 function isTabValue(v: string | null | undefined): v is TabValue {
   return v != null && (TAB_VALUES as readonly string[]).includes(v);
@@ -255,7 +256,7 @@ export function Analysis() {
   return (
     <div className="space-y-0" data-testid={`analysis-${id}`}>
       <Tabs value={activeTab} onValueChange={setTab}>
-        <div className="z-30 border-b border-border bg-background pb-3 mb-6 sm:-mx-6 sm:px-6 md:sticky md:top-12 md:pt-4 md:-mt-8 md:shadow-[0_1px_0_0_hsl(var(--border))]">
+        <div className="z-30 -mx-4 mb-6 border-b border-border bg-background/95 px-4 pb-3 backdrop-blur sm:-mx-6 sm:px-6 md:sticky md:top-12 md:pt-4 md:shadow-[0_1px_0_0_hsl(var(--border))]">
           <button
             onClick={() => setLocation("/")}
             className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground mb-2 transition-colors no-print"
@@ -374,19 +375,22 @@ export function Analysis() {
           </TabsList>
         </div>
 
-        <TabsContent value="overview">
+        <TabsContent value="overview" className={ANALYSIS_TAB_CONTENT_CLASS}>
           <OverviewTab analysis={analysis} id={id} />
         </TabsContent>
-        <TabsContent value="cover-letter">
+        <TabsContent
+          value="cover-letter"
+          className={ANALYSIS_TAB_CONTENT_CLASS}
+        >
           <CoverLetterTab analysis={analysis} id={id} />
         </TabsContent>
-        <TabsContent value="linkedin">
+        <TabsContent value="linkedin" className={ANALYSIS_TAB_CONTENT_CLASS}>
           <LinkedInTab analysis={analysis} id={id} />
         </TabsContent>
-        <TabsContent value="pipeline">
+        <TabsContent value="pipeline" className={ANALYSIS_TAB_CONTENT_CLASS}>
           <PipelineTab analysis={analysis} id={id} />
         </TabsContent>
-        <TabsContent value="notes">
+        <TabsContent value="notes" className={ANALYSIS_TAB_CONTENT_CLASS}>
           <NotesTab analysis={analysis} id={id} />
         </TabsContent>
       </Tabs>
