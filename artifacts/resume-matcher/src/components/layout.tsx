@@ -226,8 +226,8 @@ function normalizeSystemStatus(value: unknown): SystemStatusView {
 }
 
 function isActive(location: string, href: string) {
-  if (href === "/")
-    return location === "/" || location.startsWith("/analysis/");
+  if (href === "/") return location === "/";
+  if (href === "/history" && location.startsWith("/analysis/")) return true;
   return location === href || location.startsWith(`${href}/`);
 }
 
