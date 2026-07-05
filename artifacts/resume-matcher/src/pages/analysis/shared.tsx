@@ -894,6 +894,12 @@ export function ShareSection({
           description: "Anyone with the link can view this analysis.",
         });
       },
+      onError: (err) =>
+        toast({
+          title: "Could not create share link",
+          description: unknownErrorMessage(err),
+          variant: "destructive",
+        }),
     },
   });
 
@@ -908,6 +914,12 @@ export function ShareSection({
           description: "This analysis is no longer public.",
         });
       },
+      onError: (err) =>
+        toast({
+          title: "Could not disable share link",
+          description: unknownErrorMessage(err),
+          variant: "destructive",
+        }),
     },
   });
 
