@@ -435,6 +435,7 @@ export function SavedJobsPage() {
                               variant="secondary"
                               className="text-[11px]"
                               onRemove={() => removeTag(job.id, tag)}
+                              removeLabel={`Remove ${tag} tag from ${job.title}`}
                             >
                               {tag}
                             </Badge>
