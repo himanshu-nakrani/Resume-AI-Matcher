@@ -439,20 +439,32 @@ export function SavedJobsPage() {
                       )}
                       {editingNotes === job.id ? (
                         <div className="space-y-2">
+                          <label
+                            htmlFor={`saved-job-notes-${job.id}`}
+                            className="sr-only"
+                          >
+                            Notes for {job.title}
+                          </label>
                           <Textarea
+                            id={`saved-job-notes-${job.id}`}
                             value={notesDraft}
                             onChange={(e) => setNotesDraft(e.target.value)}
                             placeholder="Add notes..."
                             className="min-h-[60px] text-sm"
                           />
                           <div className="flex gap-2">
-                            <Button size="sm" onClick={() => saveNotes(job.id)}>
+                            <Button
+                              size="sm"
+                              onClick={() => saveNotes(job.id)}
+                              aria-label={`Save notes for ${job.title}`}
+                            >
                               <Save className="w-3 h-3 mr-1" /> Save
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => setEditingNotes(null)}
+                              aria-label={`Cancel editing notes for ${job.title}`}
                             >
                               Cancel
                             </Button>
@@ -466,6 +478,7 @@ export function SavedJobsPage() {
                             setEditingNotes(job.id);
                             setNotesDraft(job.notes ?? "");
                           }}
+                          aria-label={`Edit notes for ${job.title}`}
                         >
                           <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                           <span className="line-clamp-2">{job.notes}</span>
@@ -481,6 +494,7 @@ export function SavedJobsPage() {
                             setEditingNotes(job.id);
                             setNotesDraft("");
                           }}
+                          aria-label={`Add notes for ${job.title}`}
                         >
                           <Save className="w-3.5 h-3.5 mr-1" /> Notes
                         </Button>
