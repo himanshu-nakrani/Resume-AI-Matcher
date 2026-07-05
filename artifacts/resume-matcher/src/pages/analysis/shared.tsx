@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCopy } from "@/hooks/use-copy";
 import { useToast } from "@/hooks/use-toast";
+import { unknownErrorMessage } from "@/lib/api-error";
 import {
   Calendar,
   CalendarClock,
@@ -238,7 +239,12 @@ export function JobTrackingSection({
         queryClient.invalidateQueries({
           queryKey: getGetAnalysisQueryKey(analysisId),
         }),
-      onError: () => toast({ title: "Save failed", variant: "destructive" }),
+      onError: (err) =>
+        toast({
+          title: "Save failed",
+          description: unknownErrorMessage(err),
+          variant: "destructive",
+        }),
     },
   });
 
@@ -801,8 +807,12 @@ export function NotesSection({
           queryKey: getGetAnalysisQueryKey(analysisId),
         });
       },
-      onError: () =>
-        toast({ title: "Could not save notes", variant: "destructive" }),
+      onError: (err) =>
+        toast({
+          title: "Could not save notes",
+          description: unknownErrorMessage(err),
+          variant: "destructive",
+        }),
     },
   });
   const statusText = update.isPending
