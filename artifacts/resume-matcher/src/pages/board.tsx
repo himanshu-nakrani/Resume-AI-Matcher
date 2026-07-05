@@ -346,7 +346,7 @@ export function Board() {
           <Skeleton className="h-10 w-48" />
           <Skeleton className="h-4 w-64 mt-2" />
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-250px)]">
+        <div className="flex h-[calc(100vh-14rem)] min-h-[28rem] gap-4 overflow-x-auto rounded-lg border border-border bg-surface-2/20 p-3">
           {COLUMNS.map((col) => (
             <div key={col} className="w-72 shrink-0 space-y-4">
               <Skeleton className="h-12 w-full rounded-xl" />
@@ -615,15 +615,18 @@ export function Board() {
         </Empty>
       ) : (
         <div className="min-w-0 max-w-full flex-1 overflow-hidden">
-          <div className="flex min-h-0 items-start gap-6 overflow-x-auto pb-6">
+          <div className="mb-2 flex items-center justify-between gap-3 text-[11px] text-subtle-foreground">
+            <span>{filtered.length} applications across 6 stages</span>
+          </div>
+          <div className="flex h-[calc(100vh-14rem)] min-h-[28rem] items-stretch gap-4 overflow-x-auto rounded-lg border border-border bg-surface-2/20 p-3">
             {COLUMNS.map((status) => (
               <div
                 key={status}
-                className="w-80 shrink-0 flex flex-col"
+                className="flex h-full w-72 shrink-0 flex-col"
                 onDragOver={onDragOver}
                 onDrop={(e) => onDrop(e, status)}
               >
-                <div className="sticky top-12 z-10 bg-background border-b border-border pb-2 mb-3">
+                <div className="mb-2 shrink-0 border-b border-border pb-2">
                   <h3 className="text-[13px] font-semibold flex items-center gap-2">
                     {STATUS_CONFIG[status].label}
                     <Badge variant="default" size="sm">
@@ -632,7 +635,7 @@ export function Board() {
                   </h3>
                 </div>
 
-                <div className="bg-surface-1 rounded-md border border-border p-3 space-y-2 min-h-[120px]">
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto rounded-md border border-border bg-surface-1 p-3">
                   {columns[status]?.length === 0 ? (
                     <p className="text-[12px] text-subtle-foreground text-center py-4">
                       Drag analyses here
