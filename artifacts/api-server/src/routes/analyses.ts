@@ -950,11 +950,17 @@ router.get("/share/:token", async (req, res): Promise<void> => {
 router.post("/fetch-job", async (req, res): Promise<void> => {
   const body = FetchJobDescriptionBody.safeParse(req.body);
   if (!body.success) {
-    res.status(400).json({ error: "Invalid URL" });
+    sendApiError(req, res, 400, "invalid_job_url", "Enter a valid job posting URL.");
     return;
   }
 
   const { url } = body.data;
+  try {
+    new URL(url);
+  } catch {
+    sendApiError(req, res, 400, "invalid_job_url", "Enter a valid job posting URL.");
+    return;
+  }
 
   req.log.info({ url }, "Fetching job description from URL");
 
@@ -969,7 +975,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
     })).slice(0, 12000);
 
     if (text.length < 100) {
-      res.status(400).json({ error: "Could not extract content from that URL. Try copying the job description manually." });
+      sendApiError(req, res, 400, "job_url_content_too_short", "Could not extract content from that URL. Try copying the job description manually.");
       return;
     }
 
@@ -994,7 +1000,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
     }
 
     if (!extracted.jobDescription || extracted.jobDescription.length < 50) {
-      res.status(400).json({ error: "Could not extract job description from that URL. Try copying the text manually." });
+      sendApiError(req, res, 400, "job_description_not_found", "Could not extract job description from that URL. Try copying the text manually.");
       return;
     }
 
@@ -1006,7 +1012,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
   } catch (err) {
     if (err instanceof UnsafeUrlError) {
       logger.warn({ err, url }, "Rejected unsafe job URL");
-      res.status(400).json({ error: "Could not fetch that URL. Please copy the job description text manually." });
+      sendApiError(req, res, 400, "unsafe_job_url", "Could not fetch that URL. Please copy the job description text manually.");
       return;
     }
 
@@ -1014,7 +1020,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
     if (isAiError(err)) {
       sendAiError(res, err, "Job URL fetch failed");
     } else {
-      res.status(400).json({ error: "Could not fetch that URL. Please copy the job description text manually." });
+      sendApiError(req, res, 400, "job_url_fetch_failed", "Could not fetch that URL. Please copy the job description text manually.");
     }
   }
 });

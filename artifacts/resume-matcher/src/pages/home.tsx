@@ -251,7 +251,7 @@ export function Home() {
           description: "Company, role, and JD were extracted from the URL.",
         });
       },
-      onError: (_err, variables) => {
+      onError: (err, variables) => {
         const url = variables?.data.url;
         const hit = exaResults?.results.find((result) => result.url === url);
         if (hit) {
@@ -273,8 +273,10 @@ export function Home() {
         }
         toast({
           title: "Could not import",
-          description:
+          description: unknownErrorMessage(
+            err,
             "That page blocked extraction. Paste the JD manually or use a result from job search.",
+          ),
           variant: "destructive",
         });
       },

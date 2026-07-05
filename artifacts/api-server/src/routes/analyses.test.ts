@@ -199,22 +199,52 @@ describe("POST /api/analyses/:id/duplicate", () => {
 });
 
 describe("POST /api/fetch-job", () => {
+  it("returns a structured validation error for invalid URLs", async () => {
+    const response = await request(app)
+      .post("/api/fetch-job")
+      .set("X-Request-Id", "fetch-job-invalid")
+      .send({ url: "not-a-url" });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      error: {
+        code: "invalid_job_url",
+        message: "Enter a valid job posting URL.",
+        requestId: "fetch-job-invalid",
+      },
+    });
+  });
+
   it("rejects localhost URLs before fetching", async () => {
     const response = await request(app)
       .post("/api/fetch-job")
+      .set("X-Request-Id", "fetch-job-localhost")
       .send({ url: "http://localhost:8080/internal-job" });
 
     expect(response.status).toBe(400);
-    expect(response.body.error).toContain("Could not fetch");
+    expect(response.body).toMatchObject({
+      error: {
+        code: "unsafe_job_url",
+        message: "Could not fetch that URL. Please copy the job description text manually.",
+        requestId: "fetch-job-localhost",
+      },
+    });
   });
 
   it("rejects private IP URLs before fetching", async () => {
     const response = await request(app)
       .post("/api/fetch-job")
+      .set("X-Request-Id", "fetch-job-private-ip")
       .send({ url: "http://192.168.1.10/jobs/1" });
 
     expect(response.status).toBe(400);
-    expect(response.body.error).toContain("Could not fetch");
+    expect(response.body).toMatchObject({
+      error: {
+        code: "unsafe_job_url",
+        message: "Could not fetch that URL. Please copy the job description text manually.",
+        requestId: "fetch-job-private-ip",
+      },
+    });
   });
 });
 
