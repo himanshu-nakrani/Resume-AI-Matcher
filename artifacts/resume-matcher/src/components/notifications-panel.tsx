@@ -1,4 +1,4 @@
-import { KeyboardEvent, useMemo, useState } from "react";
+import { KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import {
   Bell,
@@ -169,6 +169,15 @@ export function NotificationsPanel({
 
   const unread = visibleNotifications.filter((n) => !n.read).length;
 
+  useEffect(() => {
+    if (!open) return;
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [open]);
+
   const handleNotificationClick = (n: NormalizedNotification) => {
     if (!n.read) {
       markOne.mutate({ id: n.id });
@@ -196,6 +205,8 @@ export function NotificationsPanel({
         className={`relative ${triggerClassName ?? "h-9 w-9"}`}
         onClick={() => setOpen((v) => !v)}
         aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ""}`}
+        aria-expanded={open}
+        aria-haspopup="dialog"
       >
         <Bell className="w-4 h-4" />
         {unread > 0 && (
