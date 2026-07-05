@@ -42,6 +42,26 @@ import { fetchReadableTextFromUrl, UnsafeUrlError } from "../lib/safe-url-fetch"
 const router: IRouter = Router();
 const execFileAsync = promisify(execFile);
 
+type LatexCompiler = "tectonic" | "latexmk" | "pdflatex";
+
+type LatexCompilerFailure = {
+  compiler: LatexCompiler;
+  message: string;
+  stdout?: string;
+  stderr?: string;
+  code?: string | number;
+};
+
+class LatexCompileFailure extends Error {
+  constructor(
+    readonly failures: LatexCompilerFailure[],
+    readonly workDir: string,
+  ) {
+    super(latexCompileFailureMessage(failures, workDir));
+    this.name = "LatexCompileFailure";
+  }
+}
+
 function safeDownloadName(parts: Array<string | null | undefined>, extension: string): string {
   const base = parts
     .filter(Boolean)
@@ -83,7 +103,7 @@ function safeScore(value: unknown): number {
 }
 
 async function tryCompileLatex(
-  compiler: "tectonic" | "latexmk" | "pdflatex",
+  compiler: LatexCompiler,
   workDir: string,
 ): Promise<void> {
   switch (compiler) {
@@ -269,8 +289,93 @@ function isPdfRepairRequested(req: Request): boolean {
   return repair === "1" || repair === "true";
 }
 
-function formatLatexCompileError(err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err);
+function stringOutput(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || undefined;
+  }
+  if (value instanceof Uint8Array) {
+    const trimmed = Buffer.from(value).toString("utf8").trim();
+    return trimmed || undefined;
+  }
+  return undefined;
+}
+
+function compactJson(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  try {
+    const json = JSON.stringify(value);
+    return json === "{}" ? undefined : json;
+  } catch {
+    return undefined;
+  }
+}
+
+function compilerFailureFromUnknown(
+  compiler: LatexCompiler,
+  err: unknown,
+): LatexCompilerFailure {
+  const source =
+    err && typeof err === "object" ? (err as Record<string, unknown>) : null;
+  const message =
+    (err instanceof Error ? stringOutput(err.message) : undefined) ??
+    stringOutput(err) ??
+    compactJson(err) ??
+    "Unknown compiler failure.";
+  const stdout = stringOutput(source?.stdout);
+  const stderr = stringOutput(source?.stderr);
+  const code =
+    typeof source?.code === "string" || typeof source?.code === "number"
+      ? source.code
+      : undefined;
+
+  return { compiler, message, stdout, stderr, code };
+}
+
+function latexCompileFailureText(failure: LatexCompilerFailure): string {
+  const parts = [failure.stderr, failure.stdout, failure.message]
+    .filter((part): part is string => Boolean(part))
+    .filter((part, index, all) => all.indexOf(part) === index);
+  return parts.join("\n");
+}
+
+function latexCompileFailureMessage(
+  failures: LatexCompilerFailure[],
+  workDir: string,
+): string {
+  const noCompiler = failures.every((failure) => {
+    const text = latexCompileFailureText(failure);
+    return failure.code === "ENOENT" || text.includes("ENOENT");
+  });
+  if (noCompiler) {
+    return "No LaTeX compiler found. Install tectonic, latexmk, or pdflatex on the API server.";
+  }
+
+  const realFailure =
+    failures.find((failure) => failure.code !== "ENOENT" && !latexCompileFailureText(failure).includes("ENOENT")) ??
+    failures.at(-1);
+  return `LaTeX compilation failed in ${realFailure?.compiler ?? "compiler"}. ${
+    realFailure ? latexCompileFailureText(realFailure) : ""
+  } [workdir: ${workDir}]`.slice(0, 900);
+}
+
+export function formatLatexCompileError(err: unknown): string {
+  const objectFailure =
+    err && typeof err === "object"
+      ? latexCompileFailureText(compilerFailureFromUnknown("tectonic", err))
+      : undefined;
+  const raw =
+    err instanceof LatexCompileFailure
+      ? latexCompileFailureText(
+          err.failures.find((failure) => latexCompileFailureText(failure).match(/error|failed|missing|undefined|halted/i)) ??
+            err.failures.at(-1) ?? {
+              compiler: "tectonic",
+              message: err.message,
+            },
+        )
+      : err instanceof Error
+        ? err.message
+        : stringOutput(err) ?? objectFailure ?? compactJson(err) ?? "Unknown PDF compilation failure.";
   const lines = raw
     .replace(/\s*\[workdir: [^\]]+\]/g, "")
     .split(/\r?\n/)
@@ -303,6 +408,7 @@ function formatNotificationCreatedAt(value: Date | number | string): string {
 }
 
 function isLatexCompileFailure(err: unknown): boolean {
+  if (err instanceof LatexCompileFailure) return true;
   if (!(err instanceof Error)) return false;
   return err.message.includes("LaTeX compilation failed") || err.message.includes("No LaTeX compiler found");
 }
@@ -313,7 +419,7 @@ async function compileLatexToPdf(latex: string): Promise<Buffer> {
   try {
     await writeFile(path.join(workDir, "main.tex"), prepareLatexForPdfCompilation(latex), "utf8");
 
-    const errors: Array<{ compiler: string; message: string }> = [];
+    const errors: LatexCompilerFailure[] = [];
     for (const compiler of ["tectonic", "latexmk", "pdflatex"] as const) {
       try {
         await tryCompileLatex(compiler, workDir);
@@ -321,18 +427,11 @@ async function compileLatexToPdf(latex: string): Promise<Buffer> {
         succeeded = true;
         return pdf;
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        errors.push({ compiler, message });
+        errors.push(compilerFailureFromUnknown(compiler, err));
       }
     }
 
-    const noCompiler = errors.every((error) => error.message.includes("ENOENT"));
-    const realError = errors.find((error) => !error.message.includes("ENOENT")) ?? errors.at(-1);
-    throw new Error(
-      noCompiler
-        ? "No LaTeX compiler found. Install tectonic, latexmk, or pdflatex on the API server."
-        : `LaTeX compilation failed in ${realError?.compiler ?? "compiler"}. ${realError?.message ?? ""} [workdir: ${workDir}]`.slice(0, 900),
-    );
+    throw new LatexCompileFailure(errors, workDir);
   } finally {
     if (succeeded) {
       await rm(workDir, { recursive: true, force: true });

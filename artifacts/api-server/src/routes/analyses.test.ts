@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import app from "../app";
 import { db, analyses } from "@workspace/db";
+import { formatLatexCompileError } from "./analyses";
 
 function insertAnalysis(overrides: Partial<typeof analyses.$inferInsert> = {}) {
   const base = {
@@ -86,6 +87,19 @@ describe("GET /api/analyses/:id", () => {
 });
 
 describe("GET /api/analyses/:id/resume.pdf", () => {
+  it("formats object-shaped compiler failures without object stringification", () => {
+    const message = formatLatexCompileError({
+      stderr: Buffer.from("! Undefined control sequence.\\brokenResumeCommand"),
+      stdout: "This is pdfTeX",
+      code: 1,
+    });
+
+    expect(message).toContain("Could not compile optimized resume PDF.");
+    expect(message).toContain("Undefined control sequence");
+    expect(message).not.toContain("[object Object]");
+    expect(message).not.toContain('"stderr"');
+  });
+
   it("returns a structured error when optimized LaTeX is missing", async () => {
     const inserted = insertAnalysis({ optimizedLatex: null });
 
