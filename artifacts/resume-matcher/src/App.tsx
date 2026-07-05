@@ -68,12 +68,16 @@ try {
 
 function Router() {
   return (
-    <Suspense fallback={<RouteFallback />}>
-      <Switch>
-        <Route path="/share/:token" component={SharedAnalysis} />
-        <Route>
-          <Layout>
-            <ErrorBoundary>
+    <Switch>
+      <Route path="/share/:token">
+        <Suspense fallback={<FullPageRouteFallback />}>
+          <SharedAnalysis />
+        </Suspense>
+      </Route>
+      <Route>
+        <Layout>
+          <ErrorBoundary>
+            <Suspense fallback={<WorkspaceRouteFallback />}>
               <Switch>
                 <Route path="/" component={Home} />
                 <Route path="/board" component={Board} />
@@ -89,21 +93,35 @@ function Router() {
                 <Route path="/alerts" component={SearchAlertsPage} />
                 <Route component={NotFound} />
               </Switch>
-            </ErrorBoundary>
-          </Layout>
-        </Route>
-      </Switch>
-    </Suspense>
+            </Suspense>
+          </ErrorBoundary>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 
-function RouteFallback() {
+function LoadingPill() {
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-border bg-surface-1 px-4 py-3 text-sm text-muted-foreground shadow-sm">
+      <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
+      Loading workspace
+    </div>
+  );
+}
+
+function FullPageRouteFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
-      <div className="flex items-center gap-3 rounded-md border border-border bg-surface-1 px-4 py-3 text-sm text-muted-foreground shadow-sm">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
-        Loading workspace
-      </div>
+      <LoadingPill />
+    </div>
+  );
+}
+
+function WorkspaceRouteFallback() {
+  return (
+    <div className="flex min-h-[calc(100vh-6rem)] items-center justify-center">
+      <LoadingPill />
     </div>
   );
 }
