@@ -195,7 +195,11 @@ export function JobSearchSection({
             </code>{" "}
             on the API server.
           </p>
+          <label htmlFor="job-search-query" className="sr-only">
+            Job search query
+          </label>
           <Textarea
+            id="job-search-query"
             className="min-h-[100px] text-sm"
             placeholder='e.g. "senior TypeScript backend engineer remote EU startup job posting"'
             value={exaQuery}
@@ -207,18 +211,27 @@ export function JobSearchSection({
             variant="ghost"
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
+            aria-expanded={showFilters}
+            aria-controls="job-search-filters"
           >
             <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" /> Filters{" "}
             {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}
           </Button>
 
           {showFilters && (
-            <div className="flex flex-wrap gap-2 items-end p-3 border rounded-md bg-muted/20">
+            <div
+              id="job-search-filters"
+              className="flex flex-wrap gap-2 items-end p-3 border rounded-md bg-muted/20"
+            >
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted-foreground">
+                <label
+                  htmlFor="job-search-experience"
+                  className="text-[11px] font-medium text-muted-foreground"
+                >
                   Experience
                 </label>
                 <select
+                  id="job-search-experience"
                   className="flex h-8 rounded-md border border-input bg-background px-2 text-xs"
                   value={exaExperienceLevel}
                   onChange={(e) => setExaExperienceLevel(e.target.value)}
@@ -232,10 +245,14 @@ export function JobSearchSection({
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted-foreground">
+                <label
+                  htmlFor="job-search-job-type"
+                  className="text-[11px] font-medium text-muted-foreground"
+                >
                   Job Type
                 </label>
                 <select
+                  id="job-search-job-type"
                   className="flex h-8 rounded-md border border-input bg-background px-2 text-xs"
                   value={exaJobType}
                   onChange={(e) => setExaJobType(e.target.value)}
@@ -249,10 +266,14 @@ export function JobSearchSection({
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted-foreground">
+                <label
+                  htmlFor="job-search-remote"
+                  className="text-[11px] font-medium text-muted-foreground"
+                >
                   Remote
                 </label>
                 <select
+                  id="job-search-remote"
                   className="flex h-8 rounded-md border border-input bg-background px-2 text-xs"
                   value={exaRemote}
                   onChange={(e) => setExaRemote(e.target.value)}
@@ -264,10 +285,14 @@ export function JobSearchSection({
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted-foreground">
+                <label
+                  htmlFor="job-search-min-salary"
+                  className="text-[11px] font-medium text-muted-foreground"
+                >
                   Min Salary ($)
                 </label>
                 <input
+                  id="job-search-min-salary"
                   className="flex h-8 w-24 rounded-md border border-input bg-background px-2 text-xs"
                   placeholder="e.g. 100000"
                   value={exaSalaryMin}
@@ -275,10 +300,14 @@ export function JobSearchSection({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted-foreground">
+                <label
+                  htmlFor="job-search-industry"
+                  className="text-[11px] font-medium text-muted-foreground"
+                >
                   Industry
                 </label>
                 <input
+                  id="job-search-industry"
                   className="flex h-8 w-28 rounded-md border border-input bg-background px-2 text-xs"
                   placeholder="e.g. fintech"
                   value={exaIndustry}
@@ -286,10 +315,14 @@ export function JobSearchSection({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted-foreground">
+                <label
+                  htmlFor="job-search-company-size"
+                  className="text-[11px] font-medium text-muted-foreground"
+                >
                   Company Size
                 </label>
                 <select
+                  id="job-search-company-size"
                   className="flex h-8 rounded-md border border-input bg-background px-2 text-xs"
                   value={exaCompanySize}
                   onChange={(e) => setExaCompanySize(e.target.value)}
@@ -305,10 +338,14 @@ export function JobSearchSection({
 
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="job-search-mode"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 Search mode
               </label>
               <select
+                id="job-search-mode"
                 className="flex h-9 w-full min-w-[140px] rounded-md border border-input bg-background px-2 text-sm"
                 value={exaType}
                 onChange={(e) =>
@@ -323,10 +360,14 @@ export function JobSearchSection({
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="job-search-results"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 Results
               </label>
               <select
+                id="job-search-results"
                 className="flex h-9 rounded-md border border-input bg-background px-2 text-sm"
                 value={exaNumResults}
                 onChange={(e) => setExaNumResults(Number(e.target.value))}
@@ -339,10 +380,14 @@ export function JobSearchSection({
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="job-search-country"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 Country (optional)
               </label>
               <Input
+                id="job-search-country"
                 className="h-9 w-20 uppercase"
                 maxLength={2}
                 placeholder="US"
@@ -350,8 +395,12 @@ export function JobSearchSection({
                 onChange={(e) => setExaUserLocation(e.target.value)}
               />
             </div>
-            <label className="flex items-center gap-2 text-sm cursor-pointer pb-1">
+            <label
+              htmlFor="job-search-prefer-recent"
+              className="flex items-center gap-2 text-sm cursor-pointer pb-1"
+            >
               <input
+                id="job-search-prefer-recent"
                 type="checkbox"
                 className="rounded border-input"
                 checked={exaRecent}
@@ -359,8 +408,12 @@ export function JobSearchSection({
               />{" "}
               Prefer recent
             </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer pb-1">
+            <label
+              htmlFor="job-search-raw-query"
+              className="flex items-center gap-2 text-sm cursor-pointer pb-1"
+            >
               <input
+                id="job-search-raw-query"
                 type="checkbox"
                 className="rounded border-input"
                 checked={exaSkipHeuristics}
