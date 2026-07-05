@@ -6,7 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { BarChart3, CheckCircle2, Mail, Save, Target, UserRound } from "lucide-react";
+import {
+  BarChart3,
+  CheckCircle2,
+  Mail,
+  Save,
+  Target,
+  UserRound,
+} from "lucide-react";
 
 const USER_STORAGE_KEY = "optimatch_user_profile";
 
@@ -17,7 +24,9 @@ type UserProfile = {
 
 function safeScore(value: unknown): number {
   const score = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 0;
+  return Number.isFinite(score)
+    ? Math.max(0, Math.min(100, Math.round(score)))
+    : 0;
 }
 
 function cleanProfile(value: unknown): Partial<UserProfile> {
@@ -25,7 +34,8 @@ function cleanProfile(value: unknown): Partial<UserProfile> {
   const candidate = value as Partial<UserProfile>;
   return {
     userName: typeof candidate.userName === "string" ? candidate.userName : "",
-    userEmail: typeof candidate.userEmail === "string" ? candidate.userEmail : "",
+    userEmail:
+      typeof candidate.userEmail === "string" ? candidate.userEmail : "",
   };
 }
 
@@ -38,7 +48,9 @@ export function UserPage() {
   const { data: analyses, isLoading, error } = useListAnalyses();
   const savedProfile = useMemo(() => {
     try {
-      return cleanProfile(JSON.parse(localStorage.getItem(USER_STORAGE_KEY) ?? "{}") as unknown);
+      return cleanProfile(
+        JSON.parse(localStorage.getItem(USER_STORAGE_KEY) ?? "{}") as unknown,
+      );
     } catch {
       return {};
     }
@@ -48,7 +60,16 @@ export function UserPage() {
     userName: savedProfile.userName ?? "",
     userEmail: savedProfile.userEmail ?? "",
   });
+  const [persistedProfile, setPersistedProfile] = useState<UserProfile>({
+    userName: savedProfile.userName?.trim() ?? "",
+    userEmail: savedProfile.userEmail?.trim() ?? "",
+  });
   const [saved, setSaved] = useState(false);
+
+  const updateProfile = (field: keyof UserProfile, value: string) => {
+    setSaved(false);
+    setProfile((current) => ({ ...current, [field]: value }));
+  };
 
   const save = () => {
     const nextProfile = {
@@ -66,26 +87,45 @@ export function UserPage() {
 
     try {
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextProfile));
+      setPersistedProfile(nextProfile);
       setProfile(nextProfile);
       setSaved(true);
-      toast({ title: "Profile saved", description: "Your optimizer defaults were updated on this device." });
+      toast({
+        title: "Profile saved",
+        description: "Your optimizer defaults were updated on this device.",
+      });
       setTimeout(() => setSaved(false), 1500);
     } catch {
       toast({
         title: "Could not save profile",
-        description: "Your browser blocked local storage. Check site permissions and try again.",
+        description:
+          "Your browser blocked local storage. Check site permissions and try again.",
         variant: "destructive",
       });
     }
   };
 
   const optimizedCount = analyses?.length ?? 0;
-  const activeCount = analyses?.filter((item) => !["selected", "rejected"].includes(item.status ?? "")).length ?? 0;
-  const averageFit = optimizedCount > 0
-    ? Math.round((analyses ?? []).reduce((sum, item) => sum + safeScore(item.fitScore), 0) / optimizedCount)
-    : 0;
-  const profileComplete = Boolean(profile.userName.trim() && isValidEmail(profile.userEmail));
-  const canSave = profileComplete;
+  const activeCount =
+    analyses?.filter(
+      (item) => !["selected", "rejected"].includes(item.status ?? ""),
+    ).length ?? 0;
+  const averageFit =
+    optimizedCount > 0
+      ? Math.round(
+          (analyses ?? []).reduce(
+            (sum, item) => sum + safeScore(item.fitScore),
+            0,
+          ) / optimizedCount,
+        )
+      : 0;
+  const profileComplete = Boolean(
+    profile.userName.trim() && isValidEmail(profile.userEmail),
+  );
+  const profileDirty =
+    profile.userName.trim() !== persistedProfile.userName ||
+    profile.userEmail.trim() !== persistedProfile.userEmail;
+  const canSave = profileComplete && profileDirty;
   const statsError = error instanceof Error ? error.message : null;
 
   return (
@@ -94,28 +134,46 @@ export function UserPage() {
         <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="p-5 sm:p-6">
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              <Badge variant={profileComplete ? "default" : "secondary"} className="gap-1.5">
-                {profileComplete ? <CheckCircle2 className="h-3.5 w-3.5" /> : <UserRound className="h-3.5 w-3.5" />}
+              <Badge
+                variant={profileComplete ? "default" : "secondary"}
+                className="gap-1.5"
+              >
+                {profileComplete ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ) : (
+                  <UserRound className="h-3.5 w-3.5" />
+                )}
                 {profileComplete ? "Profile ready" : "Profile incomplete"}
               </Badge>
-              <span className="text-xs text-muted-foreground">Stored locally on this browser</span>
+              <span className="text-xs text-muted-foreground">
+                Stored locally on this browser
+              </span>
             </div>
-            <h1 className="text-2xl font-semibold tracking-[-0.02em]">Workspace profile</h1>
+            <h1 className="text-2xl font-semibold tracking-[-0.02em]">
+              Workspace profile
+            </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Keep your name and email ready for resume optimization, cover letters, and tracker exports.
+              Keep your name and email ready for resume optimization, cover
+              letters, and tracker exports.
             </p>
           </div>
 
           <div className="border-t border-border bg-background/60 p-5 sm:p-6 lg:border-l lg:border-t-0">
             <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Default identity</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Default identity
+              </p>
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent/10 text-accent">
                   <UserRound className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{profile.userName.trim() || "No name saved"}</p>
-                  <p className="truncate text-xs text-muted-foreground">{profile.userEmail.trim() || "No email saved"}</p>
+                  <p className="truncate text-sm font-medium">
+                    {profile.userName.trim() || "No name saved"}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {profile.userEmail.trim() || "No email saved"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -169,23 +227,35 @@ export function UserPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Name</label>
+              <label className="text-sm font-medium" htmlFor="profile-name">
+                Name
+              </label>
               <Input
+                id="profile-name"
                 value={profile.userName}
-                onChange={(event) => setProfile((current) => ({ ...current, userName: event.target.value }))}
+                onChange={(event) =>
+                  updateProfile("userName", event.target.value)
+                }
                 placeholder="Your name"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Email</label>
+              <label className="text-sm font-medium" htmlFor="profile-email">
+                Email
+              </label>
               <Input
+                id="profile-email"
                 type="email"
                 value={profile.userEmail}
-                onChange={(event) => setProfile((current) => ({ ...current, userEmail: event.target.value }))}
+                onChange={(event) =>
+                  updateProfile("userEmail", event.target.value)
+                }
                 placeholder="you@example.com"
               />
               {profile.userEmail.trim() && !isValidEmail(profile.userEmail) && (
-                <p className="text-xs text-destructive">Enter a valid email address.</p>
+                <p className="text-xs text-destructive">
+                  Enter a valid email address.
+                </p>
               )}
             </div>
           </div>
@@ -196,7 +266,14 @@ export function UserPage() {
               {saved ? "Saved" : "Save profile"}
             </Button>
             {!profileComplete && (
-              <p className="text-xs text-muted-foreground">Add your name and a valid email to enable one-click saving.</p>
+              <p className="text-xs text-muted-foreground">
+                Add your name and a valid email to enable one-click saving.
+              </p>
+            )}
+            {profileComplete && !profileDirty && (
+              <p className="text-xs text-muted-foreground">
+                Profile is up to date.
+              </p>
             )}
           </div>
         </CardContent>
@@ -229,7 +306,9 @@ function MetricCard({
           {loading ? (
             <Skeleton className="mt-2 h-8 w-16" />
           ) : (
-            <p className={`mt-1 text-3xl font-semibold tracking-tight ${muted ? "text-muted-foreground" : ""}`}>
+            <p
+              className={`mt-1 text-3xl font-semibold tracking-tight ${muted ? "text-muted-foreground" : ""}`}
+            >
               {value}
             </p>
           )}
