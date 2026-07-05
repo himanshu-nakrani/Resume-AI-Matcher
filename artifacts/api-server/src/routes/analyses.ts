@@ -501,7 +501,7 @@ router.get("/analyses", async (req, res): Promise<void> => {
 router.post("/analyses", async (req, res): Promise<void> => {
   const parsed = CreateAnalysisBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_body", parsed.error.message);
     return;
   }
 
@@ -580,7 +580,7 @@ router.post("/analyses", async (req, res): Promise<void> => {
     if (isAiError(err)) {
       sendAiError(req, res, err, "AI analysis failed");
     } else {
-      res.status(500).json({ error: "AI analysis failed" });
+      sendApiError(req, res, 500, "analysis_generation_failed", "AI analysis failed");
     }
     return;
   }
@@ -667,7 +667,7 @@ router.post("/analyses", async (req, res): Promise<void> => {
 router.post("/analyses/:id/validate-latex", async (req, res): Promise<void> => {
   const params = GetAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -676,13 +676,19 @@ router.post("/analyses/:id/validate-latex", async (req, res): Promise<void> => {
   });
 
   if (!analysis) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
   const latex = analysis.optimizedLatex?.trim();
   if (!latex) {
-    res.status(400).json({ error: "No LaTeX content available for validation" });
+    sendApiError(
+      req,
+      res,
+      400,
+      "optimized_latex_missing",
+      "No LaTeX content available for validation",
+    );
     return;
   }
 
@@ -829,7 +835,7 @@ router.get("/analyses/stats", async (req, res): Promise<void> => {
 router.get("/analyses/:id", async (req, res): Promise<void> => {
   const params = GetAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -839,7 +845,7 @@ router.get("/analyses/:id", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!row) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -849,7 +855,7 @@ router.get("/analyses/:id", async (req, res): Promise<void> => {
 router.delete("/analyses/:id", async (req, res): Promise<void> => {
   const params = DeleteAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -859,7 +865,7 @@ router.delete("/analyses/:id", async (req, res): Promise<void> => {
     .returning();
 
   if (!row) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -869,13 +875,13 @@ router.delete("/analyses/:id", async (req, res): Promise<void> => {
 router.patch("/analyses/:id", async (req, res): Promise<void> => {
   const params = UpdateAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
   const body = UpdateAnalysisBody.safeParse(req.body);
   if (!body.success) {
-    res.status(400).json({ error: body.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_update", body.error.message);
     return;
   }
 
@@ -885,7 +891,7 @@ router.patch("/analyses/:id", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!existing) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -917,7 +923,7 @@ router.patch("/analyses/:id", async (req, res): Promise<void> => {
 router.post("/analyses/:id/duplicate", async (req, res): Promise<void> => {
   const params = DuplicateAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -927,7 +933,7 @@ router.post("/analyses/:id/duplicate", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!original) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -966,7 +972,7 @@ router.post("/analyses/:id/duplicate", async (req, res): Promise<void> => {
 router.post("/analyses/:id/share", async (req, res): Promise<void> => {
   const params = ShareAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -976,7 +982,7 @@ router.post("/analyses/:id/share", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!existing) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -1000,7 +1006,7 @@ router.post("/analyses/:id/share", async (req, res): Promise<void> => {
 router.delete("/analyses/:id/share", async (req, res): Promise<void> => {
   const params = UnshareAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -1010,7 +1016,7 @@ router.delete("/analyses/:id/share", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!existing) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -1027,7 +1033,7 @@ router.delete("/analyses/:id/share", async (req, res): Promise<void> => {
 router.get("/share/:token", async (req, res): Promise<void> => {
   const params = GetSharedAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_share_token", params.error.message);
     return;
   }
 
@@ -1037,7 +1043,7 @@ router.get("/share/:token", async (req, res): Promise<void> => {
     .where(eq(analyses.shareToken, params.data.token));
 
   if (!row || !row.isPublic) {
-    res.status(404).json({ error: "Shared analysis not found" });
+    sendApiError(req, res, 404, "shared_analysis_not_found", "Shared analysis not found");
     return;
   }
 
@@ -1129,7 +1135,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
 router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
   const params = GenerateCoverLetterParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -1142,7 +1148,7 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!analysis) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -1177,7 +1183,7 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
     if (isAiError(err)) {
       sendAiError(req, res, err, "Cover letter generation failed");
     } else {
-      res.status(500).json({ error: "Cover letter generation failed" });
+      sendApiError(req, res, 500, "cover_letter_generation_failed", "Cover letter generation failed");
     }
   }
 });
@@ -1185,7 +1191,7 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
 router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
   const params = GenerateLinkedinPostParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -1195,7 +1201,7 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!analysis) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -1228,7 +1234,7 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
     if (isAiError(err)) {
       sendAiError(req, res, err, "LinkedIn post generation failed");
     } else {
-      res.status(500).json({ error: "LinkedIn post generation failed" });
+      sendApiError(req, res, 500, "linkedin_post_generation_failed", "LinkedIn post generation failed");
     }
   }
 });
@@ -1236,13 +1242,13 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
 router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
   const params = RewriteBulletParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
   const body = RewriteBulletBody.safeParse(req.body);
   if (!body.success) {
-    res.status(400).json({ error: body.error.message });
+    sendApiError(req, res, 400, "invalid_bullet_rewrite", body.error.message);
     return;
   }
 
@@ -1252,7 +1258,7 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!analysis) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -1291,7 +1297,7 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
     if (isAiError(err)) {
       sendAiError(req, res, err, "Bullet rewrite failed");
     } else {
-      res.status(500).json({ error: "Bullet rewrite failed" });
+      sendApiError(req, res, 500, "bullet_rewrite_failed", "Bullet rewrite failed");
     }
   }
 });
@@ -1329,7 +1335,7 @@ router.patch("/notifications/:id/read", async (req, res): Promise<void> => {
     .where(eq(notifications.id, id))
     .returning();
   if (!updated) {
-    res.status(404).json({ error: "Notification not found" });
+    sendApiError(req, res, 404, "notification_not_found", "Notification not found");
     return;
   }
   res.json({
