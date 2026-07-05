@@ -524,6 +524,7 @@ export function JobSearchSection({
                 const badges = jobBadges(hit);
                 const published = formatPublishedDate(hit.publishedDate);
                 const matchInfo = matchScores.get(hit.url);
+                const jobLabel = cleanJobText(hit.title);
                 return (
                   <li
                     key={hit.url}
@@ -622,6 +623,7 @@ export function JobSearchSection({
                             variant="ghost"
                             className="text-[11px]"
                             onClick={() => onPreScreen(hit)}
+                            aria-label={`Estimate match for ${jobLabel}`}
                           >
                             Match
                           </Button>
@@ -636,7 +638,8 @@ export function JobSearchSection({
                           size="sm"
                           variant="ghost"
                           onClick={() => onSaveJob(hit)}
-                          title="Save job"
+                          title={`Save ${jobLabel}`}
+                          aria-label={`Save ${jobLabel}`}
                         >
                           <Bookmark className="w-3.5 h-3.5" />
                         </Button>
@@ -646,6 +649,7 @@ export function JobSearchSection({
                           variant="outline"
                           onClick={() => onImportJd(hit.url)}
                           disabled={isFetchJobPending}
+                          aria-label={`Import job description for ${jobLabel}`}
                         >
                           {isFetchJobPending ? "..." : "Import JD"}
                         </Button>
