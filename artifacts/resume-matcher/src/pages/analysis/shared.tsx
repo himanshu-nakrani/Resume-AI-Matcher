@@ -415,6 +415,8 @@ export function JobTrackingSection({
                 <button
                   onClick={() => removeLink(link)}
                   className="ml-1 opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
+                  aria-label={`Remove portfolio link ${link.replace(/^https?:\/\/(www\.)?/, "")}`}
+                  title="Remove portfolio link"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -439,6 +441,7 @@ export function JobTrackingSection({
               size="sm"
               onClick={addLink}
               disabled={!linkInput.trim() || portfolioLinks.length >= 3}
+              aria-label="Add portfolio link"
             >
               <Plus className="w-3.5 h-3.5" />
             </Button>
@@ -462,6 +465,8 @@ export function JobTrackingSection({
                 <button
                   onClick={() => removeTag(tag)}
                   className="ml-0.5 hover:text-destructive transition-colors"
+                  aria-label={`Remove tag ${tag}`}
+                  title="Remove tag"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -493,6 +498,7 @@ export function JobTrackingSection({
                 size="sm"
                 onClick={() => addTag()}
                 disabled={!tagInput.trim()}
+                aria-label="Add tag"
               >
                 <Plus className="w-3.5 h-3.5" />
               </Button>
