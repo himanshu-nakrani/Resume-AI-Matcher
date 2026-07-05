@@ -887,6 +887,8 @@ export function Home() {
                         variant="secondary"
                         size="sm"
                         onClick={() => setShowUrlInput((v) => !v)}
+                        aria-expanded={showUrlInput}
+                        aria-controls="job-url-import-panel"
                       >
                         <Link2 className="h-3.5 w-3.5 mr-1.5" /> Import JD from
                         URL
@@ -896,8 +898,12 @@ export function Home() {
                       </span>
                     </div>
                     {showUrlInput && (
-                      <div className="flex gap-2">
+                      <div id="job-url-import-panel" className="flex gap-2">
+                        <label htmlFor="job-url-import" className="sr-only">
+                          Job description URL
+                        </label>
                         <Input
+                          id="job-url-import"
                           value={jobUrlInput}
                           onChange={(e) => setJobUrlInput(e.target.value)}
                           placeholder="https://company.com/jobs/role"
@@ -914,6 +920,7 @@ export function Home() {
                           variant="ghost"
                           size="icon"
                           onClick={() => setShowUrlInput(false)}
+                          aria-label="Close job URL import"
                         >
                           <X className="h-4 w-4" />
                         </Button>

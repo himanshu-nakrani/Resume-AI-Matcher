@@ -308,8 +308,12 @@ export function SavedJobsPage() {
 
       <div className="flex gap-3 rounded-lg border border-border bg-surface-1 p-3">
         <div className="relative flex-1">
+          <label htmlFor="saved-job-search" className="sr-only">
+            Search saved jobs
+          </label>
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
+            id="saved-job-search"
             placeholder="Search by title, company, or source..."
             className="h-9 pl-9"
             value={searchTerm}
