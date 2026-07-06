@@ -1,4 +1,4 @@
-import { KeyboardEvent, useMemo, useState } from "react";
+import { KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import {
   Bell,
@@ -20,6 +20,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { unknownErrorMessage } from "@/lib/api-error";
 
 const ICON_MAP = {
   deadline: CalendarClock,
@@ -144,8 +145,7 @@ export function NotificationsPanel({
       onError: (err) => {
         toast({
           title: "Could not update notifications",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -159,8 +159,7 @@ export function NotificationsPanel({
       onError: (err) => {
         toast({
           title: "Could not mark notification read",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -168,6 +167,15 @@ export function NotificationsPanel({
   });
 
   const unread = visibleNotifications.filter((n) => !n.read).length;
+
+  useEffect(() => {
+    if (!open) return;
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [open]);
 
   const handleNotificationClick = (n: NormalizedNotification) => {
     if (!n.read) {
@@ -196,6 +204,8 @@ export function NotificationsPanel({
         className={`relative ${triggerClassName ?? "h-9 w-9"}`}
         onClick={() => setOpen((v) => !v)}
         aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ""}`}
+        aria-expanded={open}
+        aria-haspopup="dialog"
       >
         <Bell className="w-4 h-4" />
         {unread > 0 && (
@@ -253,9 +263,7 @@ export function NotificationsPanel({
                     Could not load notifications
                   </p>
                   <p className="mt-1 text-[11px] text-destructive/80">
-                    {error instanceof Error
-                      ? error.message
-                      : "Try again in a moment."}
+                    {unknownErrorMessage(error)}
                   </p>
                 </div>
               ) : visibleNotifications.length === 0 ? (

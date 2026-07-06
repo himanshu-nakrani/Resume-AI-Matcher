@@ -81,7 +81,7 @@ const navGroups: NavGroup[] = [
     label: "Core",
     items: [
       { href: "/", label: "Optimize", icon: PlusCircle, kbd: "⌘N" },
-      { href: "/tracker", label: "Tracker", icon: LayoutGrid, kbd: "⌘T" },
+      { href: "/tracker", label: "Tracker", icon: LayoutGrid, kbd: "G T" },
       { href: "/user", label: "Profile", icon: UserRound },
     ],
   },
@@ -130,12 +130,12 @@ const SHORTCUTS = [
   { keys: ["\u2318", "?"], description: "Show keyboard shortcuts" },
   { keys: ["\u2318", "N"], description: "New analysis" },
   { keys: ["\u2318", "\\"], description: "Toggle sidebar" },
+  { keys: ["G", "T"], description: "Go to Tracker" },
   { keys: ["G", "H"], description: "Go to History" },
   { keys: ["G", "S"], description: "Go to Stats" },
   { keys: ["G", "C"], description: "Go to Compare" },
   { keys: ["G", "B"], description: "Go to Brand" },
   { keys: ["T"], description: "Toggle theme" },
-  { keys: ["J", "K"], description: "Move down/up in lists" },
   { keys: ["Esc"], description: "Close dialogs" },
 ];
 
@@ -226,8 +226,9 @@ function normalizeSystemStatus(value: unknown): SystemStatusView {
 }
 
 function isActive(location: string, href: string) {
-  if (href === "/")
-    return location === "/" || location.startsWith("/analysis/");
+  if (href === "/") return location === "/";
+  if (href === "/tracker" && location === "/board") return true;
+  if (href === "/history" && location.startsWith("/analysis/")) return true;
   return location === href || location.startsWith(`${href}/`);
 }
 
@@ -256,17 +257,27 @@ function ShortcutsModal({
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative z-10 w-full max-w-md rounded-lg border border-border bg-surface-1 p-5 shadow-lg">
+      <div
+        className="relative z-10 w-full max-w-md rounded-lg border border-border bg-surface-1 p-5 shadow-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="keyboard-shortcuts-title"
+      >
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Keyboard className="h-3.5 w-3.5 text-muted-foreground" />
-            <h2 className="text-[13px] font-semibold">Keyboard shortcuts</h2>
+            <h2
+              id="keyboard-shortcuts-title"
+              className="text-[13px] font-semibold"
+            >
+              Keyboard shortcuts
+            </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
-            aria-label="Close"
+            aria-label="Close keyboard shortcuts"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -438,12 +449,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (e.key === "t" || e.key === "T") {
-        e.preventDefault();
-        toggle();
-        return;
-      }
-
       if (e.key === "g" || e.key === "G") {
         gBuffer = "g";
         setTimeout(() => {
@@ -455,6 +460,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       if (gBuffer === "g") {
         gBuffer = "";
         switch (e.key.toLowerCase()) {
+          case "t":
+            setLocation("/tracker");
+            break;
           case "h":
             setLocation("/history");
             break;
@@ -470,11 +478,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
           default:
             break;
         }
+        return;
+      }
+
+      if (e.key === "t" || e.key === "T") {
+        e.preventDefault();
+        toggle();
+        return;
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [setLocation]);
+  }, [setLocation, toggle]);
 
   return (
     <div className="flex min-h-screen w-full bg-background">

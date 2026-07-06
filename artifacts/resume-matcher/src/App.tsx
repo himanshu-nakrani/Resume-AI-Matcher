@@ -1,22 +1,50 @@
+import { lazy, Suspense } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/error-boundary";
-import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/layout";
-import { Home } from "@/pages/home";
-import { Board } from "@/pages/board";
-import { Analysis } from "@/pages/analysis";
-import { History } from "@/pages/history";
-import { Stats } from "@/pages/stats";
-import { Brand } from "@/pages/brand";
-import { SharedAnalysis } from "@/pages/shared";
-import { Compare } from "@/pages/compare";
-import { Versions } from "@/pages/versions";
-import { UserPage } from "@/pages/user";
-import { SavedJobsPage } from "@/pages/saved-jobs";
-import { SearchAlertsPage } from "@/pages/search-alerts";
+
+const NotFound = lazy(() => import("@/pages/not-found"));
+const Home = lazy(() =>
+  import("@/pages/home").then((m) => ({ default: m.Home })),
+);
+const Board = lazy(() =>
+  import("@/pages/board").then((m) => ({ default: m.Board })),
+);
+const Analysis = lazy(() =>
+  import("@/pages/analysis").then((m) => ({ default: m.Analysis })),
+);
+const History = lazy(() =>
+  import("@/pages/history").then((m) => ({ default: m.History })),
+);
+const Stats = lazy(() =>
+  import("@/pages/stats").then((m) => ({ default: m.Stats })),
+);
+const Brand = lazy(() =>
+  import("@/pages/brand").then((m) => ({ default: m.Brand })),
+);
+const SharedAnalysis = lazy(() =>
+  import("@/pages/shared").then((m) => ({ default: m.SharedAnalysis })),
+);
+const Compare = lazy(() =>
+  import("@/pages/compare").then((m) => ({ default: m.Compare })),
+);
+const Versions = lazy(() =>
+  import("@/pages/versions").then((m) => ({ default: m.Versions })),
+);
+const UserPage = lazy(() =>
+  import("@/pages/user").then((m) => ({ default: m.UserPage })),
+);
+const SavedJobsPage = lazy(() =>
+  import("@/pages/saved-jobs").then((m) => ({ default: m.SavedJobsPage })),
+);
+const SearchAlertsPage = lazy(() =>
+  import("@/pages/search-alerts").then((m) => ({
+    default: m.SearchAlertsPage,
+  })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,29 +69,60 @@ try {
 function Router() {
   return (
     <Switch>
-      <Route path="/share/:token" component={SharedAnalysis} />
+      <Route path="/share/:token">
+        <Suspense fallback={<FullPageRouteFallback />}>
+          <SharedAnalysis />
+        </Suspense>
+      </Route>
       <Route>
         <Layout>
           <ErrorBoundary>
-            <Switch>
-              <Route path="/" component={Home} />
-              <Route path="/board" component={Board} />
-              <Route path="/tracker" component={Board} />
-              <Route path="/user" component={UserPage} />
-              <Route path="/analysis/:id" component={Analysis} />
-              <Route path="/history" component={History} />
-              <Route path="/stats" component={Stats} />
-              <Route path="/brand" component={Brand} />
-              <Route path="/compare" component={Compare} />
-              <Route path="/versions" component={Versions} />
-              <Route path="/saved-jobs" component={SavedJobsPage} />
-              <Route path="/alerts" component={SearchAlertsPage} />
-              <Route component={NotFound} />
-            </Switch>
+            <Suspense fallback={<WorkspaceRouteFallback />}>
+              <Switch>
+                <Route path="/" component={Home} />
+                <Route path="/board" component={Board} />
+                <Route path="/tracker" component={Board} />
+                <Route path="/user" component={UserPage} />
+                <Route path="/analysis/:id" component={Analysis} />
+                <Route path="/history" component={History} />
+                <Route path="/stats" component={Stats} />
+                <Route path="/brand" component={Brand} />
+                <Route path="/compare" component={Compare} />
+                <Route path="/versions" component={Versions} />
+                <Route path="/saved-jobs" component={SavedJobsPage} />
+                <Route path="/alerts" component={SearchAlertsPage} />
+                <Route component={NotFound} />
+              </Switch>
+            </Suspense>
           </ErrorBoundary>
         </Layout>
       </Route>
     </Switch>
+  );
+}
+
+function LoadingPill() {
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-border bg-surface-1 px-4 py-3 text-sm text-muted-foreground shadow-sm">
+      <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
+      Loading workspace
+    </div>
+  );
+}
+
+function FullPageRouteFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
+      <LoadingPill />
+    </div>
+  );
+}
+
+function WorkspaceRouteFallback() {
+  return (
+    <div className="flex min-h-[calc(100vh-6rem)] items-center justify-center">
+      <LoadingPill />
+    </div>
   );
 }
 

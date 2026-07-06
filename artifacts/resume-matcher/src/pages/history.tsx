@@ -68,6 +68,7 @@ import {
 } from "@/components/ui/empty";
 import { formatDistanceToNow, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { unknownErrorMessage } from "@/lib/api-error";
 
 type Status =
   | "not_applied"
@@ -254,8 +255,7 @@ function StatusPicker({
       onError: (error) => {
         toast({
           title: "Could not update status",
-          description:
-            error instanceof Error ? error.message : "Try again in a moment.",
+          description: unknownErrorMessage(error),
           variant: "destructive",
         });
       },
@@ -305,12 +305,17 @@ function StatusPicker({
 function FavoriteButton({
   analysisId,
   isFavorite,
+  label,
 }: {
   analysisId: number;
   isFavorite: boolean;
+  label: string;
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const actionLabel = isFavorite
+    ? `Remove ${label} from favorites`
+    : `Add ${label} to favorites`;
   const update = useUpdateAnalysis({
     mutation: {
       onSuccess: () => {
@@ -322,8 +327,7 @@ function FavoriteButton({
       onError: (error) => {
         toast({
           title: "Could not update favorite",
-          description:
-            error instanceof Error ? error.message : "Try again in a moment.",
+          description: unknownErrorMessage(error),
           variant: "destructive",
         });
       },
@@ -338,8 +342,8 @@ function FavoriteButton({
       }}
       disabled={update.isPending}
       className={`p-1 rounded transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isFavorite ? "text-pink-500" : "text-muted-foreground hover:text-pink-400"}`}
-      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-      aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+      title={actionLabel}
+      aria-label={actionLabel}
     >
       <Heart className={`w-3.5 h-3.5 ${isFavorite ? "fill-pink-500" : ""}`} />
     </button>
@@ -377,8 +381,7 @@ export function History() {
       onError: (err) => {
         toast({
           title: "Could not delete analysis",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -397,8 +400,7 @@ export function History() {
       onError: (err) => {
         toast({
           title: "Could not duplicate analysis",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -593,8 +595,7 @@ export function History() {
       .catch((err) =>
         toast({
           title: "Some deletions failed",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         }),
       );
@@ -648,12 +649,13 @@ export function History() {
                   >
                     <span className="flex-1 truncate text-sm">{s.name}</span>
                     <button
+                      type="button"
                       className="shrink-0 text-muted-foreground hover:text-destructive p-0.5 rounded"
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteSavedSearch(s.id);
                       }}
-                      aria-label="Delete saved search"
+                      aria-label={`Delete saved search ${s.name}`}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -694,8 +696,12 @@ export function History() {
         <Card padding="sm">
           <CardContent className="flex flex-wrap items-center gap-3 p-3">
             <div className="relative flex-1 min-w-[200px]">
+              <label htmlFor="history-search" className="sr-only">
+                Search analyses
+              </label>
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <Input
+                id="history-search"
                 placeholder="Search by title or company…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -704,7 +710,9 @@ export function History() {
             </div>
             <div className="flex flex-wrap items-center gap-1">
               <button
+                type="button"
                 onClick={() => setStatusFilter("all")}
+                aria-pressed={statusFilter === "all"}
                 className={cn(
                   "h-7 rounded-[4px] px-2 text-[11px] font-medium tracking-[0.04em] transition-colors",
                   statusFilter === "all"
@@ -716,10 +724,12 @@ export function History() {
               </button>
               {ALL_STATUSES.map((s) => (
                 <button
+                  type="button"
                   key={s}
                   onClick={() =>
                     setStatusFilter(statusFilter === s ? "all" : s)
                   }
+                  aria-pressed={statusFilter === s}
                   className={cn(
                     "h-7 rounded-[4px] px-2 text-[11px] font-medium tracking-[0.04em] transition-colors",
                     statusFilter === s
@@ -735,6 +745,7 @@ export function History() {
               variant={favoritesOnly ? "default" : "ghost"}
               size="sm"
               onClick={() => setFavoritesOnly(!favoritesOnly)}
+              aria-pressed={favoritesOnly}
             >
               <Heart
                 className={cn(
@@ -787,9 +798,7 @@ export function History() {
           <div>
             <p className="font-medium">Could not load analyses.</p>
             <p className="mt-1 text-[12px] text-destructive/85">
-              {error instanceof Error
-                ? error.message
-                : "Try again in a moment."}
+              {unknownErrorMessage(error)}
             </p>
           </div>
           <Button
@@ -908,7 +917,7 @@ export function History() {
                         className="h-3.5 w-3.5 rounded border-border"
                         checked={selectedIds.has(a.id)}
                         onChange={() => toggleId(a.id)}
-                        aria-label="Select row"
+                        aria-label={`Select analysis ${a.jobTitle}`}
                       />
                     </td>
                     <td className="px-3 py-2">
@@ -916,6 +925,7 @@ export function History() {
                         <FavoriteButton
                           analysisId={a.id}
                           isFavorite={a.isFavorite}
+                          label={`${a.jobTitle} at ${a.companyName ?? "unknown company"}`}
                         />
                         <span className="text-[13px] font-medium truncate">
                           {a.jobTitle}
@@ -1021,7 +1031,7 @@ export function History() {
                       toggleId(a.id);
                     }}
                     onClick={(e) => e.stopPropagation()}
-                    aria-label="Select row"
+                    aria-label={`Select analysis ${a.jobTitle}`}
                   />
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-start justify-between gap-2">
@@ -1045,6 +1055,7 @@ export function History() {
                       <FavoriteButton
                         analysisId={a.id}
                         isFavorite={a.isFavorite}
+                        label={`${a.jobTitle} at ${a.companyName ?? "unknown company"}`}
                       />
                     </div>
                     <div className="flex items-center gap-3 text-[12px]">

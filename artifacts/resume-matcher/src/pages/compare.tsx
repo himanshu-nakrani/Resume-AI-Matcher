@@ -36,6 +36,7 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from "@/components/ui/empty";
+import { unknownErrorMessage } from "@/lib/api-error";
 import { formatDistanceToNow } from "date-fns";
 
 function stringArray(value: unknown): string[] {
@@ -88,6 +89,15 @@ function relativeDate(value: unknown): string {
   return date
     ? formatDistanceToNow(date, { addSuffix: true })
     : "Date unavailable";
+}
+
+function analysisDisplayName(analysis: {
+  jobTitle?: string | null;
+  companyName?: string | null;
+}): string {
+  return analysis.companyName
+    ? `${analysis.jobTitle} at ${analysis.companyName}`
+    : (analysis.jobTitle ?? "selected analysis");
 }
 
 function ScoreBar({
@@ -187,9 +197,7 @@ function AnalysisColumn({
           <div>
             <p className="text-sm font-semibold">Could not load analysis</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error
-                ? error.message
-                : "Try again in a moment."}
+              {unknownErrorMessage(error)}
             </p>
           </div>
         </CardContent>
@@ -463,6 +471,17 @@ export function Compare() {
   const selectedCount = [leftId, rightId].filter(
     (id): id is number => id != null,
   ).length;
+  const selectedAnalyses = useMemo(() => {
+    const byId = new Map(analyses.map((analysis) => [analysis.id, analysis]));
+    return {
+      left: leftId != null ? byId.get(leftId) : undefined,
+      right: rightId != null ? byId.get(rightId) : undefined,
+    };
+  }, [analyses, leftId, rightId]);
+  const swapLabel =
+    selectedAnalyses.left && selectedAnalyses.right
+      ? `Swap ${analysisDisplayName(selectedAnalyses.left)} with ${analysisDisplayName(selectedAnalyses.right)}`
+      : "Swap analyses";
 
   return (
     <div className="space-y-6">
@@ -497,11 +516,7 @@ export function Compare() {
               <AlertCircle />
             </EmptyMedia>
             <EmptyTitle>Could not load analyses</EmptyTitle>
-            <EmptyDescription>
-              {error instanceof Error
-                ? error.message
-                : "Try again in a moment."}
-            </EmptyDescription>
+            <EmptyDescription>{unknownErrorMessage(error)}</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button
@@ -555,7 +570,8 @@ export function Compare() {
                   setRightId(tmp);
                 }}
                 disabled={leftId == null || rightId == null}
-                aria-label="Swap analyses"
+                title={swapLabel}
+                aria-label={swapLabel}
               >
                 <ArrowLeftRight className="h-3.5 w-3.5" />
               </Button>

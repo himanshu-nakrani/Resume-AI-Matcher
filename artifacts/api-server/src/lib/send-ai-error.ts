@@ -1,4 +1,4 @@
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import type { AiError, AiErrorCode } from "@workspace/integrations-openai-ai-server";
 
 const HTTP_BY_CODE: Record<AiErrorCode, number> = {
@@ -25,17 +25,27 @@ const FRIENDLY_BY_CODE: Record<AiErrorCode, string> = {
 
 /**
  * Translate an AiError into the wire envelope:
- *   { error: { code, message, retryable, retryAfterMs? } }
+ *   { error: { code, message, requestId, retryable, retryAfterMs? } }
  *
  * `friendlyMessageOverride` lets callers customize the user-facing message
  * (e.g. "Cover letter generation failed") while preserving the structured code.
  */
-export function sendAiError(res: Response, err: AiError, friendlyMessageOverride?: string): void {
+function requestId(req: Request): string | undefined {
+  return (req as Request & { id?: string }).id;
+}
+
+export function sendAiError(
+  req: Request,
+  res: Response,
+  err: AiError,
+  friendlyMessageOverride?: string,
+): void {
   const status = HTTP_BY_CODE[err.code] ?? 500;
   res.status(status).json({
     error: {
       code: err.code,
       message: friendlyMessageOverride ?? FRIENDLY_BY_CODE[err.code],
+      requestId: requestId(req),
       retryable: err.retryable,
       ...(err.retryAfterMs != null ? { retryAfterMs: err.retryAfterMs } : {}),
     },

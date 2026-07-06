@@ -14,6 +14,7 @@ import {
 import { ScoreCircle } from "@/components/score-circle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { unknownErrorMessage } from "@/lib/api-error";
 import {
   BarChart,
   Bar,
@@ -191,9 +192,7 @@ export function Brand() {
             <AlertCircle />
           </EmptyMedia>
           <EmptyTitle>Could not load brand data</EmptyTitle>
-          <EmptyDescription>
-            {error instanceof Error ? error.message : "Try again in a moment."}
-          </EmptyDescription>
+          <EmptyDescription>{unknownErrorMessage(error)}</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <Button

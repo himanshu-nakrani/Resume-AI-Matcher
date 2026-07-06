@@ -14,7 +14,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiErrorMessage, type ApiErrorPayload } from "@/lib/api-error";
+import {
+  apiErrorMessage,
+  unknownErrorMessage,
+  type ApiErrorPayload,
+} from "@/lib/api-error";
 import {
   Bell,
   BellRing,
@@ -137,8 +141,7 @@ export function SearchAlertsPage() {
     } catch (err) {
       toast({
         title: "Could not load job alerts",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -188,8 +191,7 @@ export function SearchAlertsPage() {
     } catch (err) {
       toast({
         title: "Could not create alert",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -212,8 +214,7 @@ export function SearchAlertsPage() {
     } catch (err) {
       toast({
         title: "Could not remove alert",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -251,8 +252,7 @@ export function SearchAlertsPage() {
     } catch (err) {
       toast({
         title: "Could not update alert",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -284,8 +284,7 @@ export function SearchAlertsPage() {
     } catch (err) {
       toast({
         title: "Check failed",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -332,11 +331,18 @@ export function SearchAlertsPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setLocation("/")}>
+          <Button variant="outline" onClick={() => setLocation("/?panel=jobs")}>
             <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
             New search
           </Button>
-          <Button onClick={() => setShowCreate(!showCreate)}>
+          <Button
+            onClick={() => setShowCreate(!showCreate)}
+            aria-expanded={showCreate}
+            aria-controls="alert-create-form"
+            aria-label={
+              showCreate ? "Close alert creation form" : "Open alert creation form"
+            }
+          >
             <Plus className="mr-1.5 h-3.5 w-3.5" />
             {showCreate ? "Close" : "New alert"}
           </Button>
@@ -351,33 +357,45 @@ export function SearchAlertsPage() {
       </div>
 
       {showCreate && (
-        <Card padding="lg" className="bg-surface-1">
+        <Card id="alert-create-form" padding="lg" className="bg-surface-1">
           <CardContent className="grid gap-3 p-4 md:grid-cols-[1fr_1.4fr_10rem_auto] md:items-end md:p-5">
-            <label className="space-y-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+            <div className="space-y-1.5">
+              <label
+                htmlFor="alert-name"
+                className="block text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground"
+              >
                 Name
-              </span>
+              </label>
               <Input
+                id="alert-name"
                 placeholder="Alert name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
               />
-            </label>
-            <label className="space-y-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+            </div>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="alert-query"
+                className="block text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground"
+              >
                 Query
-              </span>
+              </label>
               <Input
+                id="alert-query"
                 placeholder="senior React developer remote"
                 value={newQuery}
                 onChange={(e) => setNewQuery(e.target.value)}
               />
-            </label>
-            <label className="space-y-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground">
+            </div>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="alert-depth"
+                className="block text-[11px] font-semibold uppercase tracking-wider text-subtle-foreground"
+              >
                 Depth
-              </span>
+              </label>
               <select
+                id="alert-depth"
                 className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                 value={newSearchType}
                 onChange={(e) => setNewSearchType(e.target.value)}
@@ -387,11 +405,12 @@ export function SearchAlertsPage() {
                 <option value="deep">Deep</option>
                 <option value="deep-reasoning">Deep reasoning</option>
               </select>
-            </label>
+            </div>
             <Button
               onClick={createAlert}
               disabled={!newQuery.trim() || creating}
               className="md:self-end"
+              aria-label="Create job alert"
             >
               {creating ? "Creating..." : "Create alert"}
             </Button>
@@ -417,12 +436,14 @@ export function SearchAlertsPage() {
               monitor.
             </EmptyDescription>
           </EmptyHeader>
-          <EmptyContent>
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Create alert
-            </Button>
-          </EmptyContent>
+          {!showCreate && (
+            <EmptyContent>
+              <Button onClick={() => setShowCreate(true)}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Create alert
+              </Button>
+            </EmptyContent>
+          )}
         </Empty>
       ) : (
         <div className="space-y-3">
@@ -492,6 +513,11 @@ export function SearchAlertsPage() {
                         onClick={() => toggleAlert(alert.id, !alert.enabled)}
                         disabled={togglingId === alert.id}
                         title={alert.enabled ? "Disable" : "Enable"}
+                        aria-label={
+                          alert.enabled
+                            ? `Disable ${alert.name ?? alert.query} alert`
+                            : `Enable ${alert.name ?? alert.query} alert`
+                        }
                       >
                         {alert.enabled ? (
                           <BellRing className="h-3.5 w-3.5 text-primary" />
@@ -505,6 +531,7 @@ export function SearchAlertsPage() {
                         onClick={() => checkAlert(alert.id)}
                         disabled={checkingId === alert.id}
                         title="Check for new listings"
+                        aria-label={`Check ${alert.name ?? alert.query} for new listings`}
                       >
                         <RefreshCw
                           className={`h-3.5 w-3.5 ${checkingId === alert.id ? "animate-spin" : ""}`}
@@ -517,6 +544,7 @@ export function SearchAlertsPage() {
                         onClick={() => deleteAlert(alert.id)}
                         disabled={deletingId === alert.id}
                         title="Remove alert"
+                        aria-label={`Remove ${alert.name ?? alert.query} alert`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>

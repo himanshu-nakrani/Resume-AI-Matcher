@@ -42,6 +42,26 @@ import { fetchReadableTextFromUrl, UnsafeUrlError } from "../lib/safe-url-fetch"
 const router: IRouter = Router();
 const execFileAsync = promisify(execFile);
 
+type LatexCompiler = "tectonic" | "latexmk" | "pdflatex";
+
+type LatexCompilerFailure = {
+  compiler: LatexCompiler;
+  message: string;
+  stdout?: string;
+  stderr?: string;
+  code?: string | number;
+};
+
+class LatexCompileFailure extends Error {
+  constructor(
+    readonly failures: LatexCompilerFailure[],
+    readonly workDir: string,
+  ) {
+    super(latexCompileFailureMessage(failures, workDir));
+    this.name = "LatexCompileFailure";
+  }
+}
+
 function safeDownloadName(parts: Array<string | null | undefined>, extension: string): string {
   const base = parts
     .filter(Boolean)
@@ -83,7 +103,7 @@ function safeScore(value: unknown): number {
 }
 
 async function tryCompileLatex(
-  compiler: "tectonic" | "latexmk" | "pdflatex",
+  compiler: LatexCompiler,
   workDir: string,
 ): Promise<void> {
   switch (compiler) {
@@ -269,8 +289,93 @@ function isPdfRepairRequested(req: Request): boolean {
   return repair === "1" || repair === "true";
 }
 
-function formatLatexCompileError(err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err);
+function stringOutput(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || undefined;
+  }
+  if (value instanceof Uint8Array) {
+    const trimmed = Buffer.from(value).toString("utf8").trim();
+    return trimmed || undefined;
+  }
+  return undefined;
+}
+
+function compactJson(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  try {
+    const json = JSON.stringify(value);
+    return json === "{}" ? undefined : json;
+  } catch {
+    return undefined;
+  }
+}
+
+function compilerFailureFromUnknown(
+  compiler: LatexCompiler,
+  err: unknown,
+): LatexCompilerFailure {
+  const source =
+    err && typeof err === "object" ? (err as Record<string, unknown>) : null;
+  const message =
+    (err instanceof Error ? stringOutput(err.message) : undefined) ??
+    stringOutput(err) ??
+    compactJson(err) ??
+    "Unknown compiler failure.";
+  const stdout = stringOutput(source?.stdout);
+  const stderr = stringOutput(source?.stderr);
+  const code =
+    typeof source?.code === "string" || typeof source?.code === "number"
+      ? source.code
+      : undefined;
+
+  return { compiler, message, stdout, stderr, code };
+}
+
+function latexCompileFailureText(failure: LatexCompilerFailure): string {
+  const parts = [failure.stderr, failure.stdout, failure.message]
+    .filter((part): part is string => Boolean(part))
+    .filter((part, index, all) => all.indexOf(part) === index);
+  return parts.join("\n");
+}
+
+function latexCompileFailureMessage(
+  failures: LatexCompilerFailure[],
+  workDir: string,
+): string {
+  const noCompiler = failures.every((failure) => {
+    const text = latexCompileFailureText(failure);
+    return failure.code === "ENOENT" || text.includes("ENOENT");
+  });
+  if (noCompiler) {
+    return "No LaTeX compiler found. Install tectonic, latexmk, or pdflatex on the API server.";
+  }
+
+  const realFailure =
+    failures.find((failure) => failure.code !== "ENOENT" && !latexCompileFailureText(failure).includes("ENOENT")) ??
+    failures.at(-1);
+  return `LaTeX compilation failed in ${realFailure?.compiler ?? "compiler"}. ${
+    realFailure ? latexCompileFailureText(realFailure) : ""
+  } [workdir: ${workDir}]`.slice(0, 900);
+}
+
+export function formatLatexCompileError(err: unknown): string {
+  const objectFailure =
+    err && typeof err === "object"
+      ? latexCompileFailureText(compilerFailureFromUnknown("tectonic", err))
+      : undefined;
+  const raw =
+    err instanceof LatexCompileFailure
+      ? latexCompileFailureText(
+          err.failures.find((failure) => latexCompileFailureText(failure).match(/error|failed|missing|undefined|halted/i)) ??
+            err.failures.at(-1) ?? {
+              compiler: "tectonic",
+              message: err.message,
+            },
+        )
+      : err instanceof Error
+        ? err.message
+        : stringOutput(err) ?? objectFailure ?? compactJson(err) ?? "Unknown PDF compilation failure.";
   const lines = raw
     .replace(/\s*\[workdir: [^\]]+\]/g, "")
     .split(/\r?\n/)
@@ -303,6 +408,7 @@ function formatNotificationCreatedAt(value: Date | number | string): string {
 }
 
 function isLatexCompileFailure(err: unknown): boolean {
+  if (err instanceof LatexCompileFailure) return true;
   if (!(err instanceof Error)) return false;
   return err.message.includes("LaTeX compilation failed") || err.message.includes("No LaTeX compiler found");
 }
@@ -313,7 +419,7 @@ async function compileLatexToPdf(latex: string): Promise<Buffer> {
   try {
     await writeFile(path.join(workDir, "main.tex"), prepareLatexForPdfCompilation(latex), "utf8");
 
-    const errors: Array<{ compiler: string; message: string }> = [];
+    const errors: LatexCompilerFailure[] = [];
     for (const compiler of ["tectonic", "latexmk", "pdflatex"] as const) {
       try {
         await tryCompileLatex(compiler, workDir);
@@ -321,18 +427,11 @@ async function compileLatexToPdf(latex: string): Promise<Buffer> {
         succeeded = true;
         return pdf;
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        errors.push({ compiler, message });
+        errors.push(compilerFailureFromUnknown(compiler, err));
       }
     }
 
-    const noCompiler = errors.every((error) => error.message.includes("ENOENT"));
-    const realError = errors.find((error) => !error.message.includes("ENOENT")) ?? errors.at(-1);
-    throw new Error(
-      noCompiler
-        ? "No LaTeX compiler found. Install tectonic, latexmk, or pdflatex on the API server."
-        : `LaTeX compilation failed in ${realError?.compiler ?? "compiler"}. ${realError?.message ?? ""} [workdir: ${workDir}]`.slice(0, 900),
-    );
+    throw new LatexCompileFailure(errors, workDir);
   } finally {
     if (succeeded) {
       await rm(workDir, { recursive: true, force: true });
@@ -402,7 +501,7 @@ router.get("/analyses", async (req, res): Promise<void> => {
 router.post("/analyses", async (req, res): Promise<void> => {
   const parsed = CreateAnalysisBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_body", parsed.error.message);
     return;
   }
 
@@ -479,9 +578,9 @@ router.post("/analyses", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "AI analysis failed");
     if (isAiError(err)) {
-      sendAiError(res, err, "AI analysis failed");
+      sendAiError(req, res, err, "AI analysis failed");
     } else {
-      res.status(500).json({ error: "AI analysis failed" });
+      sendApiError(req, res, 500, "analysis_generation_failed", "AI analysis failed");
     }
     return;
   }
@@ -568,7 +667,7 @@ router.post("/analyses", async (req, res): Promise<void> => {
 router.post("/analyses/:id/validate-latex", async (req, res): Promise<void> => {
   const params = GetAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -577,13 +676,19 @@ router.post("/analyses/:id/validate-latex", async (req, res): Promise<void> => {
   });
 
   if (!analysis) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
   const latex = analysis.optimizedLatex?.trim();
   if (!latex) {
-    res.status(400).json({ error: "No LaTeX content available for validation" });
+    sendApiError(
+      req,
+      res,
+      400,
+      "optimized_latex_missing",
+      "No LaTeX content available for validation",
+    );
     return;
   }
 
@@ -678,7 +783,7 @@ router.get("/analyses/:id/resume.pdf", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err, id: params.data.id }, "Optimized resume PDF compilation failed");
     if (isAiError(err)) {
-      sendAiError(res, err);
+      sendAiError(req, res, err);
     } else if (isLatexCompileFailure(err)) {
       sendApiError(req, res, 422, "optimized_pdf_compile_failed", formatLatexCompileError(err));
     } else {
@@ -730,7 +835,7 @@ router.get("/analyses/stats", async (req, res): Promise<void> => {
 router.get("/analyses/:id", async (req, res): Promise<void> => {
   const params = GetAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -740,7 +845,7 @@ router.get("/analyses/:id", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!row) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -750,7 +855,7 @@ router.get("/analyses/:id", async (req, res): Promise<void> => {
 router.delete("/analyses/:id", async (req, res): Promise<void> => {
   const params = DeleteAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -760,7 +865,7 @@ router.delete("/analyses/:id", async (req, res): Promise<void> => {
     .returning();
 
   if (!row) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -770,13 +875,13 @@ router.delete("/analyses/:id", async (req, res): Promise<void> => {
 router.patch("/analyses/:id", async (req, res): Promise<void> => {
   const params = UpdateAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
   const body = UpdateAnalysisBody.safeParse(req.body);
   if (!body.success) {
-    res.status(400).json({ error: body.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_update", body.error.message);
     return;
   }
 
@@ -786,7 +891,7 @@ router.patch("/analyses/:id", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!existing) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -818,7 +923,7 @@ router.patch("/analyses/:id", async (req, res): Promise<void> => {
 router.post("/analyses/:id/duplicate", async (req, res): Promise<void> => {
   const params = DuplicateAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -828,7 +933,7 @@ router.post("/analyses/:id/duplicate", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!original) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -867,7 +972,7 @@ router.post("/analyses/:id/duplicate", async (req, res): Promise<void> => {
 router.post("/analyses/:id/share", async (req, res): Promise<void> => {
   const params = ShareAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -877,7 +982,7 @@ router.post("/analyses/:id/share", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!existing) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -901,7 +1006,7 @@ router.post("/analyses/:id/share", async (req, res): Promise<void> => {
 router.delete("/analyses/:id/share", async (req, res): Promise<void> => {
   const params = UnshareAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -911,7 +1016,7 @@ router.delete("/analyses/:id/share", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!existing) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -928,7 +1033,7 @@ router.delete("/analyses/:id/share", async (req, res): Promise<void> => {
 router.get("/share/:token", async (req, res): Promise<void> => {
   const params = GetSharedAnalysisParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_share_token", params.error.message);
     return;
   }
 
@@ -938,7 +1043,7 @@ router.get("/share/:token", async (req, res): Promise<void> => {
     .where(eq(analyses.shareToken, params.data.token));
 
   if (!row || !row.isPublic) {
-    res.status(404).json({ error: "Shared analysis not found" });
+    sendApiError(req, res, 404, "shared_analysis_not_found", "Shared analysis not found");
     return;
   }
 
@@ -950,11 +1055,17 @@ router.get("/share/:token", async (req, res): Promise<void> => {
 router.post("/fetch-job", async (req, res): Promise<void> => {
   const body = FetchJobDescriptionBody.safeParse(req.body);
   if (!body.success) {
-    res.status(400).json({ error: "Invalid URL" });
+    sendApiError(req, res, 400, "invalid_job_url", "Enter a valid job posting URL.");
     return;
   }
 
   const { url } = body.data;
+  try {
+    new URL(url);
+  } catch {
+    sendApiError(req, res, 400, "invalid_job_url", "Enter a valid job posting URL.");
+    return;
+  }
 
   req.log.info({ url }, "Fetching job description from URL");
 
@@ -969,7 +1080,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
     })).slice(0, 12000);
 
     if (text.length < 100) {
-      res.status(400).json({ error: "Could not extract content from that URL. Try copying the job description manually." });
+      sendApiError(req, res, 400, "job_url_content_too_short", "Could not extract content from that URL. Try copying the job description manually.");
       return;
     }
 
@@ -994,7 +1105,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
     }
 
     if (!extracted.jobDescription || extracted.jobDescription.length < 50) {
-      res.status(400).json({ error: "Could not extract job description from that URL. Try copying the text manually." });
+      sendApiError(req, res, 400, "job_description_not_found", "Could not extract job description from that URL. Try copying the text manually.");
       return;
     }
 
@@ -1006,15 +1117,15 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
   } catch (err) {
     if (err instanceof UnsafeUrlError) {
       logger.warn({ err, url }, "Rejected unsafe job URL");
-      res.status(400).json({ error: "Could not fetch that URL. Please copy the job description text manually." });
+      sendApiError(req, res, 400, "unsafe_job_url", "Could not fetch that URL. Please copy the job description text manually.");
       return;
     }
 
     logger.error({ err, url }, "Job URL fetch failed");
     if (isAiError(err)) {
-      sendAiError(res, err, "Job URL fetch failed");
+      sendAiError(req, res, err, "Job URL fetch failed");
     } else {
-      res.status(400).json({ error: "Could not fetch that URL. Please copy the job description text manually." });
+      sendApiError(req, res, 400, "job_url_fetch_failed", "Could not fetch that URL. Please copy the job description text manually.");
     }
   }
 });
@@ -1024,7 +1135,7 @@ router.post("/fetch-job", async (req, res): Promise<void> => {
 router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
   const params = GenerateCoverLetterParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -1037,7 +1148,7 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!analysis) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -1070,9 +1181,9 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "Cover letter generation failed");
     if (isAiError(err)) {
-      sendAiError(res, err, "Cover letter generation failed");
+      sendAiError(req, res, err, "Cover letter generation failed");
     } else {
-      res.status(500).json({ error: "Cover letter generation failed" });
+      sendApiError(req, res, 500, "cover_letter_generation_failed", "Cover letter generation failed");
     }
   }
 });
@@ -1080,7 +1191,7 @@ router.post("/analyses/:id/cover-letter", async (req, res): Promise<void> => {
 router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
   const params = GenerateLinkedinPostParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
@@ -1090,7 +1201,7 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!analysis) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -1121,9 +1232,9 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "LinkedIn post generation failed");
     if (isAiError(err)) {
-      sendAiError(res, err, "LinkedIn post generation failed");
+      sendAiError(req, res, err, "LinkedIn post generation failed");
     } else {
-      res.status(500).json({ error: "LinkedIn post generation failed" });
+      sendApiError(req, res, 500, "linkedin_post_generation_failed", "LinkedIn post generation failed");
     }
   }
 });
@@ -1131,13 +1242,13 @@ router.post("/analyses/:id/linkedin-post", async (req, res): Promise<void> => {
 router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
   const params = RewriteBulletParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    sendApiError(req, res, 400, "invalid_analysis_id", params.error.message);
     return;
   }
 
   const body = RewriteBulletBody.safeParse(req.body);
   if (!body.success) {
-    res.status(400).json({ error: body.error.message });
+    sendApiError(req, res, 400, "invalid_bullet_rewrite", body.error.message);
     return;
   }
 
@@ -1147,7 +1258,7 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
     .where(eq(analyses.id, params.data.id));
 
   if (!analysis) {
-    res.status(404).json({ error: "Analysis not found" });
+    sendApiError(req, res, 404, "analysis_not_found", "Analysis not found");
     return;
   }
 
@@ -1184,9 +1295,9 @@ router.post("/analyses/:id/rewrite-bullet", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "Bullet rewrite failed");
     if (isAiError(err)) {
-      sendAiError(res, err, "Bullet rewrite failed");
+      sendAiError(req, res, err, "Bullet rewrite failed");
     } else {
-      res.status(500).json({ error: "Bullet rewrite failed" });
+      sendApiError(req, res, 500, "bullet_rewrite_failed", "Bullet rewrite failed");
     }
   }
 });
@@ -1224,7 +1335,7 @@ router.patch("/notifications/:id/read", async (req, res): Promise<void> => {
     .where(eq(notifications.id, id))
     .returning();
   if (!updated) {
-    res.status(404).json({ error: "Notification not found" });
+    sendApiError(req, res, 404, "notification_not_found", "Notification not found");
     return;
   }
   res.json({

@@ -45,6 +45,7 @@ export interface BadgeProps
     VariantProps<typeof badgeVariants> {
   icon?: React.ReactNode
   onRemove?: () => void
+  removeLabel?: string
 }
 
 function Badge({
@@ -53,6 +54,7 @@ function Badge({
   size,
   icon,
   onRemove,
+  removeLabel,
   children,
   ...props
 }: BadgeProps) {
@@ -69,7 +71,7 @@ function Badge({
           type="button"
           onClick={onRemove}
           className="ml-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] transition-colors hover:bg-current/15"
-          aria-label="Remove"
+          aria-label={removeLabel ?? "Remove badge"}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -43,7 +43,11 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiErrorMessage, type ApiErrorPayload } from "@/lib/api-error";
+import {
+  apiErrorMessage,
+  unknownErrorMessage,
+  type ApiErrorPayload,
+} from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 
 import {
@@ -99,6 +103,7 @@ async function parsePdf(file: File) {
 
 export function Home() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [resumeFileName, setResumeFileName] = useState("");
@@ -125,6 +130,7 @@ export function Home() {
   const [exaCompanySize, setExaCompanySize] = useState("");
   const [detailHit, setDetailHit] = useState<JobSearchHit | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [jobSearchOpen, setJobSearchOpen] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [matchScores, setMatchScores] = useState<
     Map<string, { score: number; loading: boolean }>
@@ -188,6 +194,24 @@ export function Home() {
     return () => subscription.unsubscribe();
   }, [form]);
 
+  useEffect(() => {
+    const panel = new URLSearchParams(search).get("panel");
+    if (panel !== "jobs") return;
+
+    setJobSearchOpen(true);
+  }, [search]);
+
+  useEffect(() => {
+    const panel = new URLSearchParams(search).get("panel");
+    if (panel !== "jobs" || !jobSearchOpen) return;
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("job-search")
+        ?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+  }, [jobSearchOpen, search]);
+
   const createAnalysis = useCreateAnalysis({
     mutation: {
       onSuccess: (data) => {
@@ -200,18 +224,9 @@ export function Home() {
         setLocation(`/analysis/${data.id}`);
       },
       onError: (error) => {
-        const envelope = (
-          error as
-            | { data?: { error?: { message?: string } } }
-            | null
-            | undefined
-        )?.data?.error;
         toast({
           title: "Optimization failed",
-          description:
-            envelope?.message ??
-            (error as Error | null | undefined)?.message ??
-            "Please try again.",
+          description: unknownErrorMessage(error, "Please try again."),
           variant: "destructive",
         });
       },
@@ -236,7 +251,7 @@ export function Home() {
           description: "Company, role, and JD were extracted from the URL.",
         });
       },
-      onError: (_err, variables) => {
+      onError: (err, variables) => {
         const url = variables?.data.url;
         const hit = exaResults?.results.find((result) => result.url === url);
         if (hit) {
@@ -258,8 +273,10 @@ export function Home() {
         }
         toast({
           title: "Could not import",
-          description:
+          description: unknownErrorMessage(
+            err,
             "That page blocked extraction. Paste the JD manually or use a result from job search.",
+          ),
           variant: "destructive",
         });
       },
@@ -278,11 +295,9 @@ export function Home() {
         });
       },
       onError: (err: unknown) => {
-        const message =
-          err instanceof Error ? err.message : "Job search failed.";
         toast({
           title: "Job search failed",
-          description: message,
+          description: unknownErrorMessage(err, "Job search failed."),
           variant: "destructive",
         });
       },
@@ -382,8 +397,7 @@ export function Home() {
     } catch (err) {
       toast({
         title: "Could not load more jobs",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -422,8 +436,7 @@ export function Home() {
     } catch (err) {
       toast({
         title: "Could not save",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     }
@@ -470,8 +483,7 @@ export function Home() {
       );
       toast({
         title: "Could not estimate match",
-        description:
-          err instanceof Error ? err.message : "Try again in a moment.",
+        description: unknownErrorMessage(err),
         variant: "destructive",
       });
     }
@@ -877,6 +889,8 @@ export function Home() {
                         variant="secondary"
                         size="sm"
                         onClick={() => setShowUrlInput((v) => !v)}
+                        aria-expanded={showUrlInput}
+                        aria-controls="job-url-import-panel"
                       >
                         <Link2 className="h-3.5 w-3.5 mr-1.5" /> Import JD from
                         URL
@@ -886,8 +900,12 @@ export function Home() {
                       </span>
                     </div>
                     {showUrlInput && (
-                      <div className="flex gap-2">
+                      <div id="job-url-import-panel" className="flex gap-2">
+                        <label htmlFor="job-url-import" className="sr-only">
+                          Job description URL
+                        </label>
                         <Input
+                          id="job-url-import"
                           value={jobUrlInput}
                           onChange={(e) => setJobUrlInput(e.target.value)}
                           placeholder="https://company.com/jobs/role"
@@ -904,6 +922,7 @@ export function Home() {
                           variant="ghost"
                           size="icon"
                           onClick={() => setShowUrlInput(false)}
+                          aria-label="Close job URL import"
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -1017,6 +1036,8 @@ export function Home() {
         isSearchPending={jobSearchExa.isPending}
         isFetchJobPending={fetchJob.isPending}
         hasResumeText={(form.getValues("resumeText")?.length ?? 0) >= 50}
+        isOpen={jobSearchOpen}
+        onOpenChange={setJobSearchOpen}
         onSearch={() => handleExaJobSearch()}
         onLoadMore={loadMore}
         onSaveJob={saveJob}

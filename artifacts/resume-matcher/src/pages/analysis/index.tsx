@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { unknownErrorMessage } from "@/lib/api-error";
 import {
   ArrowLeft,
   Heart,
@@ -49,6 +50,7 @@ const TAB_VALUES = [
   "notes",
 ] as const;
 type TabValue = (typeof TAB_VALUES)[number];
+const ANALYSIS_TAB_CONTENT_CLASS = "pt-1";
 
 function isTabValue(v: string | null | undefined): v is TabValue {
   return v != null && (TAB_VALUES as readonly string[]).includes(v);
@@ -138,8 +140,7 @@ export function Analysis() {
       onError: (err) => {
         toast({
           title: "Could not delete analysis",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -160,8 +161,7 @@ export function Analysis() {
       onError: (err) => {
         toast({
           title: "Could not update analysis",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -182,8 +182,7 @@ export function Analysis() {
       onError: (err) => {
         toast({
           title: "Could not duplicate analysis",
-          description:
-            err instanceof Error ? err.message : "Try again in a moment.",
+          description: unknownErrorMessage(err),
           variant: "destructive",
         });
       },
@@ -214,7 +213,7 @@ export function Analysis() {
           Could not load analysis.
         </p>
         <p className="mt-2 text-[13px] text-muted-foreground">
-          {error instanceof Error ? error.message : "Try again in a moment."}
+          {unknownErrorMessage(error)}
         </p>
         <div className="mt-4 flex justify-center gap-2">
           <Button variant="secondary" onClick={() => setLocation("/history")}>
@@ -251,11 +250,15 @@ export function Analysis() {
   const visibleTags = tags.filter((tag) => tag !== "sample");
   const deadlineLabel = shortDate(analysis.deadline);
   const followUpLabel = shortDate(analysis.followUpDate);
+  const analysisLabel = `${analysis.jobTitle} at ${analysis.companyName ?? "unknown company"}`;
+  const favoriteActionLabel = analysis.isFavorite
+    ? `Remove ${analysisLabel} from favorites`
+    : `Add ${analysisLabel} to favorites`;
 
   return (
     <div className="space-y-0" data-testid={`analysis-${id}`}>
       <Tabs value={activeTab} onValueChange={setTab}>
-        <div className="z-30 border-b border-border bg-background pb-3 mb-6 sm:-mx-6 sm:px-6 md:sticky md:top-12 md:pt-4 md:-mt-8 md:shadow-[0_1px_0_0_hsl(var(--border))]">
+        <div className="z-30 -mx-4 mb-6 border-b border-border bg-background/95 px-4 pb-3 backdrop-blur sm:-mx-6 sm:px-6 md:sticky md:top-12 md:pt-4 md:shadow-[0_1px_0_0_hsl(var(--border))]">
           <button
             onClick={() => setLocation("/")}
             className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground mb-2 transition-colors no-print"
@@ -320,16 +323,8 @@ export function Analysis() {
                   })
                 }
                 disabled={updateAnalysis.isPending}
-                title={
-                  analysis.isFavorite
-                    ? "Remove from favorites"
-                    : "Add to favorites"
-                }
-                aria-label={
-                  analysis.isFavorite
-                    ? "Remove from favorites"
-                    : "Add to favorites"
-                }
+                title={favoriteActionLabel}
+                aria-label={favoriteActionLabel}
                 data-testid="button-favorite"
               >
                 <Heart
@@ -346,8 +341,8 @@ export function Analysis() {
                 size="sm"
                 onClick={() => duplicateAnalysis.mutate({ id })}
                 disabled={duplicateAnalysis.isPending}
-                title="Duplicate this analysis"
-                aria-label="Duplicate this analysis"
+                title={`Duplicate ${analysisLabel}`}
+                aria-label={`Duplicate ${analysisLabel}`}
               >
                 <GitCompareArrows className="w-3.5 h-3.5" />
               </Button>
@@ -357,8 +352,8 @@ export function Analysis() {
                 className="text-muted-foreground hover:text-destructive"
                 onClick={handleDelete}
                 disabled={deleteAnalysis.isPending}
-                title="Delete this analysis"
-                aria-label="Delete this analysis"
+                title={`Delete ${analysisLabel}`}
+                aria-label={`Delete ${analysisLabel}`}
                 data-testid="button-delete"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -374,19 +369,22 @@ export function Analysis() {
           </TabsList>
         </div>
 
-        <TabsContent value="overview">
+        <TabsContent value="overview" className={ANALYSIS_TAB_CONTENT_CLASS}>
           <OverviewTab analysis={analysis} id={id} />
         </TabsContent>
-        <TabsContent value="cover-letter">
+        <TabsContent
+          value="cover-letter"
+          className={ANALYSIS_TAB_CONTENT_CLASS}
+        >
           <CoverLetterTab analysis={analysis} id={id} />
         </TabsContent>
-        <TabsContent value="linkedin">
+        <TabsContent value="linkedin" className={ANALYSIS_TAB_CONTENT_CLASS}>
           <LinkedInTab analysis={analysis} id={id} />
         </TabsContent>
-        <TabsContent value="pipeline">
+        <TabsContent value="pipeline" className={ANALYSIS_TAB_CONTENT_CLASS}>
           <PipelineTab analysis={analysis} id={id} />
         </TabsContent>
-        <TabsContent value="notes">
+        <TabsContent value="notes" className={ANALYSIS_TAB_CONTENT_CLASS}>
           <NotesTab analysis={analysis} id={id} />
         </TabsContent>
       </Tabs>
@@ -394,9 +392,9 @@ export function Analysis() {
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this analysis?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {analysis.jobTitle}?</AlertDialogTitle>
             <AlertDialogDescription>
-              "{analysis.jobTitle}" will be permanently removed from your
+              {analysisLabel} will be permanently removed from your
               workspace. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
