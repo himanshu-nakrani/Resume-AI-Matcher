@@ -836,7 +836,11 @@ export function NotesSection({
     };
   }, []);
 
+  const previousAnalysisId = useRef(analysisId);
+
   useEffect(() => {
+    if (previousAnalysisId.current === analysisId) return;
+    previousAnalysisId.current = analysisId;
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     setNotes(initialNotes ?? "");
     setIsDirty(false);
