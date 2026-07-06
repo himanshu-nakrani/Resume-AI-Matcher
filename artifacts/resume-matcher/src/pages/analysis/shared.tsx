@@ -840,10 +840,6 @@ export function NotesSection({
 
   useEffect(() => {
     if (previousAnalysisId.current === analysisId) return;
-  const previousAnalysisId = useRef(analysisId);
-
-  useEffect(() => {
-    if (previousAnalysisId.current === analysisId) return;
     previousAnalysisId.current = analysisId;
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     setNotes(initialNotes ?? "");
