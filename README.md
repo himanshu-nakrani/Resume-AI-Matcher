@@ -1,8 +1,6 @@
 <div align="center">
 
-# OptiMatch ✨
-
-**AI-powered resume analysis and job application management**
+![OptiMatch — AI-powered resume analysis & job application management](./docs/assets/opti-match-header.svg)
 
 [![GitHub stars](https://img.shields.io/github/stars/himanshu-nakrani/Resume-AI-Matcher?style=flat&logo=github)](https://github.com/himanshu-nakrani/Resume-AI-Matcher/stargazers)
 [![GitHub license](https://img.shields.io/github/license/himanshu-nakrani/Resume-AI-Matcher?style=flat)](./LICENSE)
