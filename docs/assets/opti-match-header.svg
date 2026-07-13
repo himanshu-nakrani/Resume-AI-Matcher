@@ -1,0 +1,272 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">OptiMatch — AI-powered resume analysis</title>
+  <desc id="desc">Banner illustrating AI matching a resume to a job with a fit score</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0A0E19"/>
+      <stop offset="50%" stop-color="#111729"/>
+      <stop offset="100%" stop-color="#0A0E19"/>
+    </linearGradient>
+
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF8A5C"/>
+      <stop offset="55%" stop-color="#FF5A24"/>
+      <stop offset="100%" stop-color="#FF3C00"/>
+    </linearGradient>
+
+    <linearGradient id="brandLine" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF8A5C" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#FF5A24" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#FF8A5C" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1A2238"/>
+      <stop offset="100%" stop-color="#12182B"/>
+    </linearGradient>
+
+    <linearGradient id="scoreRing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFB088"/>
+      <stop offset="45%" stop-color="#FF6B35"/>
+      <stop offset="100%" stop-color="#FF3C00"/>
+    </linearGradient>
+
+    <linearGradient id="job" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5B8CFF"/>
+      <stop offset="100%" stop-color="#7B5CFF"/>
+    </linearGradient>
+
+    <linearGradient id="beamL" x1="310" y1="200" x2="500" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF7A45" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#FF7A45" stop-opacity="0.85"/>
+    </linearGradient>
+
+    <linearGradient id="beamR" x1="700" y1="200" x2="890" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7B5CFF" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#5B8CFF" stop-opacity="0.15"/>
+    </linearGradient>
+
+    <radialGradient id="orbL" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF7A45" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FF7A45" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="orbC" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF6B35" stop-opacity="0.32"/>
+      <stop offset="55%" stop-color="#5B8CFF" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#0A0E19" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="orbR" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#5B8CFF" stop-opacity="0.24"/>
+      <stop offset="100%" stop-color="#5B8CFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0H0V28" fill="none" stroke="#fff" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+
+    <clipPath id="frame">
+      <rect width="1200" height="340" rx="20"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <!-- Background -->
+    <rect width="1200" height="340" fill="url(#bg)"/>
+    <rect width="1200" height="340" fill="url(#grid)"/>
+    <circle cx="200" cy="90" r="150" fill="url(#orbL)"/>
+    <circle cx="600" cy="200" r="160" fill="url(#orbC)"/>
+    <circle cx="1000" cy="250" r="150" fill="url(#orbR)"/>
+    <rect x="0" y="0" width="1200" height="2.5" fill="url(#brandLine)"/>
+    <rect x="0" y="337.5" width="1200" height="2.5" fill="url(#brandLine)"/>
+
+    <!-- ========== Brand header ========== -->
+    <g transform="translate(600, 34)">
+      <g transform="translate(-112, -12)">
+        <rect width="26" height="26" rx="7" fill="url(#brand)"/>
+        <path d="M7.5 6.5 H15 L18.5 10 V19.5 H7.5 Z" fill="#fff"/>
+        <path d="M15 6.5 V10 H18.5" fill="#FFD4C4"/>
+        <path d="M10.2 14.2 L12.2 16.2 L16.2 12" stroke="#FF3C00" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <text x="10" y="8" text-anchor="middle" fill="#FFFFFF" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="26" font-weight="800" letter-spacing="-0.4">OptiMatch</text>
+      <text x="0" y="28" text-anchor="middle" fill="#9AA3BD" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="500">AI-powered resume analysis &amp; job application management</text>
+    </g>
+
+    <!-- ========== LEFT: Resume card ========== -->
+    <g transform="translate(78, 78)">
+      <rect x="4" y="8" width="236" height="220" rx="18" fill="#000" opacity="0.3"/>
+      <rect width="236" height="220" rx="18" fill="url(#card)" stroke="#fff" stroke-opacity="0.09"/>
+      <!-- header strip -->
+      <path d="M0 18 C0 8 8 0 18 0 H218 C228 0 236 8 236 18 V36 H0 Z" fill="#FF5A24" opacity="0.14"/>
+      <g transform="translate(16, 10)">
+        <rect width="15" height="18" rx="2.5" fill="url(#brand)"/>
+        <path d="M9.5 0 V5.5 H15" fill="#FFD4C4"/>
+        <text x="24" y="13" fill="#F4F6FF" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700">Resume</text>
+      </g>
+
+      <!-- profile -->
+      <circle cx="42" cy="72" r="17" fill="url(#brand)"/>
+      <circle cx="42" cy="67" r="6.5" fill="#FFF4EE"/>
+      <path d="M29 85 C29 76.5 55 76.5 55 85" fill="#FFF4EE"/>
+      <rect x="72" y="60" width="120" height="10" rx="5" fill="#fff" opacity="0.88"/>
+      <rect x="72" y="78" width="84" height="7" rx="3.5" fill="#fff" opacity="0.28"/>
+
+      <!-- skills -->
+      <text x="20" y="118" fill="#8B94AD" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-weight="600" letter-spacing="1">SKILLS</text>
+      <rect x="20" y="128" width="196" height="8" rx="4" fill="#fff" opacity="0.07"/>
+      <rect x="20" y="128" width="162" height="8" rx="4" fill="url(#brand)"/>
+      <rect x="20" y="146" width="196" height="8" rx="4" fill="#fff" opacity="0.07"/>
+      <rect x="20" y="146" width="138" height="8" rx="4" fill="url(#brand)" opacity="0.88"/>
+      <rect x="20" y="164" width="196" height="8" rx="4" fill="#fff" opacity="0.07"/>
+      <rect x="20" y="164" width="104" height="8" rx="4" fill="url(#brand)" opacity="0.72"/>
+      <rect x="20" y="182" width="196" height="8" rx="4" fill="#fff" opacity="0.07"/>
+      <rect x="20" y="182" width="176" height="8" rx="4" fill="url(#brand)" opacity="0.95"/>
+
+      <!-- chips -->
+      <rect x="20" y="202" width="52" height="18" rx="9" fill="#FF5A24" opacity="0.18" stroke="#FF7A45" stroke-opacity="0.4"/>
+      <text x="46" y="214" text-anchor="middle" fill="#FFB088" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" font-weight="700">React</text>
+      <rect x="80" y="202" width="64" height="18" rx="9" fill="#FF5A24" opacity="0.18" stroke="#FF7A45" stroke-opacity="0.4"/>
+      <text x="112" y="214" text-anchor="middle" fill="#FFB088" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" font-weight="700">TypeScript</text>
+      <rect x="152" y="202" width="48" height="18" rx="9" fill="#FF5A24" opacity="0.14" stroke="#FF7A45" stroke-opacity="0.3"/>
+      <text x="176" y="214" text-anchor="middle" fill="#FFB088" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" font-weight="700">Node</text>
+    </g>
+
+    <!-- ========== RIGHT: Job card ========== -->
+    <g transform="translate(886, 78)">
+      <rect x="4" y="8" width="236" height="220" rx="18" fill="#000" opacity="0.3"/>
+      <rect width="236" height="220" rx="18" fill="url(#card)" stroke="#fff" stroke-opacity="0.09"/>
+      <path d="M0 18 C0 8 8 0 18 0 H218 C228 0 236 8 236 18 V36 H0 Z" fill="#5B8CFF" opacity="0.14"/>
+      <g transform="translate(16, 10)">
+        <rect width="16" height="16" rx="4" fill="url(#job)"/>
+        <path d="M4.5 8 H11.5 M8 4.5 V11.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+        <text x="24" y="13" fill="#F4F6FF" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700">Job Posting</text>
+      </g>
+
+      <rect x="20" y="54" width="38" height="38" rx="11" fill="url(#job)"/>
+      <text x="39" y="78" text-anchor="middle" fill="#fff" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="800">Ω</text>
+      <rect x="70" y="60" width="128" height="10" rx="5" fill="#fff" opacity="0.88"/>
+      <rect x="70" y="78" width="92" height="7" rx="3.5" fill="#fff" opacity="0.28"/>
+
+      <text x="20" y="122" fill="#8B94AD" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-weight="600" letter-spacing="1">REQUIREMENTS</text>
+
+      <!-- matched rows -->
+      <g transform="translate(20, 136)">
+        <circle cx="8" cy="7" r="7" fill="#22C55E" opacity="0.18"/>
+        <path d="M4.5 7 L7 9.5 L12 4.5" stroke="#4ADE80" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="22" y="3" width="150" height="8" rx="4" fill="#fff" opacity="0.36"/>
+      </g>
+      <g transform="translate(20, 158)">
+        <circle cx="8" cy="7" r="7" fill="#22C55E" opacity="0.18"/>
+        <path d="M4.5 7 L7 9.5 L12 4.5" stroke="#4ADE80" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="22" y="3" width="126" height="8" rx="4" fill="#fff" opacity="0.36"/>
+      </g>
+      <g transform="translate(20, 180)">
+        <circle cx="8" cy="7" r="7" fill="#F59E0B" opacity="0.18"/>
+        <circle cx="8" cy="7" r="2.4" fill="#FBBF24"/>
+        <rect x="22" y="3" width="102" height="8" rx="4" fill="#fff" opacity="0.22"/>
+      </g>
+      <g transform="translate(20, 202)">
+        <circle cx="8" cy="7" r="7" fill="#22C55E" opacity="0.18"/>
+        <path d="M4.5 7 L7 9.5 L12 4.5" stroke="#4ADE80" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="22" y="3" width="140" height="8" rx="4" fill="#fff" opacity="0.36"/>
+      </g>
+    </g>
+
+    <!-- ========== CENTER: Fit score ========== -->
+    <g transform="translate(600, 200)">
+      <circle r="86" fill="none" stroke="#FF5A24" stroke-opacity="0.08" stroke-width="1"/>
+      <circle r="72" fill="none" stroke="#5B8CFF" stroke-opacity="0.12" stroke-width="1" stroke-dasharray="3 6">
+        <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="30s" repeatCount="indefinite"/>
+      </circle>
+      <circle r="58" fill="#FF6B35" opacity="0.08" filter="url(#glow)"/>
+
+      <!-- track + arc -->
+      <circle r="48" fill="#0A0E19" stroke="#1C2438" stroke-width="9"/>
+      <circle
+        r="48"
+        fill="none"
+        stroke="url(#scoreRing)"
+        stroke-width="9"
+        stroke-linecap="round"
+        stroke-dasharray="284 302"
+        stroke-dashoffset="10"
+        transform="rotate(-90)"
+        filter="url(#glow)"
+      />
+
+      <circle r="34" fill="#12182B" stroke="#fff" stroke-opacity="0.1"/>
+      <circle r="28" fill="url(#brand)" opacity="0.12"/>
+
+      <!-- spark -->
+      <g transform="translate(0,-16)" filter="url(#soft)">
+        <path d="M-3 -7.5 L4 -1 H0.5 L2.5 7.5 L-4 1 H0 Z" fill="url(#brand)"/>
+      </g>
+
+      <text y="12" text-anchor="middle" fill="#FFFFFF" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="28" font-weight="800">94</text>
+      <text y="28" text-anchor="middle" fill="#FFB088" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="9" font-weight="700" letter-spacing="1.6">FIT SCORE</text>
+    </g>
+
+    <!-- Connection beams -->
+    <g>
+      <path d="M314 188 C 390 188, 450 165, 512 182" stroke="url(#beamL)" stroke-width="2" fill="none"/>
+      <path d="M314 168 C 385 155, 445 210, 510 200" stroke="#FF8A5C" stroke-width="1.15" stroke-opacity="0.28" fill="none"/>
+      <path d="M314 208 C 395 220, 455 175, 512 190" stroke="#FF5A24" stroke-width="1.15" stroke-opacity="0.28" fill="none"/>
+
+      <path d="M688 200 C 760 200, 820 188, 886 188" stroke="url(#beamR)" stroke-width="2" fill="none"/>
+      <path d="M688 178 C 760 160, 825 205, 886 168" stroke="#7B5CFF" stroke-width="1.15" stroke-opacity="0.28" fill="none"/>
+      <path d="M688 218 C 765 230, 825 175, 886 208" stroke="#5B8CFF" stroke-width="1.15" stroke-opacity="0.28" fill="none"/>
+
+      <!-- particles -->
+      <circle r="3.2" fill="#FFB088" filter="url(#soft)">
+        <animateMotion dur="2.6s" repeatCount="indefinite" path="M314 188 C 390 188, 450 165, 512 182"/>
+      </circle>
+      <circle r="2.2" fill="#FF7A45" opacity="0.9">
+        <animateMotion dur="3.2s" begin="0.7s" repeatCount="indefinite" path="M314 208 C 395 220, 455 175, 512 190"/>
+      </circle>
+      <circle r="3.2" fill="#B0C0FF" filter="url(#soft)">
+        <animateMotion dur="2.6s" begin="0.35s" repeatCount="indefinite" path="M688 200 C 760 200, 820 188, 886 188"/>
+      </circle>
+      <circle r="2.2" fill="#8B75FF" opacity="0.9">
+        <animateMotion dur="3.1s" begin="1s" repeatCount="indefinite" path="M688 178 C 760 160, 825 205, 886 168"/>
+      </circle>
+    </g>
+
+    <!-- Floating insight chips -->
+    <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-weight="700">
+      <g transform="translate(368, 128)">
+        <rect width="68" height="22" rx="11" fill="#FF5A24" opacity="0.16" stroke="#FF7A45" stroke-opacity="0.4"/>
+        <text x="34" y="15" text-anchor="middle" fill="#FFB088">ATS ✓</text>
+      </g>
+      <g transform="translate(764, 128)">
+        <rect width="78" height="22" rx="11" fill="#5B8CFF" opacity="0.16" stroke="#7B5CFF" stroke-opacity="0.4"/>
+        <text x="39" y="15" text-anchor="middle" fill="#B8C8FF">Keywords</text>
+      </g>
+      <g transform="translate(378, 258)">
+        <rect width="76" height="22" rx="11" fill="#22C55E" opacity="0.14" stroke="#4ADE80" stroke-opacity="0.35"/>
+        <text x="38" y="15" text-anchor="middle" fill="#86EFAC">Strengths</text>
+      </g>
+      <g transform="translate(746, 258)">
+        <rect width="64" height="22" rx="11" fill="#F59E0B" opacity="0.14" stroke="#FBBF24" stroke-opacity="0.35"/>
+        <text x="32" y="15" text-anchor="middle" fill="#FDE68A">Gaps</text>
+      </g>
+    </g>
+  </g>
+</svg>
